@@ -13,10 +13,135 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_DATA: ChangelogEntry[] = [
   {
+    version: '0.4.3-Alpha2',
+    date: '2026-05-19',
+    content: {
+      en: `✨ Features
+- Add /context command for real-time context window usage visualization, showing token counts for system, tools, user, and assistant segments (by @gadfly3173)
+- Add session templates for lightweight reusable conversation starters; templates can be pinned, reordered, and applied to new sessions (by @swamy18)
+- Render sub_agent_compact summary as a collapsible notification block in the chat, replacing raw text with an expandable card (by @gadfly3173)
+- Add file path tooltip showing full absolute path on hover for file reference links (by @ywz626)
+- Add configurable permission dialog timeout with countdown display; opt-in via Settings → Basic → Behavior (by @ywz626)
+- Add WSL Node.js path support for Windows hosts running Claude/Codex via WSL, auto-detecting the WSL node binary (by @Gazoon007)
+- Add Codex expired session thread error detection with localized error message across all 10 supported locales
+
+🐛 Fixes
+- Fix user-initiated aborts being reported as errors instead of graceful completion in session history (by @GlMelon)
+- Fix local images not restored when replaying history sessions for both Claude and Codex providers (by @GlMelon)
+- Fix active provider being reset to default when loading a history session recorded under a different provider (by @GlMelon)
+- Fix streaming content overwritten by delayed backend snapshot; streaming output now takes priority to prevent display flicker (by @GlMelon)
+- Fix settings.json permission rules not respected in plan mode; allow/deny/ask rules now evaluated correctly during plan-mode tool calls (by @devlimits) (#1126)
+- Fix AI-generated session titles bypassing the 50-char rendering limit and causing layout overflow (by @devlimits) (#1133)
+- Fix assistant messages containing XML command tags incorrectly stripped from code examples (by @gadfly3173) (#1124)
+- Fix Haiku model environment variable mapping and add UI language preference persistence across sessions (by @gadfly3173) (#1153)
+- Fix Codex Windows taskkill parse noise appearing as output lines after task completion (by @lrk1314) (#1164)
+- Fix streaming updates rendering lag by switching from requestAnimationFrame to setTimeout for paint scheduling (by @devlimits) (#1166)
+- Fix Claude history fallback scan discarding the earliest session timestamp when multiple matches are found
+- Fix permission dialog countdown drift and keyboard shortcut collisions when multiple dialogs open simultaneously (by @ywz626) (#1152)
+- Fix ProviderManager WSL detection and consolidate node binary discovery across Claude and Codex providers (by @Gazoon007) (#1156)
+
+🔧 Improvements
+- Extract UserMessageSanitizer utility to strip injected system context from user-visible messages, improving history readability (by @GlMelon)
+- Refactor /context usage panel to extract helper functions and reduce JSX duplication
+- Add unit tests for Windows taskkill parse noise filter to prevent regressions
+- Remove dead permission helper code orphaned by #1121 refactor (by @devlimits)`,
+      zh: `✨ Features
+- 新增 /context 命令，实时可视化上下文窗口用量，分别展示 system、tools、user、assistant 各段 token 占比（by @gadfly3173）
+- 新增会话模板功能，支持创建轻量级可复用的对话起点，模板可置顶、排序并一键应用到新会话（by @swamy18）
+- 将 sub_agent_compact 摘要渲染为可折叠通知卡片，替代原始文本块，改善长摘要的阅读体验（by @gadfly3173）
+- 新增文件链接悬停 Tooltip，显示完整绝对路径，方便快速定位文件位置（by @ywz626）
+- 新增可配置权限弹窗超时倒计时，可在 设置 → 基础 → 行为 中开启（by @ywz626）
+- 新增 WSL Node.js 路径支持，Windows 用户通过 WSL 运行 Claude/Codex 时可自动探测 WSL 内的 node 二进制（by @Gazoon007）
+- 新增 Codex 过期会话线程错误检测，并在全部 10 个语言环境中提供本地化错误消息
+
+🐛 Fixes
+- 修复用户主动中断操作被记录为错误的问题，现在正确识别为正常终止（by @GlMelon）
+- 修复历史会话回放时本地图片无法恢复的问题，Claude 和 Codex 均已修复（by @GlMelon）
+- 修复加载跨 Provider 历史会话时，当前 Provider 被重置为默认值的问题（by @GlMelon）
+- 修复延迟到达的后端快照覆盖流式输出导致内容闪烁的问题，流式内容现在优先显示（by @GlMelon）
+- 修复 plan 模式下 settings.json 权限规则（allow/deny/ask）不生效的问题（by @devlimits）（#1126）
+- 修复 AI 生成的会话标题超出 50 字符渲染限制导致布局溢出的问题（by @devlimits）（#1133）
+- 修复代码示例中包含 XML 命令标签的助手消息被错误过滤掉的问题（by @gadfly3173）（#1124）
+- 修复 Haiku 模型环境变量映射错误，并新增 UI 语言偏好跨会话持久化（by @gadfly3173）（#1153）
+- 修复 Codex 在 Windows 上任务完成后 taskkill 输出被误识别为程序输出的问题（by @lrk1314）（#1164）
+- 修复流式内容渲染延迟问题，将 requestAnimationFrame 改为 setTimeout 调度绘制（by @devlimits）（#1166）
+- 修复 Claude 历史回退扫描路径中最早时间戳被丢弃的问题
+- 修复权限弹窗同时打开多个时倒计时漂移和键盘快捷键冲突的问题（by @ywz626）（#1152）
+- 修复 ProviderManager WSL 检测逻辑，统一 Claude 和 Codex 的 node 二进制发现路径（by @Gazoon007）（#1156）
+
+🔧 Improvements
+- 提取 UserMessageSanitizer 工具类，从用户可见消息中剥离注入的系统上下文，提升历史记录可读性（by @GlMelon）
+- 重构 /context 用量面板，提取 helper 函数并减少 JSX 重复
+- 新增 Windows taskkill 噪声过滤器的单元测试，防止回归
+- 清理 #1121 重构后遗留的废弃权限 helper 代码（by @devlimits）`,
+    },
+  },
+  {
+    version: '0.4.3-Alpha1',
+    date: '2026-05-10',
+    content: {
+      en: `✨ Features
+- Add Codex provider extension environment variable settings, allowing customization of Codex runtime via environment variables (by @orwenxiang)
+- Add project-level commit AI prompt configuration (Settings → Commit), supporting per-project prompt customization with priority hierarchy: builtin > global > project > diff
+- Add gpt-5.4-mini context limit (400K) and model-specific pricing ($0.75/$4.50/$0.075 per 1M tokens) for accurate cost estimation
+- Add 4 GitHub issue templates (bug, third-party API, feature, question) with bilingual (zh/en) labels and tracking issue navigation
+
+🐛 Fixes
+- Fix UTF-8 BOM configuration parsing failure and prevent multi-instance startups from deleting each other's ai-bridge cache (by @coderdream)
+- Fix Claude and Codex usage aggregation alignment, including cache token double-counting and model alias resolution (by @yadue)
+- Fix /plan command showing warning toast in Codex mode; now sends as normal text (by @gadfly3173)
+- Fix "(1M context)" suffix incorrectly shown for Codex models; now only displayed for Claude provider (by @gadfly3173)
+- Fix Windows build failure by using npm.cmd in build.gradle to avoid spawn errors
+- Fix EnvVarEditor losing focus when deleting middle rows by using stable row IDs instead of array index for React keys
+- Fix italic font-style causing poor readability on small screens (model selector, mermaid loading, MCP tooltips, rewind notes, skill cards) (#728)
+- Fix duplicated CSS pseudo-element tooltip implementations by unifying with JS-based floating popup (context-tool-btn, enhance-prompt-button) (#850)
+- Fix ReasoningSelect dropdown overflow by right-aligning
+- Fix package-lock.json containing leaked private mirror URL by regenerating from registry.npmjs.org and pinning the official registry in webview/.npmrc
+- Fix settings.json permissions rules (allow/deny/ask) being silently ignored; PreToolUse hook now yields to SDK for native rule evaluation (by @devlimits) (#1120, #1121)
+
+🔧 Improvements
+- Refactor CodexUsageAggregator to use Map-based pricing table for easier maintenance and to avoid cache token double-counting
+- Add 16KB cap on Codex environment variable value length to avoid ARG_MAX overflow on system call
+- Reuse a shared CodemossSettingsService instance instead of creating a new one per request in CodexSDKBridge
+- Log full stack trace on Codex settings load failure for better debugging
+- Validate Codex environment variable entries with length, protected name, and duplicate detection; block save and toast the first issue when invalid
+- Add envValueTooLong i18n message across all 10 supported locales
+- Move mouse event handlers to outer container for full tooltip coverage area`,
+      zh: `✨ Features
+- 新增 Codex Provider 扩展环境变量设置，支持通过环境变量自定义 Codex 运行时（by @orwenxiang）
+- 新增项目级别 commit AI Prompt 配置（设置 → 提交），支持按项目维度自定义 Prompt，优先级：builtin > global > project > diff
+- 新增 gpt-5.4-mini 上下文限制（400K）和模型特定定价（$0.75/$4.50/$0.075 per 1M tokens），避免按默认费率估算导致的成本偏差
+- 新增 4 个 GitHub Issue 模板（bug、第三方 API、功能请求、问题咨询），中英双语标签并整合跟踪 Issue 导航
+
+🐛 Fixes
+- 修复 UTF-8 BOM 配置文件解析失败问题，并防止多实例启动时互相删除 ai-bridge 缓存（by @coderdream）
+- 修复 Claude 与 Codex 用量聚合不一致问题，包含缓存 Token 重复计算和模型别名解析（by @yadue）
+- 修复 Codex 模式下 /plan 命令显示警告 Toast 的问题，现在作为普通文本发送（by @gadfly3173）
+- 修复 Codex 模型错误显示「(1M context)」后缀的问题，现在仅在 Claude provider 下显示（by @gadfly3173）
+- 修复 Windows 平台构建失败，build.gradle 改用 npm.cmd 避免 spawn 错误
+- 修复 EnvVarEditor 删除中间行时焦点丢失的问题，改用稳定的行 ID 替代数组索引作为 React Key
+- 修复小屏幕下斜体字体可读性差的问题（model selector、mermaid loading、MCP tooltips、rewind notes、skill cards）（#728）
+- 通过统一改用 JS 实现的浮动 Tooltip，修复重复的 CSS 伪元素 Tooltip 实现（context-tool-btn、enhance-prompt-button）（#850）
+- 修复 ReasoningSelect 下拉菜单溢出，改为右对齐
+- 修复 package-lock.json 中泄漏的私有镜像 URL，重新从官方源生成并在 webview/.npmrc 中锁定官方 registry
+- 修复 ~/.claude/settings.json 中 permissions 规则（allow/deny/ask）被静默忽略的问题，PreToolUse hook 现已交由 SDK 原生评估规则（by @devlimits）（#1120, #1121）
+
+🔧 Improvements
+- 重构 CodexUsageAggregator 改用 Map 形式的定价表，提升可维护性并避免缓存 Token 重复计算
+- 新增 Codex 环境变量值的 16KB 长度上限，防止系统调用 ARG_MAX 溢出
+- CodexSDKBridge 改用共享的 CodemossSettingsService 实例，避免每次请求都新建
+- Codex 设置加载失败时输出完整堆栈，便于排查
+- 校验 Codex 环境变量条目（长度、保护字段、重复检测），无效时阻止保存并通过 Toast 提示首个问题
+- 在 10 个支持的语言中新增 envValueTooLong i18n 消息
+- 将鼠标事件处理移至外部容器，实现完整的 Tooltip 覆盖区域`,
+    },
+  },
+  {
     version: '0.4.2',
     date: '2026-05-08',
     content: {
       en: `✨ Features
+- Add Session Templates: save the current session as a reusable template and create new sessions from templates via the chat tool window menu
 - Add task completion toast notification, disabled by default and opt-in via Settings → Basic → Behavior; the toast shows the session title with the latest assistant answer preview (by @adminkk)
 - Add "Copy AI Reference" action to the editor right-click menu for sending selected code with file path and line range context (by @JackCmd233)
 - Add multi-project workspace context collection for IntelliJ workspace mode, giving AI providers awareness of subproject structure (by @gadfly3173)
@@ -61,6 +186,7 @@ export const CHANGELOG_DATA: ChangelogEntry[] = [
 - Enable Checkstyle NeedBraces rule and wrap 197 pre-existing single-line if/else bodies across 44 Java files in braces to guard against goto-fail-style edits
 - Tighten Checkstyle configuration: enforce newline at end of file, line length limits, reorganize rule sections, and remove unused imports`,
       zh: `✨ Features
+- 新增会话模板功能：可将当前会话保存为模板，并可在聊天工具窗口菜单中通过模板快速创建新会话
 - 新增任务完成 Toast 通知，默认关闭，可在「设置 → 基础 → 行为」中开启；Toast 展示会话标题与最新助手回答预览（by @adminkk）
 - 在编辑器右键菜单新增「Copy AI Reference」操作，可将选中代码连同文件路径和行号范围一并发送给 AI（by @JackCmd233）
 - 新增 IntelliJ 工作区（Workspace）模式下的多项目上下文收集，让 AI 感知子项目结构（by @gadfly3173）

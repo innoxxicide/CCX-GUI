@@ -57,7 +57,7 @@ export function resolveModelFromSettings(modelId, userEnv) {
       return String(mapped).trim();
     }
   } else if (lowerModel.includes('haiku')) {
-    const mapped = userEnv.ANTHROPIC_SMALL_FAST_MODEL ?? userEnv.ANTHROPIC_DEFAULT_HAIKU_MODEL;
+    const mapped = userEnv.ANTHROPIC_DEFAULT_HAIKU_MODEL;
     if (mapped && String(mapped).trim()) {
       return String(mapped).trim();
     }
@@ -101,14 +101,16 @@ export function setModelEnvironmentVariables(modelId, baseModelId) {
   // that doesn't contain 'opus'/'haiku'/'sonnet'.
   const lowerBase = (baseModelId || modelId).toLowerCase();
 
+  process.env.ANTHROPIC_MODEL = modelId;
+
   // Set the corresponding environment variable based on model type
   // so the SDK knows which specific version to use
   if (lowerBase.includes('opus')) {
     process.env.ANTHROPIC_DEFAULT_OPUS_MODEL = modelId;
     console.log('[MODEL_ENV] Set ANTHROPIC_DEFAULT_OPUS_MODEL =', modelId);
   } else if (lowerBase.includes('haiku')) {
-    process.env.ANTHROPIC_SMALL_FAST_MODEL = modelId;
-    console.log('[MODEL_ENV] Set ANTHROPIC_SMALL_FAST_MODEL =', modelId);
+    process.env.ANTHROPIC_DEFAULT_HAIKU_MODEL = modelId;
+    console.log('[MODEL_ENV] Set ANTHROPIC_DEFAULT_HAIKU_MODEL =', modelId);
   } else {
     // Covers 'sonnet' and any non-Anthropic model names (e.g. 'qwen3.5-plus', 'deepseek-v3')
     // Since mapModelIdToSdkName() defaults to 'sonnet' for unknown models,
