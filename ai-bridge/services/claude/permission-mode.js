@@ -164,12 +164,7 @@ export function createPreToolUseHook(permissionModeState, cwd = null, onModeChan
 
       // Step 2: Safe always-allow tools yield to SDK so settings.json deny rules can fire.
       if (SAFE_ALWAYS_ALLOW_TOOLS.has(toolName)) {
-        return {
-          hookSpecificOutput: {
-            hookEventName: 'PreToolUse',
-            permissionDecision: 'continue'
-          }
-        };
+        return { continue: true };
       }
 
       // Step 3: Agent/Task are auto-approved in plan mode, matching CLI behavior.
@@ -258,22 +253,12 @@ export function createPreToolUseHook(permissionModeState, cwd = null, onModeChan
 
       // Step 5: Plan mode specific allowed tools (read-only exploration tools)
       if (PLAN_MODE_ALLOWED_TOOLS.has(toolName)) {
-        return {
-          hookSpecificOutput: {
-            hookEventName: 'PreToolUse',
-            permissionDecision: 'continue'
-          }
-        };
+        return { continue: true };
       }
 
       // Step 6: Auto-approve read-only MCP tools (mcp__* without Write/Edit in name)
       if (toolName?.startsWith('mcp__') && !toolName.includes('Write') && !toolName.includes('Edit')) {
-        return {
-          hookSpecificOutput: {
-            hookEventName: 'PreToolUse',
-            permissionDecision: 'continue'
-          }
-        };
+        return { continue: true };
       }
 
       // Everything else is blocked in plan mode
@@ -286,11 +271,6 @@ export function createPreToolUseHook(permissionModeState, cwd = null, onModeChan
       };
     }
 
-    return {
-      hookSpecificOutput: {
-        hookEventName: 'PreToolUse',
-        permissionDecision: 'continue'
-      }
-    };
+    return { continue: true };
   };
 }

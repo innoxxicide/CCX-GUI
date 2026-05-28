@@ -13,7 +13,7 @@ test('default mode: Bash yields "continue" so SDK can evaluate settings.json rul
     tool_name: 'Bash',
     tool_input: { command: 'rm something.txt' },
   });
-  assert.equal(result?.hookSpecificOutput?.permissionDecision, 'continue');
+  assert.equal(result?.continue, true);
 });
 
 test('default mode: Read yields "continue" so deny rules like Read(./.env) can fire', async () => {
@@ -22,7 +22,7 @@ test('default mode: Read yields "continue" so deny rules like Read(./.env) can f
     tool_name: 'Read',
     tool_input: { file_path: '/tmp/test-cwd/.env' },
   });
-  assert.equal(result?.hookSpecificOutput?.permissionDecision, 'continue');
+  assert.equal(result?.continue, true);
 });
 
 test('default mode: Grep yields "continue"', async () => {
@@ -31,7 +31,7 @@ test('default mode: Grep yields "continue"', async () => {
     tool_name: 'Grep',
     tool_input: { pattern: 'foo' },
   });
-  assert.equal(result?.hookSpecificOutput?.permissionDecision, 'continue');
+  assert.equal(result?.continue, true);
 });
 
 test('bypassPermissions mode: Bash yields "continue" (SDK mode-check auto-allows)', async () => {
@@ -40,7 +40,7 @@ test('bypassPermissions mode: Bash yields "continue" (SDK mode-check auto-allows
     tool_name: 'Bash',
     tool_input: { command: 'date' },
   });
-  assert.equal(result?.hookSpecificOutput?.permissionDecision, 'continue');
+  assert.equal(result?.continue, true);
 });
 
 test('acceptEdits mode: Edit inside CWD yields "continue" (SDK mode-check auto-accepts)', async () => {
@@ -50,7 +50,7 @@ test('acceptEdits mode: Edit inside CWD yields "continue" (SDK mode-check auto-a
     tool_name: 'Edit',
     tool_input: { file_path: `${cwd}/src/file.js`, old_string: 'a', new_string: 'b' },
   });
-  assert.equal(result?.hookSpecificOutput?.permissionDecision, 'continue');
+  assert.equal(result?.continue, true);
 });
 
 test('acceptEdits mode: Edit outside CWD yields "continue"', async () => {
@@ -59,7 +59,7 @@ test('acceptEdits mode: Edit outside CWD yields "continue"', async () => {
     tool_name: 'Edit',
     tool_input: { file_path: '/etc/passwd', old_string: 'a', new_string: 'b' },
   });
-  assert.equal(result?.hookSpecificOutput?.permissionDecision, 'continue');
+  assert.equal(result?.continue, true);
 });
 
 test('default mode: MCP tool yields "continue"', async () => {
@@ -68,7 +68,7 @@ test('default mode: MCP tool yields "continue"', async () => {
     tool_name: 'mcp__some-server__some-tool',
     tool_input: { foo: 'bar' },
   });
-  assert.equal(result?.hookSpecificOutput?.permissionDecision, 'continue');
+  assert.equal(result?.continue, true);
 });
 
 test('EnterPlanMode is still auto-allowed (mode transition signal)', async () => {
@@ -86,7 +86,7 @@ test('plan mode: SAFE tool (Read) yields "continue" so deny rules apply in plan 
     tool_name: 'Read',
     tool_input: { file_path: '/tmp/test-cwd/x' },
   });
-  assert.equal(result?.hookSpecificOutput?.permissionDecision, 'continue');
+  assert.equal(result?.continue, true);
 });
 
 test('plan mode: PLAN_MODE_ALLOWED_TOOLS (WebFetch) yields "continue"', async () => {
@@ -95,7 +95,7 @@ test('plan mode: PLAN_MODE_ALLOWED_TOOLS (WebFetch) yields "continue"', async ()
     tool_name: 'WebFetch',
     tool_input: { url: 'https://example.com', prompt: 'title' },
   });
-  assert.equal(result?.hookSpecificOutput?.permissionDecision, 'continue');
+  assert.equal(result?.continue, true);
 });
 
 test('plan mode: read-only MCP tool yields "continue"', async () => {
@@ -104,7 +104,7 @@ test('plan mode: read-only MCP tool yields "continue"', async () => {
     tool_name: 'mcp__some-server__lookup',
     tool_input: { query: 'x' },
   });
-  assert.equal(result?.hookSpecificOutput?.permissionDecision, 'continue');
+  assert.equal(result?.continue, true);
 });
 
 test('plan mode: Agent is still auto-allowed (sub-agent permission flow unchanged)', async () => {
