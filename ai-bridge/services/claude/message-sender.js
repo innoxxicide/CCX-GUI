@@ -158,8 +158,7 @@ function processStreamMessage(msg, state, logPrefix) {
         // or duplicate this turn's index-0 block (see resetTurnBlockState). Mirrors
         // stream-event-processor.js — both streaming paths must reset identically.
         resetTurnBlockState(state);
-        // Emit BLOCK_RESET signal BEFORE any subsequent deltas to ensure frontend
-        // clears its streaming refs. Mirrors stream-event-processor.js for ordering.
+        // Emit BLOCK_RESET — mirrors stream-event-processor.js, see there for rationale.
         if (state.streamingEnabled) {
           process.stdout.write('[BLOCK_RESET]\n');
         }

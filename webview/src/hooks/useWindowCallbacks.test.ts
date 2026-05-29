@@ -111,6 +111,20 @@ describe('useWindowCallbacks integration', () => {
     delete (window as unknown as Record<string, unknown>).__pendingPermissionDialogTimeout;
   });
 
+  /** Stub timer/rAF globals to execute synchronously for streaming tests. */
+  const stubSynchronousTimers = () => {
+    vi.stubGlobal('setTimeout', (callback: () => void) => {
+      callback();
+      return 1 as unknown as ReturnType<typeof setTimeout>;
+    });
+    vi.stubGlobal('clearTimeout', vi.fn());
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    });
+    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+  };
+
   afterEach(() => {
     vi.unstubAllGlobals();
   });
@@ -645,16 +659,7 @@ describe('useWindowCallbacks integration', () => {
   });
 
   it('accepts streaming updateMessages when assistant raw blocks gain spawn_agent tool_use', () => {
-    vi.stubGlobal('setTimeout', (callback: () => void) => {
-      callback();
-      return 1 as unknown as ReturnType<typeof setTimeout>;
-    });
-    vi.stubGlobal('clearTimeout', vi.fn());
-    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
-      callback(0);
-      return 1;
-    });
-    vi.stubGlobal('cancelAnimationFrame', vi.fn());
+    stubSynchronousTimers();
 
     const patchAssistantForStreaming = vi.fn((msg: ClaudeMessage) => ({
       ...msg,
@@ -1072,16 +1077,7 @@ describe('useWindowCallbacks integration', () => {
     });
 
     it('stale backend snapshot during streaming must not redirect streamingMessageIndexRef to prior-turn assistant', () => {
-      vi.stubGlobal('setTimeout', (callback: () => void) => {
-        callback();
-        return 1 as unknown as ReturnType<typeof setTimeout>;
-      });
-      vi.stubGlobal('clearTimeout', vi.fn());
-      vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
-        callback(0);
-        return 1;
-      });
-      vi.stubGlobal('cancelAnimationFrame', vi.fn());
+      stubSynchronousTimers();
 
       const assistant1: ClaudeMessage = {
         type: 'assistant',
@@ -1159,16 +1155,7 @@ describe('useWindowCallbacks integration', () => {
     });
 
     it('guard branch: stale snapshot with equal length bypasses preserveLatestMessagesOnShrink and still preserves index', () => {
-      vi.stubGlobal('setTimeout', (callback: () => void) => {
-        callback();
-        return 1 as unknown as ReturnType<typeof setTimeout>;
-      });
-      vi.stubGlobal('clearTimeout', vi.fn());
-      vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
-        callback(0);
-        return 1;
-      });
-      vi.stubGlobal('cancelAnimationFrame', vi.fn());
+      stubSynchronousTimers();
 
       const assistant1: ClaudeMessage = {
         type: 'assistant',
@@ -1239,16 +1226,7 @@ describe('useWindowCallbacks integration', () => {
     });
 
     it('onBlockReset clears streaming refs to prevent cross-turn content merging', () => {
-      vi.stubGlobal('setTimeout', (callback: () => void) => {
-        callback();
-        return 1 as unknown as ReturnType<typeof setTimeout>;
-      });
-      vi.stubGlobal('clearTimeout', vi.fn());
-      vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
-        callback(0);
-        return 1;
-      });
-      vi.stubGlobal('cancelAnimationFrame', vi.fn());
+      stubSynchronousTimers();
 
       const opts = createOptions();
       renderHook(() => useWindowCallbacks(opts));

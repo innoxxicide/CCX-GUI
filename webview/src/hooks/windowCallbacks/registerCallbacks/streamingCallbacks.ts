@@ -604,6 +604,10 @@ export function registerStreamingCallbacks(options: UseWindowCallbacksOptions): 
     // Clear content buffers - new deltas will start fresh
     streamingContentRef.current = '';
     streamingThinkingRef.current = '';
+    // Intentionally NOT resetting streamingMessageIndexRef here: the backend will
+    // send a new updateMessages snapshot for this turn, which will eventually set
+    // the correct index via the isStaleSnapshot guard. Resetting the index now
+    // would leave a window where incoming deltas have nowhere to land.
     // Reset throttle timeouts to ensure clean state for new deltas
     if (contentUpdateTimeoutRef.current != null) {
       cancelAnimationFrame(contentUpdateTimeoutRef.current);
