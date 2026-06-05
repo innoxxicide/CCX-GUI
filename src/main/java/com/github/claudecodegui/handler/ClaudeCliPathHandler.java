@@ -92,14 +92,8 @@ public class ClaudeCliPathHandler {
                     LOG.info("[ClaudeCliPathHandler] Cleared custom Claude CLI path");
                     success = true;
                 } else {
-                    File f = new File(pathArg);
-                    if (!f.exists()) {
-                        failureMsg = "File does not exist: " + pathArg;
-                    } else if (f.isDirectory()) {
-                        failureMsg = "Path is a directory, expected an executable file: " + pathArg;
-                    } else if (!f.canExecute()) {
-                        failureMsg = "File is not executable (check permissions): " + pathArg;
-                    } else {
+                    failureMsg = validateCliPath(new File(pathArg), pathArg);
+                    if (failureMsg == null) {
                         props.setValue(CLAUDE_CLI_PATH_PROPERTY_KEY, pathArg);
                         finalPath = pathArg;
                         success = true;
@@ -122,10 +116,15 @@ public class ClaudeCliPathHandler {
                 final boolean successFlag = success;
                 final String failureMsgFinal = failureMsg;
                 final String finalPathToSend = finalPath;
+                // On failure, echo back what the user typed so the input keeps their
+                // entry instead of being blanked; on success, reflect the persisted value.
+                final String pathToEcho = successFlag
+                        ? finalPathToSend
+                        : (pathArg != null ? pathArg : "");
 
                 ApplicationManager.getApplication().invokeLater(() -> {
                     JsonObject response = new JsonObject();
-                    response.addProperty("path", finalPathToSend);
+                    response.addProperty("path", pathToEcho);
                     context.callJavaScript("window.updateClaudeCliPath", context.escapeJs(gson.toJson(response)));
 
                     if (successFlag) {
@@ -148,5 +147,24 @@ public class ClaudeCliPathHandler {
             LOG.error("[ClaudeCliPathHandler] Unexpected error in handleSetClaudeCliPath: " + ex.getMessage(), ex);
             return null;
         });
+    }
+
+    /**
+     * Validates a candidate Claude CLI path. Returns {@code null} when the path is a
+     * usable executable file, otherwise a human-readable reason. Extracted as a pure
+     * static method so the validation branches can be unit-tested without booting the
+     * IntelliJ platform (the handler itself depends on {@link PropertiesComponent}).
+     */
+    static String validateCliPath(File f, String rawPath) {
+        if (!f.exists()) {
+            return "File does not exist: " + rawPath;
+        }
+        if (f.isDirectory()) {
+            return "Path is a directory, expected an executable file: " + rawPath;
+        }
+        if (!f.canExecute()) {
+            return "File is not executable (check permissions): " + rawPath;
+        }
+        return null;
     }
 }

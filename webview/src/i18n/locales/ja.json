@@ -158,6 +158,11 @@
         "hintText": "実際のNode.js実行可能ファイルのパスを取得します。空欄の場合は自動検出します。",
         "versionTooLow": "Node.jsのバージョンが低すぎます。プラグインを正常に動作させるにはv{{minVersion}}以上が必要です"
       },
+      "claudeCliPath": {
+        "label": "Claude CLI パス（オーバーライド）",
+        "placeholder": "例: /usr/local/bin/claude — 空欄の場合は内蔵 SDK を使用",
+        "hint": "任意。設定すると、内蔵の @anthropic-ai/claude-agent-sdk の代わりにこのバイナリを起動します。保存時にデーモンが再起動されます。"
+      },
       "workingDirectory": {
         "label": "作業ディレクトリ",
         "placeholder": "例: project1 または空欄でプロジェクトルートを使用",

@@ -158,6 +158,11 @@
         "hintText": "pour obtenir le chemin de l'exécutable Node.js réel. Laisser vide pour la détection automatique.",
         "versionTooLow": "La version de Node.js est trop ancienne. Le plugin nécessite v{{minVersion}} ou supérieur pour fonctionner correctement"
       },
+      "claudeCliPath": {
+        "label": "Chemin du CLI Claude (remplacement)",
+        "placeholder": "ex. /usr/local/bin/claude — laissez vide pour utiliser le SDK intégré",
+        "hint": "Facultatif. Lorsqu'il est défini, le plugin lance ce binaire au lieu du @anthropic-ai/claude-agent-sdk intégré. Le démon redémarre lors de l'enregistrement."
+      },
       "workingDirectory": {
         "label": "Working Directory",
         "placeholder": "e.g. project1 or leave empty to use project root",

@@ -158,6 +158,11 @@
         "hintText": "을 실행하여 실제 Node.js 실행 파일 경로를 확인하세요. 비워두면 자동 감지합니다.",
         "versionTooLow": "Node.js 버전이 너무 낮습니다. 플러그인을 정상적으로 실행하려면 v{{minVersion}} 이상이 필요합니다"
       },
+      "claudeCliPath": {
+        "label": "Claude CLI 경로 (재정의)",
+        "placeholder": "예: /usr/local/bin/claude — 비워 두면 내장 SDK 사용",
+        "hint": "선택 사항. 설정하면 플러그인이 내장된 @anthropic-ai/claude-agent-sdk 대신 이 바이너리를 실행합니다. 저장 시 데몬이 다시 시작됩니다."
+      },
       "workingDirectory": {
         "label": "작업 디렉토리",
         "placeholder": "예: project1 또는 프로젝트 루트를 사용하려면 비워두세요",

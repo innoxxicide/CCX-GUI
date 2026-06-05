@@ -162,6 +162,11 @@
         "invalidFileName": "Windows 下路径必须以 node.exe 结尾，macOS/Linux 下必须以 node 结尾",
         "cannotExecute": "文件存在但无法执行，请检查文件权限"
       },
+      "claudeCliPath": {
+        "label": "Claude CLI 路径（覆盖）",
+        "placeholder": "例如 /usr/local/bin/claude — 留空则使用内置 SDK",
+        "hint": "可选。设置后，插件将启动此二进制文件，而非内置的 @anthropic-ai/claude-agent-sdk。保存时会重启守护进程。"
+      },
       "workingDirectory": {
         "label": "工作目录",
         "placeholder": "例如 project1 或留空使用项目根目录",
