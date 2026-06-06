@@ -179,7 +179,9 @@ class HistoryDeleteService {
             return new DeleteResult(deleteCodexSession(sessionId), 0);
         }
 
-        String projectPath = NodeDetector.convertToWslPath(context.getProject().getBasePath());
+        String rawPath = context.getProject().getBasePath();
+        String nodePath = NodeDetector.getInstance().getCachedNodePath();
+        String projectPath = NodeDetector.isWslPath(nodePath) ? NodeDetector.convertToWslPath(rawPath) : rawPath;
         if (projectPath == null) {
             LOG.warn("[HistoryHandler] Project base path is null, cannot delete Claude session");
             return new DeleteResult(false, 0);
@@ -299,7 +301,9 @@ class HistoryDeleteService {
 
     private void cleanupCache(String currentProvider) {
         try {
-            String projectPath = NodeDetector.convertToWslPath(context.getProject().getBasePath());
+            String rawPath2 = context.getProject().getBasePath();
+            String nodePath2 = NodeDetector.getInstance().getCachedNodePath();
+            String projectPath = NodeDetector.isWslPath(nodePath2) ? NodeDetector.convertToWslPath(rawPath2) : rawPath2;
             if ("codex".equals(currentProvider)) {
                 SessionIndexCache.getInstance().clearAllCodexCache();
                 SessionIndexManager.getInstance().clearAllCodexIndex();

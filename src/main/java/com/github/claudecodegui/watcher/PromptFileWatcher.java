@@ -88,8 +88,10 @@ public class PromptFileWatcher implements BulkFileListener {
             return false;
         }
 
-        String normalizedFilePath = NodeDetector.convertToWslPath(filePath);
-        String projectPromptPath = NodeDetector.convertToWslPath(project.getBasePath()) + "/.codemoss/prompt.json";
+        String nodePath = NodeDetector.getInstance().getCachedNodePath();
+        boolean isWsl = NodeDetector.isWslPath(nodePath);
+        String normalizedFilePath = isWsl ? NodeDetector.convertToWslPath(filePath) : filePath;
+        String projectPromptPath = (isWsl ? NodeDetector.convertToWslPath(project.getBasePath()) : project.getBasePath()) + "/.codemoss/prompt.json";
         return normalizedFilePath.equals(projectPromptPath);
     }
 

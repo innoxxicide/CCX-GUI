@@ -157,7 +157,9 @@ class SubagentHistoryService {
     }
 
     private String projectKey() {
-        String basePath = NodeDetector.convertToWslPath(context.getProject().getBasePath());
+        String rawPath = context.getProject().getBasePath();
+        String nodePath = NodeDetector.getInstance().getCachedNodePath();
+        String basePath = NodeDetector.isWslPath(nodePath) ? NodeDetector.convertToWslPath(rawPath) : rawPath;
         if (basePath == null || basePath.isEmpty()) {
             throw new IllegalStateException("Project base path is null");
         }

@@ -57,7 +57,9 @@ public class HistoryMessageInjector {
             // Backward compatible: legacy payload is the raw sessionId string.
         }
 
-        String projectPath = NodeDetector.convertToWslPath(context.getProject().getBasePath());
+        String rawPath = context.getProject().getBasePath();
+        String nodePath = NodeDetector.getInstance().getCachedNodePath();
+        String projectPath = NodeDetector.isWslPath(nodePath) ? NodeDetector.convertToWslPath(rawPath) : rawPath;
         if (projectPath == null) {
             LOG.warn("[HistoryHandler] Project base path is null");
             return;

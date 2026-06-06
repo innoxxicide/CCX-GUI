@@ -48,7 +48,9 @@ class HistoryLoadService {
                 String historyJson;
 
                 // Get current project path
-                String projectPath = NodeDetector.convertToWslPath(context.getProject().getBasePath());
+                String rawPath = context.getProject().getBasePath();
+                String nodePath = NodeDetector.getInstance().getCachedNodePath();
+                String projectPath = NodeDetector.isWslPath(nodePath) ? NodeDetector.convertToWslPath(rawPath) : rawPath;
                 if (projectPath == null) {
                     LOG.warn("[HistoryHandler] Project base path is null");
                     return;
@@ -129,7 +131,9 @@ class HistoryLoadService {
      * @param provider the provider identifier ("claude" or "codex")
      */
     void handleDeepSearchHistory(String provider) {
-        String projectPath = NodeDetector.convertToWslPath(context.getProject().getBasePath());
+        String rawPath = context.getProject().getBasePath();
+        String nodePath = NodeDetector.getInstance().getCachedNodePath();
+        String projectPath = NodeDetector.isWslPath(nodePath) ? NodeDetector.convertToWslPath(rawPath) : rawPath;
         LOG.info("[HistoryHandler] ========== 开始深度搜索 ========== provider=" + provider);
 
         try {
