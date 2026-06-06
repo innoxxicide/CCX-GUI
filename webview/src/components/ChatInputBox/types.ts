@@ -458,7 +458,7 @@ export type ReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
 /**
  * Codex execution speed mode.
- * Standard forces service_tier empty at send time; Fast maps to service_tier=fast.
+ * Standard uses Codex defaults; Fast maps to service_tier=fast at send time.
  */
 export type CodexFastMode = 'normal' | 'fast';
 

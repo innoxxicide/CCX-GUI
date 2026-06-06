@@ -43,4 +43,40 @@ public class SessionSendServiceTest {
         assertNull(SessionSendService.getCodexRuntimeAccessError("managed"));
         assertNull(SessionSendService.getCodexRuntimeAccessError("cli_login"));
     }
+
+    @Test
+    public void normalizeRequestedCodexServiceTierMapsFastAliasesOnly() {
+        assertEquals(
+                SessionSendService.CODEX_FAST_SERVICE_TIER,
+                SessionSendService.normalizeRequestedCodexServiceTier("fast")
+        );
+        assertEquals(
+                SessionSendService.CODEX_FAST_SERVICE_TIER,
+                SessionSendService.normalizeRequestedCodexServiceTier("priority")
+        );
+        assertNull(SessionSendService.normalizeRequestedCodexServiceTier("normal"));
+        assertNull(SessionSendService.normalizeRequestedCodexServiceTier("standard"));
+        assertNull(SessionSendService.normalizeRequestedCodexServiceTier(""));
+        assertNull(SessionSendService.normalizeRequestedCodexServiceTier("experimental-tier"));
+    }
+
+    @Test
+    public void resolveEffectiveCodexServiceTierDoesNotSendTierForNormalMode() {
+        assertNull(SessionSendService.resolveEffectiveCodexServiceTier("normal", null));
+        assertNull(SessionSendService.resolveEffectiveCodexServiceTier("standard", "fast"));
+        assertNull(SessionSendService.resolveEffectiveCodexServiceTier("default", "priority"));
+    }
+
+    @Test
+    public void resolveEffectiveCodexServiceTierFallsBackToSessionTierWhenNoRequestedMode() {
+        assertEquals(
+                SessionSendService.CODEX_FAST_SERVICE_TIER,
+                SessionSendService.resolveEffectiveCodexServiceTier(null, "fast")
+        );
+        assertEquals(
+                SessionSendService.CODEX_FAST_SERVICE_TIER,
+                SessionSendService.resolveEffectiveCodexServiceTier(null, "priority")
+        );
+        assertNull(SessionSendService.resolveEffectiveCodexServiceTier(null, "normal"));
+    }
 }

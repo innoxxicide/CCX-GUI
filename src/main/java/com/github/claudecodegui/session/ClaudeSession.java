@@ -642,7 +642,7 @@ public class ClaudeSession {
     }
 
     /**
-     * Set the Codex service tier. "standard" forces default Fast opt-out; "fast" matches Codex CLI /fast.
+     * Set the Codex service tier. Null means use Codex defaults; "fast" matches Codex CLI /fast.
      */
     public void setCodexServiceTier(String serviceTier) {
         state.setCodexServiceTier(serviceTier);

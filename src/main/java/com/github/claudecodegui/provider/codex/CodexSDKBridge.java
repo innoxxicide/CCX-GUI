@@ -352,7 +352,7 @@ public class CodexSDKBridge extends BaseSDKBridge {
             String model,
             String agentPrompt,  // Agent prompt (appended to message for Codex)
             String reasoningEffort,  // Codex reasoning effort (thinking depth)
-            String serviceTier,  // Codex service tier: "standard" opts out of default Fast; "fast" matches CLI /fast
+            String serviceTier,  // Codex service tier: null uses Codex defaults; "fast" matches CLI /fast
             MessageCallback callback
     ) {
         return CompletableFuture.supplyAsync(() -> {

@@ -20,7 +20,6 @@ public class SessionSendService {
 
     private static final Logger LOG = Logger.getInstance(SessionSendService.class);
     public static final String CODEX_FAST_SERVICE_TIER = "fast";
-    public static final String CODEX_STANDARD_SERVICE_TIER = "standard";
 
     private final Project project;
     private final SessionState state;
@@ -187,7 +186,7 @@ public class SessionSendService {
                 || "standard".equalsIgnoreCase(trimmed)
                 || "default".equalsIgnoreCase(trimmed)
                 || "none".equalsIgnoreCase(trimmed)) {
-            return CODEX_STANDARD_SERVICE_TIER;
+            return null;
         }
         LOG.warn("[Codex] Invalid fast mode/service tier ignored: " + value);
         return null;
@@ -198,12 +197,23 @@ public class SessionSendService {
         if (requested != null) {
             return requested;
         }
-
-        String session = normalizeRequestedCodexServiceTier(sessionValue);
-        if (session == null) {
+        if (isExplicitCodexStandardMode(requestedValue)) {
             return null;
         }
+
+        String session = normalizeRequestedCodexServiceTier(sessionValue);
         return session;
+    }
+
+    public static boolean isExplicitCodexStandardMode(String value) {
+        if (value == null) {
+            return false;
+        }
+        String trimmed = value.trim();
+        return "normal".equalsIgnoreCase(trimmed)
+                || "standard".equalsIgnoreCase(trimmed)
+                || "default".equalsIgnoreCase(trimmed)
+                || "none".equalsIgnoreCase(trimmed);
     }
 
     private CompletableFuture<Void> sendToCodex(

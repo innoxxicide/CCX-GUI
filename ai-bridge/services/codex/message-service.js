@@ -46,7 +46,7 @@ import { createInitialEventState, processCodexEventStream } from './codex-event-
  * @param {string} baseUrl - API base URL (optional, for custom endpoints)
  * @param {string} apiKey - API key (optional, for custom auth)
  * @param {string} reasoningEffort - Reasoning effort level (optional)
- * @param {string} serviceTier - Codex service tier; "standard" opts out of default Fast, "fast" matches Codex CLI /fast (optional)
+ * @param {string} serviceTier - Codex service tier; "fast" matches Codex CLI /fast (optional)
  * @param {Array} attachments - Image attachments in local_image format (optional)
  */
 export async function sendMessage(
@@ -105,13 +105,13 @@ export async function sendMessage(
     }
     if (serviceTier && serviceTier.trim() !== '') {
       const normalizedServiceTier = serviceTier.trim().toLowerCase();
-      const sdkServiceTier = ['standard', 'normal', 'default', 'none'].includes(normalizedServiceTier)
-        ? ''
-        : serviceTier.trim();
-      codexOptions.config = {
-        service_tier: sdkServiceTier
-      };
-      console.log('[DEBUG] Codex service tier:', sdkServiceTier || 'standard');
+      if (!['standard', 'normal', 'default', 'none'].includes(normalizedServiceTier)) {
+        const sdkServiceTier = normalizedServiceTier === 'priority' ? 'fast' : serviceTier.trim();
+        codexOptions.config = {
+          service_tier: sdkServiceTier
+        };
+        logDebug('Codex', 'Service tier:', sdkServiceTier);
+      }
     }
 
     // Pass a sanitized env to the SDK to avoid inherited CODEX_* pollution

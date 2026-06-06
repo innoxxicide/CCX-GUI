@@ -63,7 +63,7 @@ public class SessionState {
     private volatile String provider = "claude";
     // Reasoning effort (thinking depth)
     private volatile String reasoningEffort = "high";
-    // Codex service tier: "standard" forces default Fast opt-out; "fast" = Codex /fast.
+    // Codex service tier: null = use Codex defaults, "fast" = Codex /fast.
     private volatile String codexServiceTier = null;
 
     // Slash commands — volatile for cross-thread visibility (same reason as permissionMode/model/provider)
