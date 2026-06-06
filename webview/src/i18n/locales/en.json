@@ -1784,6 +1784,17 @@
     "close": "Got it",
     "page": "{{current}} / {{total}}"
   },
+  "codexFastMode": {
+    "title": "Select Codex speed mode",
+    "normal": {
+      "label": "Standard",
+      "description": "Codex default response speed"
+    },
+    "fast": {
+      "label": "Fast",
+      "description": "Codex fast response mode (uses additional credits)"
+    }
+  },
   "error": {
     "providerNotConfigured": "Provider Not Configured",
     "providerNotConfiguredDesc": "No AI provider is configured yet, or access to the local configuration has not been authorized. Please complete setup in Provider Management settings before starting a conversation.",

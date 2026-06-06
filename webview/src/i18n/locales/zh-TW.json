@@ -1529,6 +1529,17 @@
     "close": "知道了",
     "page": "{{current}} / {{total}}"
   },
+  "codexFastMode": {
+    "title": "選擇 Codex 速度模式",
+    "normal": {
+      "label": "標準",
+      "description": "Codex 的預設回應速度"
+    },
+    "fast": {
+      "label": "Fast",
+      "description": "Codex 快速回應模式（會產生額外消耗）"
+    }
+  },
   "error": {
     "providerNotConfigured": "供應商未設定",
     "providerNotConfiguredDesc": "尚未設定 AI 供應商或未授權使用本機設定，請先在供應商管理設定中完成設定後再開始對話。",

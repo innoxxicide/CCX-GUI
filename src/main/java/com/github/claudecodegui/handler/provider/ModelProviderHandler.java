@@ -3,8 +3,6 @@ package com.github.claudecodegui.handler.provider;
 import com.github.claudecodegui.handler.UsagePushService;
 import com.github.claudecodegui.handler.core.HandlerContext;
 
-import com.github.claudecodegui.notifications.ClaudeNotifier;
-import com.github.claudecodegui.settings.CodemossSettingsService;
 import com.github.claudecodegui.session.SessionSendService;
 import com.github.claudecodegui.skill.SlashCommandRegistry;
 import com.github.claudecodegui.util.EditorFileUtils;
@@ -61,7 +59,6 @@ public class ModelProviderHandler {
     private final HandlerContext context;
     private final UsagePushService usagePushService;
     private final Gson gson = new Gson();
-    private boolean codexCliLoginFastWarningShown = false;
 
     public ModelProviderHandler(HandlerContext context, UsagePushService usagePushService) {
         this.context = context;
@@ -250,28 +247,8 @@ public class ModelProviderHandler {
             if (context.getSession() != null) {
                 context.getSession().setCodexServiceTier(serviceTier);
             }
-            maybeWarnCodexCliLoginFastMode(serviceTier);
         } catch (Exception e) {
             LOG.error("[ModelProviderHandler] Failed to set Codex fast mode: " + e.getMessage(), e);
-        }
-    }
-
-    private void maybeWarnCodexCliLoginFastMode(String serviceTier) {
-        if (codexCliLoginFastWarningShown || !SessionSendService.CODEX_FAST_SERVICE_TIER.equals(serviceTier)) {
-            return;
-        }
-        try {
-            String accessMode = context.getSettingsService().getCodexRuntimeAccessMode();
-            if (!CodemossSettingsService.CODEX_RUNTIME_ACCESS_CLI_LOGIN.equals(accessMode)) {
-                return;
-            }
-            codexCliLoginFastWarningShown = true;
-            String message = "Codex Fast may be ignored when using Codex CLI Login (ChatGPT auth). "
-                    + "Codex CLI currently does not consistently send service_tier in websocket mode.";
-            LOG.warn("[Codex] " + message);
-            ClaudeNotifier.showWarning(context.getProject(), message);
-        } catch (Exception e) {
-            LOG.warn("[Codex] Failed to check CLI Login fast-mode support: " + e.getMessage());
         }
     }
 

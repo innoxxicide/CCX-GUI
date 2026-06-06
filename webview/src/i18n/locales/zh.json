@@ -1789,6 +1789,17 @@
     "close": "知道了",
     "page": "{{current}} / {{total}}"
   },
+  "codexFastMode": {
+    "title": "选择 Codex 速度模式",
+    "normal": {
+      "label": "标准",
+      "description": "Codex的默认响应速度"
+    },
+    "fast": {
+      "label": "Fast",
+      "description": "Codex快速响应模式（会产生额外消耗）"
+    }
+  },
   "error": {
     "providerNotConfigured": "供应商未配置",
     "providerNotConfiguredDesc": "尚未配置 AI 供应商或未授权使用本地配置，请先在供应商管理设置中完成配置后再开始对话。",

@@ -104,14 +104,14 @@ export async function sendMessage(
       codexOptions.apiKey = apiKey;
     }
     if (serviceTier && serviceTier.trim() !== '') {
-      const normalizedServiceTier = serviceTier.trim().toLowerCase();
-      if (!['standard', 'normal', 'default', 'none'].includes(normalizedServiceTier)) {
-        const sdkServiceTier = normalizedServiceTier === 'priority' ? 'fast' : serviceTier.trim();
-        codexOptions.config = {
-          service_tier: sdkServiceTier
-        };
-        logDebug('Codex', 'Service tier:', sdkServiceTier);
-      }
+      const sdkServiceTier = serviceTier.trim();
+      codexOptions.config = {
+        features: {
+          fast_mode: true
+        },
+        service_tier: sdkServiceTier
+      };
+      logDebug('Codex', 'Service tier:', sdkServiceTier, 'with fast_mode feature enabled');
     }
 
     // Pass a sanitized env to the SDK to avoid inherited CODEX_* pollution
