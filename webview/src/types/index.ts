@@ -94,6 +94,7 @@ export interface HistorySessionSummary {
   favoritedAt?: number;
   provider?: string; // 'claude' or 'codex'
   fileSize?: number;
+  entrypoint?: string; // Session entrypoint: 'cli', 'sdk-cli', 'claude-vscode', etc.
 }
 
 export interface HistoryData {

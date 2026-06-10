@@ -96,6 +96,7 @@ public class ClaudeHistoryReader {
         public Boolean isMeta;
         public Boolean isSidechain;
         public String cwd;
+        public String entrypoint;
 
         public static class Message {
             public String role;
@@ -191,6 +192,7 @@ public class ClaudeHistoryReader {
         public long lastTimestamp;
         public long firstTimestamp;
         public long fileSize;
+        public String entrypoint;
     }
 
     /**
