@@ -99,12 +99,9 @@ export function McpMarketplaceDialog({ currentProvider = 'claude', existingIds =
     window.updateMcpMarketplaceSources = handleSources;
     window.updateMcpMarketplaceEntries = handleEntries;
 
+    // The debounced effect below performs the initial search (using the persisted
+    // source), so only the source list needs to be requested here.
     sendToJava('get_mcp_marketplace_sources', {});
-    sendToJava('search_mcp_marketplace', {
-      query: '',
-      sourceId: selectedSourceId,
-      forceRefresh: false,
-    });
 
     return () => {
       window.updateMcpMarketplaceSources = previousSourcesHandler;

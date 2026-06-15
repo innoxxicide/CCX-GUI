@@ -164,22 +164,25 @@ export function McpImportDialog({ currentProvider = 'claude', existingIds = [], 
             ) : (
               <>
                 {preview.length > 0 && <div className="mcp-import-preview-title">{t('mcp.import.previewTitle')}</div>}
-                {preview.map(item => (
-                  <div key={item.finalId} className="mcp-import-item">
-                    <div className="mcp-import-item-icon">{(item.server.name || item.finalId).charAt(0).toUpperCase()}</div>
-                    <div className="mcp-import-item-info">
-                      <div className="mcp-import-item-title-row">
-                        <span className="mcp-import-item-name">{item.server.name || item.finalId}</span>
-                        <span className="mcp-import-type-badge">{item.server.server?.type || 'stdio'}</span>
-                        {item.renamed && (
-                          <span className="mcp-import-renamed">{t('mcp.import.renamedFrom', { id: item.originalId })}</span>
-                        )}
+                {preview.map(item => {
+                  const summary = summarize(item.server);
+                  return (
+                    <div key={item.finalId} className="mcp-import-item">
+                      <div className="mcp-import-item-icon">{(item.server.name || item.finalId).charAt(0).toUpperCase()}</div>
+                      <div className="mcp-import-item-info">
+                        <div className="mcp-import-item-title-row">
+                          <span className="mcp-import-item-name">{item.server.name || item.finalId}</span>
+                          <span className="mcp-import-type-badge">{item.server.server?.type || 'stdio'}</span>
+                          {item.renamed && (
+                            <span className="mcp-import-renamed">{t('mcp.import.renamedFrom', { id: item.originalId })}</span>
+                          )}
+                        </div>
+                        <div className="mcp-import-item-id">{item.finalId}</div>
+                        {summary && <div className="mcp-import-item-cmd">{summary}</div>}
                       </div>
-                      <div className="mcp-import-item-id">{item.finalId}</div>
-                      {summarize(item.server) && <div className="mcp-import-item-cmd">{summarize(item.server)}</div>}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </>
             )}
           </div>

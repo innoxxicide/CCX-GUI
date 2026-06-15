@@ -65,17 +65,19 @@ public final class McpMarketplaceHandler extends BaseMessageHandler {
     }
 
     private void handleSearch(String content) {
-        SearchRequest request = parseSearchRequest(content);
         CompletableFuture.runAsync(() -> {
             JsonObject response = new JsonObject();
-            response.addProperty("query", request.query);
-            response.addProperty("sourceId", request.sourceId);
             try {
+                SearchRequest request = parseSearchRequest(content);
+                response.addProperty("query", request.query);
+                response.addProperty("sourceId", request.sourceId);
                 List<McpMarketplaceEntry> entries = marketplaceService.search(request.query, request.sourceId, request.forceRefresh);
                 response.add("entries", gson.toJsonTree(entries));
             } catch (Exception e) {
                 LOG.warn("Failed to search MCP marketplace: " + e.getMessage());
-                response.add("entries", new JsonArray());
+                if (!response.has("entries")) {
+                    response.add("entries", new JsonArray());
+                }
                 response.addProperty("error", e.getMessage());
             }
             String json = gson.toJson(response);

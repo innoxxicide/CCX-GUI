@@ -1,14 +1,13 @@
 # MCP Marketplace – Integrationsanalyse & Stand
 
-> Status: **Rahmenwerk als Patch vorhanden (`codriver-mcp-marketplace.patch`), noch nicht angewendet**
+> Status: **implementiert** (PR gegen `upstream/feature/v0.4.6`)
 > Branch: `feature/mcp-marketplace`
 > Erstellt: 2026-06-15 · Aktualisiert: 2026-06-15
 >
 > Architektur-Leitlinie: **reines Java-Backend, Webview nur zur Anzeige.**
-> Der Patch setzt genau diese Linie um.
 
-Dieses Dokument beschreibt, **wo** der MCP-Marketplace in den Settings andockt,
-**was der vorbereitete Patch bereits liefert** und **was noch fehlt**.
+Dieses Dokument beschreibt, **wo** der MCP-Marketplace in den Settings andockt
+und **was umgesetzt** ist.
 
 ---
 
@@ -95,56 +94,39 @@ Dazu die Pseudo-Quelle **„All sources"** (`all`) im Dropdown, die quellenüber
 | Quellen getrennt | ✅ erfüllt | `SourceType {BUILT_IN, REGISTRY, GITHUB_ORG}` |
 | Dropdown zur Quellenwahl | ✅ erfüllt | `marketplace-source-select` im Dialog |
 | Vorhandenes nicht kaputtmachen | ✅ erfüllt | rein additiv, `McpPresetDialog` bleibt |
-| **Favorit bleibt selektiert** (über Sessions/Öffnen) | ❌ **offen** | siehe 5. |
+| **Favorit bleibt selektiert** (über Sessions/Öffnen) | ✅ erfüllt | `localStorage`, siehe 5.1 |
 
 ---
 
-## 5. Offene Punkte
+## 5. Umgesetzte Details
 
-### 5.1 Persistenz der Quellenwahl (die einzige echte Lücke)
+### 5.1 Persistenz der Quellenwahl
 
-`selectedSourceId` im `McpMarketplaceDialog` ist reiner Component-State und startet
-bei **jedem Öffnen** auf `DEFAULT_SOURCE_ID = 'built-in'`. Die Anforderung „mein
-Favorit (z. B. Anthropic) bleibt ausgewählt, egal wie oft ich den Marketplace öffne"
-ist damit **nicht** erfüllt.
-
-Zwei Optionen:
-- **localStorage im Webview (empfohlen):** `selectedSourceId` aus
-  `localStorage` initialisieren und bei Änderung zurückschreiben
-  (Key z. B. `codriver.mcp.marketplace.lastSourceId`). Folgt exakt dem bestehenden
-  Muster `localStorage.setItem(cacheKeys.LAST_SERVER_ID, …)` in `McpSettingsSection`.
-  Hält die Java-Schicht frei von View-Zustand. ~3 Zeilen.
-- **Java-Settings-Service** (`CodemossSettingsService`): passt zur „alles in Java"-Linie,
-  überlebt das Leeren des Webview-Storage – aber mehr Aufwand (Settings-Key +
-  Lade-/Speicher-Roundtrip beim Öffnen). Begründung gegen die UI-Präferenz: es ist
-  reiner Ansichtszustand, kein fachliches Setting.
+`selectedSourceId` wird im `McpMarketplaceDialog` aus `localStorage` initialisiert
+(`readPreferredSourceId`) und bei jeder Änderung zurückgeschrieben
+(`rememberPreferredSourceId`, Key `codriver.mcp.marketplace.lastSourceId`). Existiert
+die gespeicherte Quelle nicht mehr, fällt der Dialog auf `built-in` zurück. Die
+Java-Schicht bleibt frei von View-Zustand (folgt dem `LAST_SERVER_ID`-Muster).
 
 ### 5.2 i18n
 
-`McpMarketplaceDialog.tsx` enthält hartkodierte englische Strings („Add Server",
-„All sources" …). Restliche MCP-UI nutzt `t(...)`. Vor dem finalen Merge
-i18n-isieren (`mcp.market.*` in `webview/src/i18n/locales/*.json`). Kein Blocker.
+Alle Dialog-Strings laufen über `t('mcp.market.*')` bzw. `t('mcp.import.*')`; die
+Keys liegen in allen 10 Locales (`webview/src/i18n/locales/*.json`).
 
-### 5.3 Endpoint-Verifikation `github-mcp-registry`
+### 5.3 Registry-Schema (v0.1)
 
-Die Quelle `github-mcp-registry` (`api.mcp.github.com`) wird als `REGISTRY`-Typ
-(v0.1-Schema) behandelt. Endpoint/Schema vor dem Merge verifizieren – sonst landet
-die Quelle still im Empty-/Stale-Fall.
-
----
-
-## 6. Empfohlenes Vorgehen
-
-1. Patch anwenden: `git apply codriver-mcp-marketplace.patch`.
-2. **Persistenz** (5.1) per localStorage ergänzen → erfüllt die „Favorit bleibt"-Anforderung.
-3. i18n (5.2) nachziehen.
-4. `github-mcp-registry`-Endpoint (5.3) verifizieren oder Quelle vorerst deaktivieren.
-5. Smoke-Test: Dialog öffnen, Quelle wechseln, suchen, Server hinzufügen (Claude **und** Codex).
+Sowohl `official-registry` als auch `github-mcp-registry` liefern die verschachtelte
+Hülle `{ server, _meta }` mit `metadata.nextCursor`. `McpRegistryEntryMapper` entpackt
+die `server`-Hülle und rendert die Install-Optionen aus `packages[]` inklusive
+`runtimeHint`, `runtimeArguments`, `packageArguments` (positional/named),
+`environmentVariables` und `transport.type`; `{placeholder}`-Werte bleiben erhalten.
+Abgedeckt durch `McpRegistryEntryMapperTest`.
 
 > Spätere Politur: „installiert"-Badge (Abgleich mit `servers` aus `useServerData`),
 > Secret-Eingabe über vorbefüllten `McpServerDialog` statt direktem Hinzufügen bei
 > Einträgen mit Platzhaltern, Codex-spezifisches Mapping (`CodexMcpServerSpec`:
-> `http_headers`, `bearer_token_env_var`).
+> `http_headers`, `bearer_token_env_var`). Offen bleibt der interaktive GUI-Smoke-Test
+> in der Sandbox-IDE (Claude **und** Codex).
 
 ---
 

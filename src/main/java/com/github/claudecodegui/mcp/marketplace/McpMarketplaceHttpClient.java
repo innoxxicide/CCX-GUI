@@ -62,9 +62,13 @@ final class McpMarketplaceHttpClient {
         connection.setRequestMethod("GET");
         connection.setRequestProperty("Accept", "application/json");
         connection.setRequestProperty("User-Agent", "CoDriver-MCP-Marketplace");
-        String githubToken = System.getenv("GITHUB_TOKEN");
-        if (githubToken != null && !githubToken.trim().isEmpty()) {
-            connection.setRequestProperty("Authorization", "Bearer " + githubToken.trim());
+        // Only attach the GitHub token to GitHub hosts so credentials are never leaked
+        // to third-party registries (e.g. registry.modelcontextprotocol.io).
+        if (isGitHubHost(url.getHost())) {
+            String githubToken = System.getenv("GITHUB_TOKEN");
+            if (githubToken != null && !githubToken.trim().isEmpty()) {
+                connection.setRequestProperty("Authorization", "Bearer " + githubToken.trim());
+            }
         }
         connection.setConnectTimeout(10_000);
         connection.setReadTimeout(20_000);
@@ -84,6 +88,14 @@ final class McpMarketplaceHttpClient {
             }
             return builder.toString();
         }
+    }
+
+    private static boolean isGitHubHost(String host) {
+        if (host == null) {
+            return false;
+        }
+        String lower = host.toLowerCase(java.util.Locale.ROOT);
+        return lower.equals("github.com") || lower.endsWith(".github.com");
     }
 
     private static String readFile(Path file) throws IOException {

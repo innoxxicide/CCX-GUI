@@ -270,7 +270,7 @@ export interface McpMarketplaceSource {
  */
 export interface McpInstallOption {
   label: string;
-  type: 'stdio' | 'http' | 'sse' | string;
+  type: 'stdio' | 'http' | 'sse';
   command?: string;
   args?: string[];
   url?: string;
