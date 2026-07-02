@@ -418,6 +418,15 @@ public class CodemossSettingsService {
         workingDirectoryManager.setCustomWorkingDirectory(projectPath, customWorkingDir);
     }
 
+    /**
+     * Resolve the normalized effective working directory for a project (custom
+     * directory if configured and valid, otherwise the normalized project path).
+     * This is the directory Claude runs in and the key history is stored under.
+     */
+    public String getEffectiveWorkingDirectory(String projectPath) {
+        return workingDirectoryManager.resolveEffectiveWorkingDirectory(projectPath);
+    }
+
     public Map<String, String> getAllWorkingDirectories() throws IOException {
         return workingDirectoryManager.getAllWorkingDirectories();
     }

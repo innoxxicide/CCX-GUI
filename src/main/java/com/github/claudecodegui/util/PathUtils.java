@@ -39,6 +39,31 @@ public class PathUtils {
     }
 
     /**
+     * Resolve a path to an absolute, normalized form, collapsing {@code .} and
+     * {@code ..} segments without resolving symlinks.
+     *
+     * <p>This mirrors Node's {@code path.resolve()} (used by the ai-bridge when it
+     * decides the working directory), so the {@code ~/.claude/projects/<key>}
+     * directory derived on the Java side matches the one the Claude SDK writes to.
+     * {@code getCanonicalPath()} is deliberately avoided: it resolves
+     * symlinks/junctions and may change case, which would re-introduce divergence.
+     *
+     * @param path the original path
+     * @return the absolute, normalized path; or the input unchanged when null/blank
+     *         or when normalization fails
+     */
+    public static String normalizeAbsolute(String path) {
+        if (path == null || path.isEmpty()) {
+            return path;
+        }
+        try {
+            return java.nio.file.Paths.get(path).toAbsolutePath().normalize().toString();
+        } catch (Exception e) {
+            return path;
+        }
+    }
+
+    /**
      * Normalize a path to Unix style (for internal storage and comparison).
      * Converts Windows backslashes to forward slashes.
      *
