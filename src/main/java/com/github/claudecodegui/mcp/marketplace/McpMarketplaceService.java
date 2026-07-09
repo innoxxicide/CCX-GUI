@@ -43,7 +43,11 @@ public final class McpMarketplaceService {
             }
             try {
                 allEntries.addAll(loadEntries(source, forceRefresh));
-            } catch (IOException e) {
+            } catch (Exception e) {
+                // A single bad source must not abort the whole search. Besides IOException, the
+                // per-client parse can throw unchecked JsonSyntaxException / IllegalStateException
+                // (getAsJsonObject / getAsJsonArray on a wrong-shaped or HTML error response);
+                // catching those here keeps healthy sources and built-in presets available.
                 LOG.warn("Failed to load MCP marketplace source " + source.getName() + ": " + e.getMessage());
             }
         }

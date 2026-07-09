@@ -54,6 +54,16 @@ export function McpImportDialog({ currentProvider = 'claude', existingIds = [], 
   }, [existingIds]);
 
   useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
+  useEffect(() => {
     const previousHandler = window.updateCopilotImportPreview;
     window.updateCopilotImportPreview = (json: string) => {
       setLoading(false);
@@ -116,7 +126,7 @@ export function McpImportDialog({ currentProvider = 'claude', existingIds = [], 
             <h3>{t('mcp.import.title')}</h3>
             <div className="mcp-import-subtitle">{t('mcp.import.description')}</div>
           </div>
-          <button className="close-btn" onClick={onClose}>
+          <button className="close-btn" type="button" aria-label={t('mcp.cancel')} onClick={onClose}>
             <span className="codicon codicon-close"></span>
           </button>
         </div>

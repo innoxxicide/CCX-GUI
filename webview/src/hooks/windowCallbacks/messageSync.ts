@@ -588,7 +588,13 @@ export const preserveLatestMessagesOnShrink = (
   const nextListUserTexts = new Set<string>();
   const nextListAssistantTurnIds = new Set<number>();
   const nextListAssistantTexts = new Set<string>();
-  for (const msg of nextList) {
+  // Assistant text is a weak identity — two distinct turns can share short text like "Done." or
+  // "ok". Only treat a text match as a duplicate within a recency window at the END of nextList,
+  // where a genuinely re-appended tail turn would live; otherwise an older turn with identical
+  // text could cause the newest turn to be dropped. Turn ids are exact and collected unbounded.
+  const assistantTextWindowStart = Math.max(0, nextList.length - (preservedTail.length + 2));
+  for (let i = 0; i < nextList.length; i++) {
+    const msg = nextList[i];
     if (msg.type === 'user') {
       const text = getUserMessageComparableContent(msg);
       if (text) nextListUserTexts.add(text);
@@ -596,8 +602,10 @@ export const preserveLatestMessagesOnShrink = (
       if (typeof msg.__turnId === 'number' && msg.__turnId > 0) {
         nextListAssistantTurnIds.add(msg.__turnId);
       }
-      const text = getAssistantComparableContent(msg);
-      if (text) nextListAssistantTexts.add(text);
+      if (i >= assistantTextWindowStart) {
+        const text = getAssistantComparableContent(msg);
+        if (text) nextListAssistantTexts.add(text);
+      }
     }
   }
 
@@ -667,15 +675,24 @@ export const ensureStreamingAssistantInList = (
       }
     }
 
-    // Match the current turn's assistant already in the snapshot by turn id OR by
-    // identical text — the backend's persisted copy carries no __turnId, so a
-    // turn-id-only check would miss it and append a duplicate.
+    // Match the current turn's assistant already in the snapshot. Prefer the exact turn-id match;
+    // fall back to a text match only near the end of the list (the backend's persisted copy carries
+    // no __turnId). Text is a weak identity, so bounding it to the tail avoids pointing the
+    // streaming bubble at an older identical-text turn.
     const streamingText = streamingAssistant ? getAssistantComparableContent(streamingAssistant) : '';
-    const existingIdx = resultList.findIndex(
-      (m) => m.type === 'assistant'
-        && (m.__turnId === streamingTurnId
-          || (!!streamingText && getAssistantComparableContent(m) === streamingText)),
+    let existingIdx = resultList.findIndex(
+      (m) => m.type === 'assistant' && m.__turnId === streamingTurnId,
     );
+    if (existingIdx < 0 && streamingText) {
+      const windowStart = Math.max(0, resultList.length - 3);
+      for (let i = resultList.length - 1; i >= windowStart; i--) {
+        const m = resultList[i];
+        if (m.type === 'assistant' && getAssistantComparableContent(m) === streamingText) {
+          existingIdx = i;
+          break;
+        }
+      }
+    }
     if (existingIdx >= 0) {
       return { list: resultList, streamingIndex: existingIdx };
     }
@@ -694,13 +711,15 @@ export const ensureStreamingAssistantInList = (
     const msg = prevList[i];
     if (msg.type === 'assistant' && msg.isStreaming && msg.__turnId && msg.__turnId > 0) {
       const msgText = getAssistantComparableContent(msg);
-      const alreadyPresent = resultList.some((m) => {
+      const textWindowStart = Math.max(0, resultList.length - 3);
+      const alreadyPresent = resultList.some((m, idx) => {
         if (m.type !== 'assistant') return false;
         if (m.__turnId === msg.__turnId) return true;
         if (msg.timestamp && m.timestamp === msg.timestamp) return true;
-        // Backend copy carries a fresh timestamp and no __turnId — match by text
-        // so the finalized bubble is not appended on top of its persisted copy.
-        if (msgText && getAssistantComparableContent(m) === msgText) return true;
+        // Backend copy carries a fresh timestamp and no __turnId — match by text so the finalized
+        // bubble is not appended on top of its persisted copy, but only near the tail so an older
+        // identical-text turn can't suppress recovery of the current one.
+        if (msgText && idx >= textWindowStart && getAssistantComparableContent(m) === msgText) return true;
         return false;
       });
       const assistantAlreadyAtOrAfterPosition =

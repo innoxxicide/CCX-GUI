@@ -277,29 +277,31 @@ class ClaudeUsageAggregator {
         // User-configured pricing takes precedence over the hardcoded table. It is used for
         // plugin-level custom models and for pricing-only Claude mapped model entries. Cache
         // is mtime-invalidated automatically.
-        Pricing customPricing = resolveCustomPricing(model);
+        Pricing builtin = MODEL_PRICING.getOrDefault(normalizeModel(model), null);
+        Pricing customPricing = resolveCustomPricing(model, builtin);
         if (customPricing != null) {
             return customPricing;
         }
-        return MODEL_PRICING.getOrDefault(normalizeModel(model), DEFAULT_PRICING);
+        return builtin != null ? builtin : DEFAULT_PRICING;
     }
 
     /**
-     * Build a {@link Pricing} from user-configured pricing, or {@code null} if the
-     * model has no configured pricing. The above-200K tier fields are left {@code null} so
-     * user-configured models are billed at a flat rate. Missing fields fall back to the {@link #DEFAULT_PRICING} corresponding
-     * dimension so users can specify only the rates they know.
+     * Build a {@link Pricing} from user-configured pricing, or {@code null} if the model has no
+     * configured pricing. The above-200K tier fields are left {@code null} so user-configured
+     * models are billed at a flat rate. Unspecified base dimensions fall back to the overridden
+     * model's OWN built-in rate when it is a known model, otherwise 0 — never the generic default
+     * model's rate, which previously turned a partial custom price into a large over-estimate.
      */
-    private static Pricing resolveCustomPricing(String model) {
+    private static Pricing resolveCustomPricing(String model, Pricing builtin) {
         if (model == null || model.isBlank()) {
             return null;
         }
         return CustomPricingProvider.getInstance().getPricing("claude", model)
                 .map(p -> new Pricing(
-                        p.inputCostPer1M() != null ? p.inputCostPer1M() : DEFAULT_PRICING.inputCostPer1M(),
-                        p.outputCostPer1M() != null ? p.outputCostPer1M() : DEFAULT_PRICING.outputCostPer1M(),
-                        p.cacheWriteCostPer1M() != null ? p.cacheWriteCostPer1M() : DEFAULT_PRICING.cacheWriteCostPer1M(),
-                        p.cacheReadCostPer1M() != null ? p.cacheReadCostPer1M() : DEFAULT_PRICING.cacheReadCostPer1M(),
+                        p.inputCostPer1M() != null ? p.inputCostPer1M() : (builtin != null ? builtin.inputCostPer1M() : 0.0),
+                        p.outputCostPer1M() != null ? p.outputCostPer1M() : (builtin != null ? builtin.outputCostPer1M() : 0.0),
+                        p.cacheWriteCostPer1M() != null ? p.cacheWriteCostPer1M() : (builtin != null ? builtin.cacheWriteCostPer1M() : 0.0),
+                        p.cacheReadCostPer1M() != null ? p.cacheReadCostPer1M() : (builtin != null ? builtin.cacheReadCostPer1M() : 0.0),
                         null, null, null, null))
                 .orElse(null);
     }

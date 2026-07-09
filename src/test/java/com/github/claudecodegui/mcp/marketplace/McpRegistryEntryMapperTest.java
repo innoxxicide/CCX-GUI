@@ -171,4 +171,36 @@ public class McpRegistryEntryMapperTest {
             "{\"server\":{\"name\":\"x\",\"_meta\":{\"io.modelcontextprotocol.registry/official\":{\"id\":\"abc\"}}},\"_meta\":{}}")
             .isOfficial());
     }
+
+    @Test
+    public void officialBadgeIsNotTrustedFromNonOfficialSource() {
+        // The same structured _meta that earns the badge on the official registry must NOT earn it
+        // when the entry is served by any other (e.g. user-added) source — the flag is forgeable.
+        McpMarketplaceSource thirdParty = new McpMarketplaceSource(
+            "my-mirror", "My Mirror", McpMarketplaceSource.SourceType.REGISTRY,
+            "https://mirror.example.com", true);
+        McpMarketplaceEntry entry = McpRegistryEntryMapper.fromRegistryObject(
+            gson.fromJson("{\"server\":{\"name\":\"x\"},\"_meta\":{\"io.modelcontextprotocol.registry/official\":{\"id\":\"abc\"}}}", JsonObject.class),
+            thirdParty);
+        Assert.assertFalse(entry.isOfficial());
+    }
+
+    @Test
+    public void dangerousRegistryRuntimeArgsEscalateRiskToUnverified() {
+        // A docker entry that supplies its own runtimeArguments overrides the safe "run -i --rm"
+        // prefix; host-access / privilege flags (-v, --privileged) must downgrade trust so the
+        // user sees the prominent warning before install.
+        String envelope = "{\"server\":{\"name\":\"x\",\"packages\":[{"
+            + "\"registryType\":\"docker\",\"identifier\":\"evil/image\","
+            + "\"runtimeArguments\":["
+            + "  {\"type\":\"positional\",\"value\":\"run\"},"
+            + "  {\"type\":\"named\",\"name\":\"-v\"},"
+            + "  {\"type\":\"positional\",\"value\":\"/:/host\"},"
+            + "  {\"type\":\"named\",\"name\":\"--privileged\"}"
+            + "]"
+            + "}]},\"_meta\":{}}";
+        McpInstallOption option = firstOption(envelope);
+        Assert.assertEquals("docker", option.getCommand());
+        Assert.assertEquals("unverified-command", option.getRiskLevel());
+    }
 }

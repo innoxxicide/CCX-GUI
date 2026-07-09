@@ -182,8 +182,32 @@ final class SlashCommandPathPolicy {
             LOG.debug("toRealPath failed; using normalized containment check for: " + subPath);
             Path normSub = subPath.toAbsolutePath().normalize();
             Path normPluginDir = pluginDir.toAbsolutePath().normalize();
-            return normSub.startsWith(normPluginDir) && !normSub.equals(normPluginDir);
+            if (!normSub.startsWith(normPluginDir) || normSub.equals(normPluginDir)) {
+                return false;
+            }
+            // The lexical check above does NOT resolve symlinks (toRealPath, which would, was
+            // unavailable). Without this, a plugin could ship a symlinked subdirectory that
+            // escapes the plugin root yet passes the startsWith check. Reject if any component
+            // between the plugin dir and subPath is a symlink.
+            return !hasSymlinkComponent(normPluginDir, normSub);
         }
+    }
+
+    /** True if any path component strictly below {@code base} up to and including {@code target} is a symlink. */
+    private static boolean hasSymlinkComponent(Path base, Path target) {
+        Path current = target;
+        while (current != null && !current.equals(base)) {
+            try {
+                if (Files.isSymbolicLink(current)) {
+                    return true;
+                }
+            } catch (Exception e) {
+                // Cannot determine — treat as unsafe rather than risk an unresolved escape.
+                return true;
+            }
+            current = current.getParent();
+        }
+        return false;
     }
 
     static Path resolvePluginManifestPath(Path pluginDir) {

@@ -7,15 +7,15 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
 import java.io.Reader;
-import java.io.Writer;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Locale;
@@ -65,9 +65,7 @@ final class McpMarketplaceHttpClient {
 
         try {
             String json = fetcher.fetch(url);
-            try (Writer writer = new OutputStreamWriter(Files.newOutputStream(cacheFile), StandardCharsets.UTF_8)) {
-                writer.write(json);
-            }
+            writeCacheAtomically(cacheFile, json);
             return json;
         } catch (IOException e) {
             if (Files.exists(cacheFile)) {
@@ -78,10 +76,32 @@ final class McpMarketplaceHttpClient {
         }
     }
 
+    /**
+     * Write the cache via a temp file + atomic move so two concurrent fetches for the same
+     * source/page can never leave a half-written (corrupt) JSON file that the next read fails on.
+     */
+    private void writeCacheAtomically(Path cacheFile, String json) throws IOException {
+        Path tmp = Files.createTempFile(cacheDirectory, "mcp-cache", ".tmp");
+        try {
+            Files.write(tmp, json.getBytes(StandardCharsets.UTF_8));
+            try {
+                Files.move(tmp, cacheFile, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            } catch (AtomicMoveNotSupportedException e) {
+                Files.move(tmp, cacheFile, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            Files.deleteIfExists(tmp);
+        }
+    }
+
     private static String httpGet(String urlValue) throws IOException {
         URL url = new URL(urlValue);
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestMethod("GET");
+        // Do not auto-follow redirects: a 3xx Location could point at an internal address (SSRF via
+        // a compromised/misbehaving registry) and a cross-host redirect can leak the GitHub bearer
+        // token below to the redirect target. Any 3xx is treated as an error by the status check.
+        connection.setInstanceFollowRedirects(false);
         connection.setRequestProperty("Accept", "application/json");
         connection.setRequestProperty("User-Agent", "CoDriver-MCP-Marketplace");
         // Only attach the GitHub token to known GitHub hosts so credentials are never leaked

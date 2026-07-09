@@ -22,6 +22,16 @@ final class McpRegistryEntryMapper {
     private static final Set<String> KNOWN_RUNNERS = new HashSet<>(Arrays.asList(
         "npx", "uvx", "uv", "pnpm", "pnpx", "bunx", "node", "deno", "python", "python3", "docker", "podman"));
 
+    /**
+     * Container/runner flags that grant host access or escalate privilege. A registry entry that
+     * supplies its own runtimeArguments overrides the canonical {@code run -i --rm} prefix, so any
+     * of these flags downgrades trust to {@code unverified-command} — the UI then shows the
+     * prominent warning before the user installs. See {@link #hasDangerousRunnerArg}.
+     */
+    private static final Set<String> DANGEROUS_RUNNER_FLAGS = new HashSet<>(Arrays.asList(
+        "--privileged", "--cap-add", "--device", "--pid", "--ipc", "--userns", "--network", "--net",
+        "-v", "--volume", "--mount"));
+
     private McpRegistryEntryMapper() {
     }
 
@@ -56,9 +66,10 @@ final class McpRegistryEntryMapper {
         );
         String status = firstValue(McpMarketplaceJson.getString(data, "status"), "active");
         String repositoryUrl = getRepositoryUrl(data);
-        // The "official" marker is only trusted from the outer envelope's registry _meta,
-        // never from the inner server object (which carries user-submitted fields).
-        boolean official = isOfficial(envelope);
+        // The "official" marker is only trusted from the canonical modelcontextprotocol registry
+        // source: the _meta flag is entry-embedded and forgeable, so an entry served by any other
+        // source (or a user-added source) cannot earn the badge just by including the metadata.
+        boolean official = isTrustedOfficialSource(source) && isOfficial(envelope);
 
         McpMarketplaceEntry.Builder builder = McpMarketplaceEntry.builder()
             .id(source.getId() + ":" + name)
@@ -274,6 +285,13 @@ final class McpRegistryEntryMapper {
             return null;
         }
 
+        // A registry entry can supply its own runtimeArguments, which replace the canonical
+        // safe prefix (docker "run -i --rm", npm "-y"). If those args include host-access or
+        // privilege-escalation flags, downgrade trust so the user is warned before installing.
+        if (hasDangerousRunnerArg(runtimeArgs)) {
+            riskLevel = "unverified-command";
+        }
+
         return new McpInstallOption(
             label,
             transportType,
@@ -285,6 +303,25 @@ final class McpRegistryEntryMapper {
             source.getName(),
             riskLevel
         );
+    }
+
+    /** True if any registry-supplied runtime argument is a host-access / privilege-escalation flag. */
+    private static boolean hasDangerousRunnerArg(List<String> runtimeArgs) {
+        if (runtimeArgs == null) {
+            return false;
+        }
+        for (String arg : runtimeArgs) {
+            if (arg == null) {
+                continue;
+            }
+            String normalized = arg.trim().toLowerCase(Locale.ROOT);
+            int equals = normalized.indexOf('=');
+            String flag = equals >= 0 ? normalized.substring(0, equals) : normalized;
+            if (DANGEROUS_RUNNER_FLAGS.contains(flag)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -437,6 +474,19 @@ final class McpRegistryEntryMapper {
             values.put(header.name, "{" + header.name.toLowerCase(Locale.ROOT).replace('-', '_') + "}");
         }
         return values;
+    }
+
+    /** The canonical modelcontextprotocol registry is the only source whose "official" _meta is trusted. */
+    private static boolean isTrustedOfficialSource(McpMarketplaceSource source) {
+        if (source == null || source.getUrl() == null) {
+            return false;
+        }
+        try {
+            String host = new java.net.URI(source.getUrl()).getHost();
+            return host != null && host.equalsIgnoreCase("registry.modelcontextprotocol.io");
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private static boolean isOfficial(JsonObject envelope) {

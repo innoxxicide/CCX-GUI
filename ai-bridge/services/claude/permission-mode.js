@@ -31,6 +31,28 @@ const PLAN_MODE_ALLOWED_TOOLS = new Set([
   'mcp__time__convert_time',
 ]);
 
+/**
+ * Read-only MCP tool detection — a positive allowlist (default-deny).
+ *
+ * MCP tool names are `mcp__<server>__<action>`. A tool counts as read-only only when its
+ * ACTION begins with a known read-only verb. This replaces an earlier blocklist
+ * (`name.startsWith('mcp__') && !name.includes('Write') && !name.includes('Edit')`) that was
+ * default-ALLOW: destructive actions whose names happen to lack "Write"/"Edit"
+ * (mcp__fs__delete_file, mcp__shell__run_command, mcp__db__execute) slipped through — auto-yielded
+ * during read-only plan mode, and (in default mode) auto-approvable by an attacker-controlled
+ * project/local settings.json allow-rule. Anything not matched here falls through to 'ask'
+ * (default mode) or 'deny' (plan mode), so unknown/ambiguous MCP tools are safe by default.
+ */
+const READ_ONLY_MCP_ACTION = /^(read|list|get|search|query|fetch|find|view|describe|show|resolve|lookup|status|info|inspect|count|exists|preview|ls|cat|head|tail)([_-]|$)/i;
+
+function isReadOnlyMcpTool(toolName) {
+  if (typeof toolName !== 'string' || !toolName.startsWith('mcp__')) {
+    return false;
+  }
+  const action = toolName.split('__').slice(2).join('__');
+  return action.length > 0 && READ_ONLY_MCP_ACTION.test(action);
+}
+
 const PLAN_FILE_NAME = 'PLAN.md';
 
 function isPlanFilePath(filePath, cwd) {
@@ -262,8 +284,9 @@ export function createPreToolUseHook(permissionModeState, cwd = null, onModeChan
         return YIELD_TO_SDK;
       }
 
-      // Step 6: Auto-approve read-only MCP tools (mcp__* without Write/Edit in name)
-      if (toolName?.startsWith('mcp__') && !toolName.includes('Write') && !toolName.includes('Edit')) {
+      // Step 6: Auto-approve read-only MCP tools (positive verb allowlist; see isReadOnlyMcpTool).
+      // Destructive/ambiguous MCP tools fall through to the plan-mode deny below — plan mode is read-only.
+      if (isReadOnlyMcpTool(toolName)) {
         return YIELD_TO_SDK;
       }
 
@@ -291,9 +314,10 @@ export function createPreToolUseHook(permissionModeState, cwd = null, onModeChan
     // via the Java-side tool-level "Always allow" memory), and every side-effect call pays
     // one file-IPC round trip even on a memory hit.
     if (currentPermissionMode === 'default') {
-      const isReadOnlyMcp = toolName?.startsWith('mcp__')
-        && !toolName.includes('Write') && !toolName.includes('Edit');
-      if (SAFE_ALWAYS_ALLOW_TOOLS.has(toolName) || isReadOnlyMcp) {
+      // Read-only detection is a positive allowlist (isReadOnlyMcpTool) — a destructive MCP tool
+      // whose name lacks 'Write'/'Edit' must NOT be yielded, or a project/local settings.json
+      // allow-rule could silently auto-approve it. Anything else routes through 'ask'.
+      if (SAFE_ALWAYS_ALLOW_TOOLS.has(toolName) || isReadOnlyMcpTool(toolName)) {
         return YIELD_TO_SDK;
       }
       return {

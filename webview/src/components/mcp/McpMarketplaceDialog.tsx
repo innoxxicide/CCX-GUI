@@ -95,9 +95,13 @@ export function McpMarketplaceDialog({ currentProvider = 'claude', existingIds =
       try {
         const parsedSources = JSON.parse(json) as McpMarketplaceSource[];
         setSources(parsedSources);
-        if (selectedSourceId !== ALL_SOURCES_ID && !parsedSources.some(source => source.id === selectedSourceId)) {
-          setSelectedSourceId(DEFAULT_SOURCE_ID);
-        }
+        // Functional updater reads the CURRENT selection, not the value captured when this handler
+        // was registered — the effect runs once ([] deps), so a plain read would be stale.
+        setSelectedSourceId(current =>
+          current !== ALL_SOURCES_ID && !parsedSources.some(source => source.id === current)
+            ? DEFAULT_SOURCE_ID
+            : current
+        );
       } catch (parseError) {
         setError(String(parseError));
       }
@@ -141,6 +145,16 @@ export function McpMarketplaceDialog({ currentProvider = 'claude', existingIds =
     return () => window.clearTimeout(timer);
   }, [loadEntries]);
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
   const handleOverlayClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (event.target === event.currentTarget) {
       onClose();
@@ -168,7 +182,7 @@ export function McpMarketplaceDialog({ currentProvider = 'claude', existingIds =
             <h3>{t('mcp.market.title')}</h3>
             <div className="marketplace-subtitle">{t('mcp.market.subtitle')}</div>
           </div>
-          <button className="close-btn" onClick={onClose}>
+          <button className="close-btn" type="button" aria-label={t('mcp.cancel')} onClick={onClose}>
             <span className="codicon codicon-close"></span>
           </button>
         </div>
@@ -270,7 +284,19 @@ function MarketplaceListItem({ entry, selected, onSelect }: MarketplaceListItemP
   const { t } = useTranslation();
   const displayName = entry.displayName || entry.name;
   return (
-    <div className={`marketplace-entry ${selected ? 'selected' : ''}`} onClick={onSelect}>
+    <div
+      className={`marketplace-entry ${selected ? 'selected' : ''}`}
+      role="button"
+      tabIndex={0}
+      aria-pressed={selected}
+      onClick={onSelect}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onSelect();
+        }
+      }}
+    >
       <div className="marketplace-entry-icon">{displayName.charAt(0).toUpperCase()}</div>
       <div className="marketplace-entry-info">
         <div className="marketplace-entry-title-row">
@@ -307,7 +333,7 @@ function MarketplaceDetails({ entry, selectedOptionIndex, onSelectedOptionIndexC
       {entry.description && <p className="marketplace-details-description">{entry.description}</p>}
 
       <div className="marketplace-tags">
-        {entry.tags.slice(0, 8).map(tag => <span key={tag} className="tag">{tag}</span>)}
+        {entry.tags.slice(0, 8).map((tag, index) => <span key={`${tag}-${index}`} className="tag">{tag}</span>)}
       </div>
 
       <div className="marketplace-link-grid">
