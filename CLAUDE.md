@@ -4,7 +4,7 @@ Guidance for Claude Code when working in this repository. Its main job is **rout
 
 ## What this project is
 
-**CCX GUI (Claude or Codex)** — an IntelliJ IDEA plugin (currently v0.4.7) that gives Claude Code and OpenAI Codex a visual interface inside the IDE. It is a three-layer system, and almost every non-trivial change crosses at least two of the layers:
+**CCX GUI (Claude or Codex)** — an IntelliJ IDEA plugin (currently v0.0.1) that gives Claude Code and OpenAI Codex a visual interface inside the IDE. It is a three-layer system, and almost every non-trivial change crosses at least two of the layers:
 
 | Layer | Path | Stack |
 |---|---|---|
@@ -19,7 +19,7 @@ Java talks to the webview through `window.*` callbacks and `sendBridgeEvent`; Ja
 ```bash
 ./gradlew test                # Java unit tests
 ./gradlew clean runIde        # launch a sandbox IDE with the plugin
-./gradlew clean buildPlugin   # → build/distributions/ (~40MB)
+./gradlew clean buildPlugin   # → build/distributions/ccx-gui-<version>.zip (~9MB)
 
 cd webview && npm test        # vitest + tsc typecheck (both must pass)
 cd webview && npm run build   # tsc && vite build
@@ -85,7 +85,7 @@ Read these for the insight, never for the code snippets or line numbers, which a
 
 ## `docs/plans/` — an archive with two live tails
 
-Everything here was written 2026-03-01…03-22 and nothing has been updated since, while the product shipped through v0.4.7. Do not read these as current state. Three specifics:
+Everything here was written 2026-03-01…03-22 and nothing has been updated since, while the code kept shipping (upstream reached v0.4.7 before this fork restarted numbering at v0.0.1). Do not read these as current state. Three specifics:
 
 - **`2026-03-01-local-provider-snapshot-*.md` — never built.** Zero matches for its APIs anywhere in the tree. Actively misleading if read as reality.
 - **`2026-03-07-project-level-prompts*.md` — shipped.** The code (`model/PromptScope.java`, `settings/{Abstract,Global,Project}PromptManager.java`, `PromptManagerFactory`) is the better reference now. `docs/testing/project-level-prompts-testing-checklist.md` is an unrun 80-case manual QA script — useful only as a regression pass if prompt scoping changes again.
@@ -151,7 +151,7 @@ There are no project-level agents, hooks, or slash commands configured. Skills c
 
 # Traps
 
-- **Doc paths drift.** Verify a path before trusting it. Known-stale: everything under `docs/` still says `com.github.claudecodegui` — the Java package is now `com.github.ccxgui`, renamed so this plugin's classes do not collide with the upstream plugin it forked from. Also `CodemossSettingsService.java` is under `settings/`, `DependencyManager.java` under `dependency/`, rewind logic is in `message-rewind.js` (not `message-service.js`), and every `claude-bridge/` reference means `ai-bridge/`. Line-number anchors in docs are generally dead.
+- **Doc paths drift.** Java paths under `docs/` were swept when the package moved and every one of them resolves today, with two exceptions whose classes no longer exist at all: `SlashCommandCache` (`docs/skills/SLASH_COMMANDS.md`) and `settings/PromptManager.java` (the project-level-prompts plans) — both were replaced during the March refactors. Non-Java paths were not swept: rewind logic is in `message-rewind.js` (not `message-service.js`), and every `claude-bridge/` reference means `ai-bridge/`. Line-number anchors in docs are generally dead.
 - **Class FQNs are load-bearing for coexistence.** IntelliJ keys `@Service` light services by class *name*, across the whole container — two installed plugins sharing a class FQN resolve to each other's instances and throw ClassCastException. That is why the package is `ccxgui`, and why nothing here may move back under a name upstream also uses.
 - **Windows is the primary dev environment here.** Prefer `docs/codex/docs/windows_sandbox_security.md` over the generic sandbox doc, and remember the stdin-over-argv rule from `docs/skills/cmdline-argument-escaping-bug.md`.
 - `docs/codex/CODEX-INTEGRATION-QUICKSTART.md` is a good orientation read, but its capability matrix is wrong: it claims Codex has no attachment support, while `ai-bridge/services/codex/message-service.js` builds `local_image` inputs today. Its `@openai/codex-sdk` version pin is a snapshot.
