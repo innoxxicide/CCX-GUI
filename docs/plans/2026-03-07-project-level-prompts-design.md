@@ -523,6 +523,6 @@ promptProvider.fetchPrompts()
 
 ## 参考资料
 
-- 现有 PromptManager 实现：`src/main/java/com/github/claudecodegui/settings/PromptManager.java`
+- 现有 PromptManager 实现：`src/main/java/com/github/ccxgui/settings/PromptManager.java`
 - Settings UI：`webview/src/components/settings/PromptSection/index.tsx`
 - 聊天自动补全：`webview/src/components/ChatInputBox/providers/promptProvider.ts`

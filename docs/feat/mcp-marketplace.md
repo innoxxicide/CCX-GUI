@@ -155,10 +155,10 @@ third-party API key (unlike Smithery/mcp.so, which were intentionally not includ
 
 - Hook point: `webview/src/components/mcp/McpSettingsSection.tsx`
 - Dialogs: `McpMarketplaceDialog.tsx`, `McpImportDialog.tsx`
-- Java marketplace: `src/main/java/com/github/claudecodegui/mcp/marketplace/*`
-- Java importer: `src/main/java/com/github/claudecodegui/mcp/importer/*`
-- Handlers: `src/main/java/com/github/claudecodegui/handler/{marketplace,importer}/*`
-- Handler registration: `src/main/java/com/github/claudecodegui/ui/ChatWindowDelegate.java`
+- Java marketplace: `src/main/java/com/github/ccxgui/mcp/marketplace/*`
+- Java importer: `src/main/java/com/github/ccxgui/mcp/importer/*`
+- Handlers: `src/main/java/com/github/ccxgui/handler/{marketplace,importer}/*`
+- Handler registration: `src/main/java/com/github/ccxgui/ui/ChatWindowDelegate.java`
 - Types: `webview/src/types/mcp.ts`
 - i18n: `webview/src/i18n/locales/*.json` (`mcp.market.*`, `mcp.import.*`)
 - Tests: `McpRegistryEntryMapperTest`, `McpServerImportServiceTest`, `McpMarketplaceHttpClientTest`

@@ -2,7 +2,7 @@
 
 **日期**: 2026-03-22  
 **状态**: 待执行  
-**范围**: `src/main/java/com/github/claudecodegui`  
+**范围**: `src/main/java/com/github/ccxgui`  
 **目标**: 在不改变插件行为、消息协议和用户体验的前提下，逐步收敛根包、按功能分组目录、降低后续维护和继续重构的理解成本。
 
 ---
@@ -13,7 +13,7 @@
 
 基于现有代码结构的快速盘点：
 
-- 根包 `com.github.claudecodegui` 下面仍直接放了约 20 个类，职责混合了窗口、会话、设置、技能、Action 和工具拦截。
+- 根包 `com.github.ccxgui` 下面仍直接放了约 20 个类，职责混合了窗口、会话、设置、技能、Action 和工具拦截。
 - `handler` 目录已有约 47 个类，是目前最容易继续膨胀的目录。
 - `util` 目录已有约 18 个类，里面既有纯工具类，也有带明显业务语义的配置类。
 - 与此同时，`permission`、`session`、`provider`、`skill`、`settings`、`ui` 等功能目录已经初步存在，说明项目已经朝“按功能分组”的方向发展。
@@ -64,7 +64,7 @@
 ## 推荐目标目录树
 
 ```text
-src/main/java/com/github/claudecodegui
+src/main/java/com/github/ccxgui
 ├── action
 │   ├── chat          // 聊天窗口内动作：发送、复制、粘贴、换行、快捷键同步
 │   ├── dev           // 开发辅助动作：DevTools 等

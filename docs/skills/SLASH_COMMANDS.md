@@ -95,7 +95,7 @@
 
 | 层级 | 技术 | 文件位置 |
 |-----|------|---------|
-| 后端 | Java + IntelliJ SDK | `src/main/java/com/github/claudecodegui/` |
+| 后端 | Java + IntelliJ SDK | `src/main/java/com/github/ccxgui/` |
 | 桥接 | JCEF Bridge | `ai-bridge/` |
 | 前端框架 | React 18 + TypeScript | `webview/src/` |
 | 状态管理 | React Hooks | `webview/src/components/ChatInputBox/hooks/` |
@@ -602,8 +602,8 @@ debounceTimerRef.current = window.setTimeout(() => {
 | **下拉菜单组件** | `webview/src/components/ChatInputBox/Dropdown/` |
 | **类型定义** | `webview/src/components/ChatInputBox/types.ts` |
 | **样式** | `webview/src/components/ChatInputBox/styles.css` |
-| **Java 后端桥接** | `src/main/java/com/github/claudecodegui/ClaudeSDKBridge.java` |
-| **命令缓存** | `src/main/java/com/github/claudecodegui/cache/SlashCommandCache.java` |
+| **Java 后端桥接** | `src/main/java/com/github/ccxgui/provider/claude/ClaudeSDKBridge.java` |
+| **命令缓存** | `src/main/java/com/github/ccxgui/cache/SlashCommandCache.java` |
 
 ---
 

@@ -188,4 +188,4 @@ private void injectCustomEnvVars(Map<String, String> env, String category) {
 ./gradlew clean buildPlugin
 ```
 
-产物：`build/distributions/idea-claude-code-gui-{version}.zip`
+产物：`build/distributions/ccx-gui-{version}.zip`

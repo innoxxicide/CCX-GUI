@@ -146,7 +146,7 @@ if (process.env.ANTHROPIC_BASE_URL) {
 
 **严重程度：** 🟡 中
 **状态：** ⚠️ 潜在风险
-**文件：** `src/main/java/com/github/claudecodegui/CodemossSettingsService.java`
+**文件：** `src/main/java/com/github/ccxgui/settings/CodemossSettingsService.java`
 
 **问题描述：**
 当切换供应商时，Java 侧会调用 `applyProviderToClaudeSettings()` 将供应商的 `settingsConfig` 同步到 `~/.claude/settings.json`。

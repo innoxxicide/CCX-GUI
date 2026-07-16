@@ -11,13 +11,13 @@
 
 本计划覆盖以下 8 个文件：
 
-1. `src/main/java/com/github/claudecodegui/provider/claude/ClaudeSDKBridge.java`
-2. `src/main/java/com/github/claudecodegui/permission/PermissionService.java`
-3. `src/main/java/com/github/claudecodegui/ClaudeSession.java`
-4. `src/main/java/com/github/claudecodegui/skill/SlashCommandRegistry.java`
+1. `src/main/java/com/github/ccxgui/provider/claude/ClaudeSDKBridge.java`
+2. `src/main/java/com/github/ccxgui/permission/PermissionService.java`
+3. `src/main/java/com/github/ccxgui/session/ClaudeSession.java`
+4. `src/main/java/com/github/ccxgui/skill/SlashCommandRegistry.java`
 5. `ai-bridge/services/claude/persistent-query-service.js`
-6. `src/main/java/com/github/claudecodegui/handler/DiffHandler.java`
-7. `src/main/java/com/github/claudecodegui/provider/common/DaemonBridge.java`
+6. `src/main/java/com/github/ccxgui/handler/DiffHandler.java`
+7. `src/main/java/com/github/ccxgui/provider/common/DaemonBridge.java`
 8. `webview/src/components/ChatInputBox/ChatInputBox.tsx`
 
 ---

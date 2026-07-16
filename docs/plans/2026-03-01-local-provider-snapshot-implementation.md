@@ -13,7 +13,7 @@
 ## Task 1: Backend - Add Snapshot File Path Management
 
 **Files:**
-- Modify: `src/main/java/com/github/claudecodegui/settings/ConfigPathManager.java`
+- Modify: `src/main/java/com/github/ccxgui/settings/ConfigPathManager.java`
 
 **Step 1: Add snapshot path method**
 
@@ -36,7 +36,7 @@ Expected: SUCCESS
 **Step 3: Commit**
 
 ```bash
-git add src/main/java/com/github/claudecodegui/settings/ConfigPathManager.java
+git add src/main/java/com/github/ccxgui/settings/ConfigPathManager.java
 git commit -m "feat: add local provider snapshot path management"
 ```
 
@@ -45,7 +45,7 @@ git commit -m "feat: add local provider snapshot path management"
 ## Task 2: Backend - Implement Snapshot Save API
 
 **Files:**
-- Modify: `src/main/java/com/github/claudecodegui/settings/ProviderManager.java`
+- Modify: `src/main/java/com/github/ccxgui/settings/ProviderManager.java`
 
 **Step 1: Add saveLocalProviderSnapshot method**
 
@@ -89,7 +89,7 @@ Expected: SUCCESS
 **Step 3: Commit**
 
 ```bash
-git add src/main/java/com/github/claudecodegui/settings/ProviderManager.java
+git add src/main/java/com/github/ccxgui/settings/ProviderManager.java
 git commit -m "feat: implement save local provider snapshot API"
 ```
 
@@ -98,7 +98,7 @@ git commit -m "feat: implement save local provider snapshot API"
 ## Task 3: Backend - Implement Snapshot Restore API
 
 **Files:**
-- Modify: `src/main/java/com/github/claudecodegui/settings/ProviderManager.java`
+- Modify: `src/main/java/com/github/ccxgui/settings/ProviderManager.java`
 
 **Step 1: Add restoreLocalProviderSnapshot method**
 
@@ -144,7 +144,7 @@ Expected: SUCCESS
 **Step 3: Commit**
 
 ```bash
-git add src/main/java/com/github/claudecodegui/settings/ProviderManager.java
+git add src/main/java/com/github/ccxgui/settings/ProviderManager.java
 git commit -m "feat: implement restore local provider snapshot API"
 ```
 
@@ -153,7 +153,7 @@ git commit -m "feat: implement restore local provider snapshot API"
 ## Task 4: Backend - Implement Snapshot Info API
 
 **Files:**
-- Modify: `src/main/java/com/github/claudecodegui/settings/ProviderManager.java`
+- Modify: `src/main/java/com/github/ccxgui/settings/ProviderManager.java`
 
 **Step 1: Add getLocalProviderSnapshotInfo method**
 
@@ -195,7 +195,7 @@ Expected: SUCCESS
 **Step 3: Commit**
 
 ```bash
-git add src/main/java/com/github/claudecodegui/settings/ProviderManager.java
+git add src/main/java/com/github/ccxgui/settings/ProviderManager.java
 git commit -m "feat: implement get local provider snapshot info API"
 ```
 
@@ -204,7 +204,7 @@ git commit -m "feat: implement get local provider snapshot info API"
 ## Task 5: Backend - Add Message Handlers
 
 **Files:**
-- Modify: `src/main/java/com/github/claudecodegui/handler/ProviderHandler.java`
+- Modify: `src/main/java/com/github/ccxgui/handler/provider/ProviderHandler.java`
 
 **Step 1: Add handleSaveLocalSnapshot handler**
 
@@ -220,7 +220,7 @@ private void handleSaveLocalSnapshot(String content) {
 
         ApplicationManager.getApplication().invokeLater(() -> {
             callJavaScript("window.showSuccess",
-                escapeJs(com.github.claudecodegui.ClaudeCodeGuiBundle.message("toast.snapshotSaved")));
+                escapeJs(com.github.ccxgui.ClaudeCodeGuiBundle.message("toast.snapshotSaved")));
             // Trigger refresh of snapshot info
             handleGetSnapshotInfo("");
         });
@@ -228,7 +228,7 @@ private void handleSaveLocalSnapshot(String content) {
         LOG.error("[ProviderHandler] Failed to save snapshot: " + e.getMessage(), e);
         ApplicationManager.getApplication().invokeLater(() -> {
             callJavaScript("window.showError",
-                escapeJs(com.github.claudecodegui.ClaudeCodeGuiBundle.message("toast.snapshotSaveFailed", e.getMessage())));
+                escapeJs(com.github.ccxgui.ClaudeCodeGuiBundle.message("toast.snapshotSaveFailed", e.getMessage())));
         });
     }
 }
@@ -247,21 +247,21 @@ private void handleRestoreLocalSnapshot(String content) {
         if (success) {
             ApplicationManager.getApplication().invokeLater(() -> {
                 callJavaScript("window.showSuccess",
-                    escapeJs(com.github.claudecodegui.ClaudeCodeGuiBundle.message("toast.snapshotRestored")));
+                    escapeJs(com.github.ccxgui.ClaudeCodeGuiBundle.message("toast.snapshotRestored")));
                 // Refresh current config display
                 handleGetCurrentClaudeConfig();
             });
         } else {
             ApplicationManager.getApplication().invokeLater(() -> {
                 callJavaScript("window.showError",
-                    escapeJs(com.github.claudecodegui.ClaudeCodeGuiBundle.message("toast.snapshotNotFound")));
+                    escapeJs(com.github.ccxgui.ClaudeCodeGuiBundle.message("toast.snapshotNotFound")));
             });
         }
     } catch (Exception e) {
         LOG.error("[ProviderHandler] Failed to restore snapshot: " + e.getMessage(), e);
         ApplicationManager.getApplication().invokeLater(() -> {
             callJavaScript("window.showError",
-                escapeJs(com.github.claudecodegui.ClaudeCodeGuiBundle.message("toast.snapshotRestoreFailed", e.getMessage())));
+                escapeJs(com.github.ccxgui.ClaudeCodeGuiBundle.message("toast.snapshotRestoreFailed", e.getMessage())));
         });
     }
 }
@@ -311,7 +311,7 @@ Expected: SUCCESS
 **Step 6: Commit**
 
 ```bash
-git add src/main/java/com/github/claudecodegui/handler/ProviderHandler.java
+git add src/main/java/com/github/ccxgui/handler/provider/ProviderHandler.java
 git commit -m "feat: add snapshot message handlers and routing"
 ```
 

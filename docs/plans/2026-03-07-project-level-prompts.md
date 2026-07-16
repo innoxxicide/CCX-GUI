@@ -15,13 +15,13 @@
 ### Task 1: Create PromptScope Enum
 
 **Files:**
-- Create: `src/main/java/com/github/claudecodegui/model/PromptScope.java`
+- Create: `src/main/java/com/github/ccxgui/model/PromptScope.java`
 
 **Step 1: Write the failing test**
 
 ```java
-// src/test/java/com/github/claudecodegui/model/PromptScopeTest.java
-package com.github.claudecodegui.model;
+// src/test/java/com/github/ccxgui/model/PromptScopeTest.java
+package com.github.ccxgui.model;
 
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
@@ -61,8 +61,8 @@ Expected: FAIL with "class not found"
 **Step 3: Write minimal implementation**
 
 ```java
-// src/main/java/com/github/claudecodegui/model/PromptScope.java
-package com.github.claudecodegui.model;
+// src/main/java/com/github/ccxgui/model/PromptScope.java
+package com.github.ccxgui.model;
 
 public enum PromptScope {
     GLOBAL("global"),
@@ -101,7 +101,7 @@ Expected: PASS
 **Step 5: Commit**
 
 ```bash
-git add src/main/java/com/github/claudecodegui/model/PromptScope.java src/test/java/com/github/claudecodegui/model/PromptScopeTest.java
+git add src/main/java/com/github/ccxgui/model/PromptScope.java src/test/java/com/github/ccxgui/model/PromptScopeTest.java
 git commit -m "feat: add PromptScope enum for global/project scopes"
 ```
 
@@ -110,14 +110,14 @@ git commit -m "feat: add PromptScope enum for global/project scopes"
 ### Task 2: Refactor PromptManager to AbstractPromptManager
 
 **Files:**
-- Rename: `src/main/java/com/github/claudecodegui/settings/PromptManager.java` → `src/main/java/com/github/claudecodegui/settings/AbstractPromptManager.java`
-- Modify: `src/main/java/com/github/claudecodegui/settings/AbstractPromptManager.java`
+- Rename: `src/main/java/com/github/ccxgui/settings/PromptManager.java` → `src/main/java/com/github/ccxgui/settings/AbstractPromptManager.java`
+- Modify: `src/main/java/com/github/ccxgui/settings/AbstractPromptManager.java`
 
 **Step 1: Write tests for abstract manager (test global manager will validate this)**
 
 ```java
-// src/test/java/com/github/claudecodegui/settings/AbstractPromptManagerTest.java
-package com.github.claudecodegui.settings;
+// src/test/java/com/github/ccxgui/settings/AbstractPromptManagerTest.java
+package com.github.ccxgui.settings;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -226,17 +226,17 @@ Expected: FAIL (class not found)
 
 ```bash
 # Rename the file
-git mv src/main/java/com/github/claudecodegui/settings/PromptManager.java src/main/java/com/github/claudecodegui/settings/AbstractPromptManager.java
+git mv src/main/java/com/github/ccxgui/settings/PromptManager.java src/main/java/com/github/ccxgui/settings/AbstractPromptManager.java
 ```
 
 **Step 4: Make the class abstract and extract template methods**
 
-Modify `src/main/java/com/github/claudecodegui/settings/AbstractPromptManager.java`:
+Modify `src/main/java/com/github/ccxgui/settings/AbstractPromptManager.java`:
 
 ```java
-package com.github.claudecodegui.settings;
+package com.github.ccxgui.settings;
 
-import com.github.claudecodegui.model.ConflictStrategy;
+import com.github.ccxgui.model.ConflictStrategy;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -353,13 +353,13 @@ git commit -m "refactor: convert PromptManager to AbstractPromptManager
 ### Task 3: Create GlobalPromptManager
 
 **Files:**
-- Create: `src/main/java/com/github/claudecodegui/settings/GlobalPromptManager.java`
+- Create: `src/main/java/com/github/ccxgui/settings/GlobalPromptManager.java`
 
 **Step 1: Write the failing test**
 
 ```java
-// src/test/java/com/github/claudecodegui/settings/GlobalPromptManagerTest.java
-package com.github.claudecodegui.settings;
+// src/test/java/com/github/ccxgui/settings/GlobalPromptManagerTest.java
+package com.github.ccxgui.settings;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -434,8 +434,8 @@ Expected: FAIL (class not found)
 **Step 3: Write minimal implementation**
 
 ```java
-// src/main/java/com/github/claudecodegui/settings/GlobalPromptManager.java
-package com.github.claudecodegui.settings;
+// src/main/java/com/github/ccxgui/settings/GlobalPromptManager.java
+package com.github.ccxgui.settings;
 
 import com.google.gson.Gson;
 
@@ -475,7 +475,7 @@ Expected: PASS
 **Step 5: Commit**
 
 ```bash
-git add src/main/java/com/github/claudecodegui/settings/GlobalPromptManager.java src/test/java/com/github/claudecodegui/settings/GlobalPromptManagerTest.java
+git add src/main/java/com/github/ccxgui/settings/GlobalPromptManager.java src/test/java/com/github/ccxgui/settings/GlobalPromptManagerTest.java
 git commit -m "feat: add GlobalPromptManager for global prompts
 
 - Extends AbstractPromptManager
@@ -488,13 +488,13 @@ git commit -m "feat: add GlobalPromptManager for global prompts
 ### Task 4: Create ProjectPromptManager
 
 **Files:**
-- Create: `src/main/java/com/github/claudecodegui/settings/ProjectPromptManager.java`
+- Create: `src/main/java/com/github/ccxgui/settings/ProjectPromptManager.java`
 
 **Step 1: Write the failing test**
 
 ```java
-// src/test/java/com/github/claudecodegui/settings/ProjectPromptManagerTest.java
-package com.github.claudecodegui.settings;
+// src/test/java/com/github/ccxgui/settings/ProjectPromptManagerTest.java
+package com.github.ccxgui.settings;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -579,8 +579,8 @@ Expected: FAIL (class not found)
 **Step 3: Write minimal implementation**
 
 ```java
-// src/main/java/com/github/claudecodegui/settings/ProjectPromptManager.java
-package com.github.claudecodegui.settings;
+// src/main/java/com/github/ccxgui/settings/ProjectPromptManager.java
+package com.github.ccxgui.settings;
 
 import com.google.gson.Gson;
 import com.intellij.openapi.project.Project;
@@ -629,7 +629,7 @@ Expected: PASS
 **Step 5: Commit**
 
 ```bash
-git add src/main/java/com/github/claudecodegui/settings/ProjectPromptManager.java src/test/java/com/github/claudecodegui/settings/ProjectPromptManagerTest.java
+git add src/main/java/com/github/ccxgui/settings/ProjectPromptManager.java src/test/java/com/github/ccxgui/settings/ProjectPromptManagerTest.java
 git commit -m "feat: add ProjectPromptManager for project prompts
 
 - Extends AbstractPromptManager
@@ -642,15 +642,15 @@ git commit -m "feat: add ProjectPromptManager for project prompts
 ### Task 5: Create PromptManagerFactory
 
 **Files:**
-- Create: `src/main/java/com/github/claudecodegui/settings/PromptManagerFactory.java`
+- Create: `src/main/java/com/github/ccxgui/settings/PromptManagerFactory.java`
 
 **Step 1: Write the failing test**
 
 ```java
-// src/test/java/com/github/claudecodegui/settings/PromptManagerFactoryTest.java
-package com.github.claudecodegui.settings;
+// src/test/java/com/github/ccxgui/settings/PromptManagerFactoryTest.java
+package com.github.ccxgui.settings;
 
-import com.github.claudecodegui.model.PromptScope;
+import com.github.ccxgui.model.PromptScope;
 import com.google.gson.Gson;
 import com.intellij.openapi.project.Project;
 import org.junit.jupiter.api.Test;
@@ -709,10 +709,10 @@ Expected: FAIL (class not found)
 **Step 3: Write minimal implementation**
 
 ```java
-// src/main/java/com/github/claudecodegui/settings/PromptManagerFactory.java
-package com.github.claudecodegui.settings;
+// src/main/java/com/github/ccxgui/settings/PromptManagerFactory.java
+package com.github.ccxgui.settings;
 
-import com.github.claudecodegui.model.PromptScope;
+import com.github.ccxgui.model.PromptScope;
 import com.google.gson.Gson;
 import com.intellij.openapi.project.Project;
 
@@ -762,7 +762,7 @@ Expected: PASS
 **Step 5: Commit**
 
 ```bash
-git add src/main/java/com/github/claudecodegui/settings/PromptManagerFactory.java src/test/java/com/github/claudecodegui/settings/PromptManagerFactoryTest.java
+git add src/main/java/com/github/ccxgui/settings/PromptManagerFactory.java src/test/java/com/github/ccxgui/settings/PromptManagerFactoryTest.java
 git commit -m "feat: add PromptManagerFactory for scope-based manager creation
 
 - Factory pattern for creating global or project managers
@@ -775,7 +775,7 @@ git commit -m "feat: add PromptManagerFactory for scope-based manager creation
 ### Task 6: Update CodemossSettingsService
 
 **Files:**
-- Modify: `src/main/java/com/github/claudecodegui/CodemossSettingsService.java:40,77`
+- Modify: `src/main/java/com/github/ccxgui/settings/CodemossSettingsService.java:40,77`
 
 **Step 1: Write tests for scope-based operations**
 
@@ -804,7 +804,7 @@ Expected: FAIL (methods not found)
 
 **Step 3: Update CodemossSettingsService**
 
-Modify `src/main/java/com/github/claudecodegui/CodemossSettingsService.java`:
+Modify `src/main/java/com/github/ccxgui/settings/CodemossSettingsService.java`:
 
 ```java
 // Remove the old promptManager field and replace with:
@@ -887,7 +887,7 @@ Expected: PASS
 **Step 5: Commit**
 
 ```bash
-git add src/main/java/com/github/claudecodegui/CodemossSettingsService.java
+git add src/main/java/com/github/ccxgui/settings/CodemossSettingsService.java
 git commit -m "refactor: add scope-aware prompt methods to CodemossSettingsService
 
 - Add getPromptManager(PromptScope) method
@@ -901,7 +901,7 @@ git commit -m "refactor: add scope-aware prompt methods to CodemossSettingsServi
 ### Task 7: Update PromptHandler for Scope Support
 
 **Files:**
-- Modify: `src/main/java/com/github/claudecodegui/handler/PromptHandler.java`
+- Modify: `src/main/java/com/github/ccxgui/handler/PromptHandler.java`
 
 **Step 1: Add tests for scope parameter**
 
@@ -943,7 +943,7 @@ Expected: FAIL (scope not parsed)
 
 **Step 3: Update PromptHandler methods**
 
-Modify `src/main/java/com/github/claudecodegui/handler/PromptHandler.java`:
+Modify `src/main/java/com/github/ccxgui/handler/PromptHandler.java`:
 
 ```java
 // Add new message types to SUPPORTED_TYPES:
@@ -1116,7 +1116,7 @@ Expected: PASS
 **Step 5: Commit**
 
 ```bash
-git add src/main/java/com/github/claudecodegui/handler/PromptHandler.java
+git add src/main/java/com/github/ccxgui/handler/PromptHandler.java
 git commit -m "feat: add scope support to PromptHandler
 
 - Parse scope parameter from all prompt operations

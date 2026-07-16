@@ -384,11 +384,11 @@ if (!hasOverlap) {
 - `ai-bridge/channels/claude-channel.js` — 回退入口
 
 ### Java 后端
-- `src/main/java/com/github/claudecodegui/provider/claude/ClaudeSDKBridge.java` — daemon vs per-process 路由（L365-371 daemon 优先）
-- `src/main/java/com/github/claudecodegui/session/ClaudeMessageHandler.java` — 消息编排
-- `src/main/java/com/github/claudecodegui/session/ReplayDeduplicator.java` — 去重器（阶段 1 后纯文本 turn 空跑）
-- `src/main/java/com/github/claudecodegui/session/MessageMerger.java` — 块合并（**新阶段纵深防御位置**）
-- `src/test/java/com/github/claudecodegui/session/ClaudeMessageHandlerDedupTest.java` — 测试
+- `src/main/java/com/github/ccxgui/provider/claude/ClaudeSDKBridge.java` — daemon vs per-process 路由（L365-371 daemon 优先）
+- `src/main/java/com/github/ccxgui/session/ClaudeMessageHandler.java` — 消息编排
+- `src/main/java/com/github/ccxgui/session/ReplayDeduplicator.java` — 去重器（阶段 1 后纯文本 turn 空跑）
+- `src/main/java/com/github/ccxgui/session/MessageMerger.java` — 块合并（**新阶段纵深防御位置**）
+- `src/test/java/com/github/ccxgui/session/ClaudeMessageHandlerDedupTest.java` — 测试
 
 ### 前端（**新阶段 2/3 主战场**）
 - `webview/src/hooks/windowCallbacks/registerCallbacks/streamingCallbacks.ts` — delta 累加 + 50ms `setTimeout` 节流

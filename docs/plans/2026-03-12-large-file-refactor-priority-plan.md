@@ -15,7 +15,7 @@
 
 这 4 个文件最适合作为第一轮拆分目标。
 
-### 1. `src/main/java/com/github/claudecodegui/handler/SettingsHandler.java`
+### 1. `src/main/java/com/github/ccxgui/handler/SettingsHandler.java`
 
 **当前判断：** 第一优先级，最值得先拆。
 
@@ -70,7 +70,7 @@
 
 ---
 
-### 3. `src/main/java/com/github/claudecodegui/handler/ProviderHandler.java`
+### 3. `src/main/java/com/github/ccxgui/handler/provider/ProviderHandler.java`
 
 **当前判断：** 后端 handler 中很适合做第二刀。
 
@@ -123,7 +123,7 @@
 
 ## 第二批：建议第一批完成后执行
 
-### 5. `src/main/java/com/github/claudecodegui/handler/FileHandler.java`
+### 5. `src/main/java/com/github/ccxgui/handler/file/FileHandler.java`
 
 **建议原因：**
 - 适合按数据来源拆分：打开文件、最近文件、文件系统扫描、活动终端/服务。
@@ -137,7 +137,7 @@
 
 ---
 
-### 6. `src/main/java/com/github/claudecodegui/handler/HistoryHandler.java`
+### 6. `src/main/java/com/github/ccxgui/handler/history/HistoryHandler.java`
 
 **建议原因：**
 - 可以按“加载历史 / 深搜 / 删除 / 导出 / 注入前端消息”拆分。
@@ -151,7 +151,7 @@
 
 ---
 
-### 7. `src/main/java/com/github/claudecodegui/provider/claude/ClaudeHistoryReader.java`
+### 7. `src/main/java/com/github/ccxgui/provider/claude/ClaudeHistoryReader.java`
 
 **建议原因：**
 - 读多写少，职责边界比较自然。
@@ -181,19 +181,19 @@
 
 以下文件虽然也很大，但不建议作为当前第一波拆分目标。
 
-### `src/main/java/com/github/claudecodegui/provider/claude/ClaudeSDKBridge.java`
+### `src/main/java/com/github/ccxgui/provider/claude/ClaudeSDKBridge.java`
 - 涉及进程生命周期、流式输出、MCP、rewind、daemon 等高风险路径。
 - 建议等外围 handler 和前端入口整理后再处理。
 
-### `src/main/java/com/github/claudecodegui/ClaudeSession.java`
+### `src/main/java/com/github/ccxgui/session/ClaudeSession.java`
 - 属于全局会话核心状态对象，牵涉面很广。
 - 适合在上层调用边界稳定后，按 message store、usage、session metadata 再拆。
 
-### `src/main/java/com/github/claudecodegui/permission/PermissionService.java`
+### `src/main/java/com/github/ccxgui/permission/PermissionService.java`
 - 涉及文件监听、并发、跨项目 dialog 协调、response 写回，风险最高。
 - 先不要把它作为“练手型重构”目标。
 
-### `src/main/java/com/github/claudecodegui/skill/SlashCommandRegistry.java`
+### `src/main/java/com/github/ccxgui/skill/SlashCommandRegistry.java`
 - 虽然很大，但改动频率没有前面几个高，优先级可后置。
 
 ---
@@ -237,7 +237,7 @@
 
 如果按最低风险推进，建议先只做“第一批”中的前两个文件：
 
-- `src/main/java/com/github/claudecodegui/handler/SettingsHandler.java`
+- `src/main/java/com/github/ccxgui/handler/SettingsHandler.java`
 - `webview/src/components/settings/index.tsx`
 
 这两个文件拆完后，再重新评估 `App.tsx` 与 `ProviderHandler.java` 的剩余复杂度，继续滚动更新本计划。

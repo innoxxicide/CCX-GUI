@@ -33,9 +33,9 @@
    - 系统 `tmp/claude-agent-tmp` 目录中的残留文件会在指令结束后清理；若需排查，可手动查看该目录。
 
 ## 相关文件
-- `src/main/java/com/github/claudecodegui/ClaudeSDKBridge.java`：负责设置 `TMPDIR`、清理临时文件、注入 `CLAUDE_PERMISSION_DIR`；
+- `src/main/java/com/github/ccxgui/provider/claude/ClaudeSDKBridge.java`：负责设置 `TMPDIR`、清理临时文件、注入 `CLAUDE_PERMISSION_DIR`；
 - `claude-bridge/permission-handler.js`：读取 `CLAUDE_PERMISSION_DIR` 并在该目录下与 Java 交互；
-- `src/main/java/com/github/claudecodegui/permission/PermissionService.java`：继续监听系统 `tmp/claude-permission` 目录（无需修改）。
+- `src/main/java/com/github/ccxgui/permission/PermissionService.java`：继续监听系统 `tmp/claude-permission` 目录（无需修改）。
 
 如需进一步扩展（例如把权限记录持久化到项目目录），可以基于 `CLAUDE_PERMISSION_DIR` 再封装自定义路径逻辑。
 
