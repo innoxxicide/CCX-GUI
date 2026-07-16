@@ -57,16 +57,13 @@ webview/playwright-report/
 
 src/main/resources/html/*
 
-.specify
-.claude
-specs
-CLAUDE.md
-.idea/copilot*
 **/.nvmrc
-.github/*.md
 webview/src/version/version.ts
-AGENTS.md
-openspec/
+
+# Agent instructions, skills and specs are versioned as part of the project:
+# CLAUDE.md, AGENTS.md, .agents/, .claude/, .specify/, specs/, openspec/.
+# Only machine-local overrides stay out.
+.claude/settings.local.json
 
 # 自定义沙箱目录（如果启用）
 .sandbox/
@@ -77,6 +74,3 @@ logs/*.log
 .workflow
 .worktrees/
 .omx/
-
-.codex
-.opencode
