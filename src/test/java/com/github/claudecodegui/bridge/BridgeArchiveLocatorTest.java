@@ -15,7 +15,7 @@ public class BridgeArchiveLocatorTest {
     public void classpathBuildDirectoryAddsAncestorSandboxPluginCandidates() throws Exception {
         Path sandboxRoot = Files.createTempDirectory("ccgui-sandbox");
         Path classpathDir = sandboxRoot.resolve("build/classes/java/main");
-        Path pluginDir = sandboxRoot.resolve("build/idea-sandbox/IC-2024.3.1/plugins/idea-claude-code-gui");
+        Path pluginDir = sandboxRoot.resolve("build/idea-sandbox/IC-2024.3.1/plugins/ccx-gui");
         Files.createDirectories(classpathDir);
         Files.createDirectories(pluginDir);
 
@@ -28,7 +28,7 @@ public class BridgeArchiveLocatorTest {
 
     @Test
     public void installedPluginDirectoryRemainsFirstCandidate() throws Exception {
-        Path pluginDir = Files.createTempDirectory("idea-claude-code-gui");
+        Path pluginDir = Files.createTempDirectory("ccx-gui");
 
         List<File> candidates = BridgeArchiveLocator.collectPluginDirCandidates(pluginDir.toFile());
 

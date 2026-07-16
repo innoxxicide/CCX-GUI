@@ -89,7 +89,7 @@ public class NodeProcessRegistryHelpersTest {
 
     // ============================================================================
     // Ownership check — prevents IDEA from claiming PyCharm's daemons as orphans
-    // (and vice-versa) when both run CC GUI side-by-side.
+    // (and vice-versa) when both run CCX GUI side-by-side.
     // ============================================================================
 
     @Test

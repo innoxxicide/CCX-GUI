@@ -1,6 +1,6 @@
 <idea-plugin>
-    <id>com.github.idea-claude-code-gui</id>
-    <name>CC GUI (Claude or Codex)</name>
+    <id>com.github.ccx-gui</id>
+    <name>CCX GUI (Claude or Codex)</name>
     <vendor>MossX</vendor>
 
     <!-- Resource bundle for i18n -->
@@ -48,7 +48,7 @@
 
         <h2>使用方法</h2>
         <ul>
-            <li>从右侧边栏打开 CC GUI 工具窗口</li>
+            <li>从右侧边栏打开 CCX GUI 工具窗口</li>
             <li>选中代码后使用 <kbd>Ctrl+Alt+K</kbd>（Win/Linux）或 <kbd>Cmd+Alt+K</kbd>（Mac）发送给 AI</li>
             <li>即时获得 AI 驱动的代码辅助和智能建议</li>
         </ul>
@@ -65,11 +65,11 @@
     <depends optional="true" config-file="python-features.xml">com.intellij.modules.python</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <!-- CC GUI tool window (includes history feature) -->
+        <!-- CCX GUI tool window (includes history feature) -->
         <toolWindow id="CCG"
                     anchor="right"
                     factoryClass="com.github.claudecodegui.ui.toolwindow.ClaudeSDKToolWindow"
-                    icon="/icons/cc-gui-icon.svg"
+                    icon="/icons/ccx-gui-icon.svg"
                     canCloseContents="true"/>
 
         <!-- Pre-extract AI Bridge on project open to avoid EDT freeze -->
@@ -86,14 +86,14 @@
                                 implementation="com.github.claudecodegui.notifications.ClaudeStatusBarWidget$Factory"/>
 
         <!-- Notification group for DevTools and other balloon notifications -->
-        <notificationGroup id="CC GUI Notifications" displayType="BALLOON"/>
+        <notificationGroup id="CCX GUI Notifications" displayType="BALLOON"/>
     </extensions>
 
     <actions>
-        <!-- Action to send selected code to CC GUI -->
+        <!-- Action to send selected code to CCX GUI -->
         <action id="ClaudeCodeGUI.SendSelectionToTerminalAction"
                 class="com.github.claudecodegui.action.editor.SendSelectionToTerminalAction"
-                icon="/icons/cc-gui-icon.svg">
+                icon="/icons/ccx-gui-icon.svg">
             <!-- Add to editor context menu (displayed at the top) -->
             <add-to-group group-id="EditorPopupMenu" anchor="first"/>
             <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt K"/>
@@ -104,7 +104,7 @@
         <!-- Copy AI Reference Action -->
         <action id="ClaudeCodeGUI.CopySelectionReferenceAction"
                 class="com.github.claudecodegui.action.editor.CopySelectionReferenceAction"
-                icon="/icons/cc-gui-icon.svg">
+                icon="/icons/ccx-gui-icon.svg">
             <add-to-group group-id="EditorPopupMenu"
                            anchor="after"
                            relative-to-action="ClaudeCodeGUI.SendSelectionToTerminalAction"/>
@@ -113,7 +113,7 @@
         <!-- Quick Fix with Claude Action -->
         <action id="ClaudeCodeGUI.QuickFixWithClaudeAction"
                 class="com.github.claudecodegui.action.editor.QuickFixWithClaudeAction"
-                icon="/icons/cc-gui-icon.svg">
+                icon="/icons/ccx-gui-icon.svg">
             <add-to-group group-id="EditorPopupMenu"
                            anchor="after"
                            relative-to-action="ClaudeCodeGUI.SendSelectionToTerminalAction"/>
@@ -155,16 +155,16 @@
         <!-- Action to send file path from the file tree to the input box -->
         <action id="ClaudeCodeGUI.SendFilePathToInputAction"
                 class="com.github.claudecodegui.action.editor.SendFilePathToInputAction"
-                icon="/icons/cc-gui-icon.svg">
+                icon="/icons/ccx-gui-icon.svg">
             <!-- Add to project file tree and editor tab context menus -->
             <add-to-group group-id="ProjectViewPopupMenu" anchor="first"/>
             <add-to-group group-id="EditorTabPopupMenu" anchor="first"/>
         </action>
 
-        <!-- Action to send the selected console text to CC GUI -->
+        <!-- Action to send the selected console text to CCX GUI -->
         <action id="ClaudeCodeGUI.SendConsoleSelectionToInputAction"
                 class="com.github.claudecodegui.action.console.SendConsoleSelectionToInputAction"
-                icon="/icons/cc-gui-icon.svg">
+                icon="/icons/ccx-gui-icon.svg">
             <add-to-group group-id="ConsoleView.PopupMenu" anchor="last"/>
         </action>
 
@@ -219,7 +219,7 @@
         </action>
 
         <!--
-          Hide CC GUI Panel. A standalone action with NO default keyboard shortcut: users may bind one
+          Hide CCX GUI Panel. A standalone action with NO default keyboard shortcut: users may bind one
           in Settings | Keymap to hide the tool window while focus is in the IDE (e.g. the editor).
           NOTE: The Shift+Esc shortcut that hides the panel while focus is INSIDE the webview is
           implemented separately in WebviewInitializer via a JS keydown listener
@@ -229,7 +229,7 @@
         -->
         <action id="ClaudeCodeGUI.HidePanelAction"
                 class="com.github.claudecodegui.action.HidePanelAction"
-                text="Hide CC GUI Panel"
-                description="Hide the CC GUI tool window panel"/>
+                text="Hide CCX GUI Panel"
+                description="Hide the CCX GUI tool window panel"/>
     </actions>
 </idea-plugin>

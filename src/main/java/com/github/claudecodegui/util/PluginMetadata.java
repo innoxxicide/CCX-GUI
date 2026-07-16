@@ -19,7 +19,7 @@ import java.util.jar.Manifest;
 public final class PluginMetadata {
 
     private static final Logger LOG = Logger.getInstance(PluginMetadata.class);
-    private static final String FALLBACK_PLUGIN_ID = "com.github.idea-claude-code-gui";
+    private static final String FALLBACK_PLUGIN_ID = "com.github.ccx-gui";
     private static final String FALLBACK_VERSION = "unknown";
 
     private static volatile String cachedPluginId;

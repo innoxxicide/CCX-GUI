@@ -41,7 +41,7 @@ tasks.named('checkstyleTest') {
     enabled = false
 }
 
-group = 'com.github.idea-claude-code-gui'
+group = 'com.github.ccx-gui'
 version = '0.4.7'
 
 java {

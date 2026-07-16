@@ -90,7 +90,7 @@ describe('useSettingsBasicActions', () => {
       mode: 'customFile',
       effectiveMode: 'customFile',
       customFontPath: '/tmp/my-code-font.ttf',
-      fontFamily: 'CC GUI Code Custom',
+      fontFamily: 'CCX GUI Code Custom',
       fontSize: 13,
       lineSpacing: 1,
     };

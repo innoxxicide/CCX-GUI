@@ -59,7 +59,7 @@ function getWorkingDirs(pids) {
 
 /**
  * Extract a short project name from a full directory path.
- * e.g. "/Users/zhu/Desktop/idea-claude-code-gui" -> "idea-claude-code-gui"
+ * e.g. "/Users/zhu/Desktop/ccx-gui" -> "ccx-gui"
  */
 function extractProjectName(dir) {
   if (!dir || dir === '/') return ''
@@ -86,7 +86,7 @@ function getProcesses() {
     const command = parts.slice(4).join(' ')
 
     const isClaude = /\/claude(\s|$)/.test(command) || /^\s*claude\s*$/.test(command)
-    const isDaemon = command.includes('idea-claude-code-gui') && command.includes('daemon.js')
+    const isDaemon = command.includes('ccx-gui') && command.includes('daemon.js')
     const isStreamJson = command.includes('--output-format stream-json')
     const isMcp = command.includes('mcp-server') || command.includes('mcp_server')
 

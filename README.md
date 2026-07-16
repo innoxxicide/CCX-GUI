@@ -1,6 +1,6 @@
 <div align="center">
 
-# CC GUI（Claude or Codex）
+# CCX GUI（Claude or Codex）
 
 > Originally Claude Code GUI
 
@@ -14,7 +14,7 @@
 
 </div>
 
-> To mitigate Claude trademark risks, this project has been renamed to CC GUI (originally Claude Code GUI). The logo has also been updated to reduce Chinese-specific elements. Regarding security, a        
+> To mitigate Claude trademark risks, this project has been renamed to CCX GUI (originally Claude Code GUI). The logo has also been updated to reduce Chinese-specific elements. Regarding security, a        
   /security-review audit will be conducted before each minor version release, and a comprehensive claude-code-security audit will be performed every 10 minor versions. 
 
 A powerful IntelliJ IDEA plugin that provides a visual interface for **Claude Code** and **OpenAI Codex** dual AI tools, making AI-assisted programming more efficient and intuitive.
@@ -25,7 +25,7 @@ A powerful IntelliJ IDEA plugin that provides a visual interface for **Claude Co
 
 ## Installation
 
-[CC GUI（Claude or Codex） Installation](https://plugins.jetbrains.com/plugin/29342-cc-gui-claude-or-codex-)
+[CCX GUI（Claude or Codex） Installation](https://plugins.jetbrains.com/plugin/29342-cc-gui-claude-or-codex-)
 
 ---
 

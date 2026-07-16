@@ -4,7 +4,7 @@ Guidance for Claude Code when working in this repository. Its main job is **rout
 
 ## What this project is
 
-**CC GUI (Claude or Codex)** — an IntelliJ IDEA plugin (currently v0.4.7) that gives Claude Code and OpenAI Codex a visual interface inside the IDE. It is a three-layer system, and almost every non-trivial change crosses at least two of the layers:
+**CCX GUI (Claude or Codex)** — an IntelliJ IDEA plugin (currently v0.4.7) that gives Claude Code and OpenAI Codex a visual interface inside the IDE. It is a three-layer system, and almost every non-trivial change crosses at least two of the layers:
 
 | Layer | Path | Stack |
 |---|---|---|

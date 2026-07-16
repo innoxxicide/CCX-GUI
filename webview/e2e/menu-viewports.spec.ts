@@ -32,7 +32,7 @@ const NODE_PROCESS_SNAPSHOT = {
       uptimeMs: 60_000,
       command: 'node channel.js',
       activeRequestCount: 1,
-      tabName: 'CC GUI',
+      tabName: 'CCX GUI',
       orphan: false,
     },
     {

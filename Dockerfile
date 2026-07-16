@@ -1,4 +1,4 @@
-# Builds the CC GUI IntelliJ plugin distribution (.zip) inside a container.
+# Builds the CCX GUI IntelliJ plugin distribution (.zip) inside a container.
 #
 # Build the image:
 #   docker build -t cc-gui-build .
