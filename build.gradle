@@ -276,7 +276,7 @@ tasks.named('runIde') {
     systemProperty 'idea.plugin.in.sandbox.mode', 'true'
 
     // Configure log output to console
-    systemProperty 'idea.log.debug.categories', '#com.github.claudecodegui'
+    systemProperty 'idea.log.debug.categories', '#com.github.ccxgui'
 
     // Point bridge resolver to pre-extracted ai-bridge with node_modules (dev only)
     def stableBridge = layout.buildDirectory.dir("stable-ai-bridge").get().asFile

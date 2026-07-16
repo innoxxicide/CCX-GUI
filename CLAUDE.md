@@ -8,7 +8,7 @@ Guidance for Claude Code when working in this repository. Its main job is **rout
 
 | Layer | Path | Stack |
 |---|---|---|
-| Plugin backend | `src/main/java/com/github/claudecodegui/` | Java 17 target, Gradle, IntelliJ Platform |
+| Plugin backend | `src/main/java/com/github/ccxgui/` | Java 17 target, Gradle, IntelliJ Platform |
 | Webview UI | `webview/` | React 19 + TypeScript + Vite, rendered in JCEF |
 | Agent bridge | `ai-bridge/` | Node 22, ESM, spawns/drives the Claude and Codex SDKs |
 
@@ -151,7 +151,8 @@ There are no project-level agents, hooks, or slash commands configured. Skills c
 
 # Traps
 
-- **Doc paths drift.** Verify a path before trusting it. Known-stale: `CodemossSettingsService.java` is under `settings/`, `DependencyManager.java` under `dependency/`, rewind logic is in `message-rewind.js` (not `message-service.js`), and every `claude-bridge/` reference means `ai-bridge/`. Line-number anchors in docs are generally dead.
+- **Doc paths drift.** Verify a path before trusting it. Known-stale: everything under `docs/` still says `com.github.claudecodegui` — the Java package is now `com.github.ccxgui`, renamed so this plugin's classes do not collide with the upstream plugin it forked from. Also `CodemossSettingsService.java` is under `settings/`, `DependencyManager.java` under `dependency/`, rewind logic is in `message-rewind.js` (not `message-service.js`), and every `claude-bridge/` reference means `ai-bridge/`. Line-number anchors in docs are generally dead.
+- **Class FQNs are load-bearing for coexistence.** IntelliJ keys `@Service` light services by class *name*, across the whole container — two installed plugins sharing a class FQN resolve to each other's instances and throw ClassCastException. That is why the package is `ccxgui`, and why nothing here may move back under a name upstream also uses.
 - **Windows is the primary dev environment here.** Prefer `docs/codex/docs/windows_sandbox_security.md` over the generic sandbox doc, and remember the stdin-over-argv rule from `docs/skills/cmdline-argument-escaping-bug.md`.
 - `docs/codex/CODEX-INTEGRATION-QUICKSTART.md` is a good orientation read, but its capability matrix is wrong: it claims Codex has no attachment support, while `ai-bridge/services/codex/message-service.js` builds `local_image` inputs today. Its `@openai/codex-sdk` version pin is a snapshot.
 - The vendored `docs/codex/README.md` is OpenAI's repo README; its non-`docs/` relative links are broken here because those paths were never vendored.

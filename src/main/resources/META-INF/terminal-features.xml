@@ -5,12 +5,12 @@
     -->
     <extensions defaultExtensionNs="com.intellij">
         <!-- Monitor Terminal Output - Only active when Terminal plugin is installed -->
-        <postStartupActivity implementation="com.github.claudecodegui.terminal.TerminalMonitorService"/>
+        <postStartupActivity implementation="com.github.ccxgui.terminal.TerminalMonitorService"/>
     </extensions>
 
     <actions>
         <action id="CCXGUI.SendTerminalSelectionToInputAction"
-                class="com.github.claudecodegui.terminal.SendTerminalSelectionToInputAction"
+                class="com.github.ccxgui.terminal.SendTerminalSelectionToInputAction"
                 icon="/icons/ccx-gui-icon.svg">
             <add-to-group group-id="Terminal.OutputContextMenu" anchor="last"/>
             <add-to-group group-id="Terminal.PromptContextMenu" anchor="last"/>

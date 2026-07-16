@@ -145,4 +145,4 @@ jobs:
         run: npm ci
 
       - name: Run WSL integration tests
-        run: ./gradlew test --tests "com.github.claudecodegui.bridge.NodeDetectorWslTest"
+        run: ./gradlew test --tests "com.github.ccxgui.bridge.NodeDetectorWslTest"
