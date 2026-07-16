@@ -227,7 +227,7 @@ public class QuickFixWithClaudeAction extends AnAction implements DumbAware {
     }
 
     private void executeQuickFix(@NotNull Project project, @NotNull Editor editor, @NotNull String userPrompt) {
-        ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("CCG");
+        ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("CCXG");
         if (toolWindow == null) {
             ClaudeNotifier.showError(project, ClaudeCodeGuiBundle.message("quickfix.toolWindowNotFound"));
             return;

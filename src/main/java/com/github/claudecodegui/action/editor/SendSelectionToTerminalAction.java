@@ -140,7 +140,7 @@ public class SendSelectionToTerminalAction extends AnAction implements DumbAware
         try {
             // Get the plugin tool window
             ToolWindowManager toolWindowManager = ToolWindowManager.getInstance(project);
-            ToolWindow toolWindow = toolWindowManager.getToolWindow("CCG");
+            ToolWindow toolWindow = toolWindowManager.getToolWindow("CCXG");
 
             if (toolWindow != null) {
                 // If the window is not visible, activate it first and wait for it to open before sending content
@@ -204,7 +204,7 @@ public class SendSelectionToTerminalAction extends AnAction implements DumbAware
      */
     private void activateToolWindow(@NotNull Project project) {
         ToolWindowManager toolWindowManager = ToolWindowManager.getInstance(project);
-        ToolWindow toolWindow = toolWindowManager.getToolWindow("CCG");
+        ToolWindow toolWindow = toolWindowManager.getToolWindow("CCXG");
         if (toolWindow == null) {
             return;
         }

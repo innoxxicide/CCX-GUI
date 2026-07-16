@@ -41,7 +41,7 @@ import java.util.concurrent.TimeoutException;
 public class ClaudeSDKToolWindow implements ToolWindowFactory, DumbAware {
 
     private static final Logger LOG = Logger.getInstance(ClaudeSDKToolWindow.class);
-    public static final String TOOL_WINDOW_ID = "CCG";
+    public static final String TOOL_WINDOW_ID = "CCXG";
     public static final String TOOL_WINDOW_DISPLAY_NAME = "CCX GUI";
     private static final Map<Project, ClaudeChatWindow> instances = new ConcurrentHashMap<>();
     private static final Map<Content, ClaudeChatWindow> contentToWindowMap = new ConcurrentHashMap<>();
@@ -258,7 +258,7 @@ public class ClaudeSDKToolWindow implements ToolWindowFactory, DumbAware {
         if (PlatformUtils.isPluginDevMode()) {
             com.intellij.openapi.actionSystem.AnAction devToolsAction =
                     com.intellij.openapi.actionSystem.ActionManager.getInstance()
-                            .getAction("ClaudeCodeGUI.OpenDevToolsAction");
+                            .getAction("CCXGUI.OpenDevToolsAction");
             if (devToolsAction != null) {
                 toolWindow.setTitleActions(java.util.List.of(devToolsAction));
             }
@@ -266,16 +266,16 @@ public class ClaudeSDKToolWindow implements ToolWindowFactory, DumbAware {
 
         com.intellij.openapi.actionSystem.AnAction renameTabAction =
                 com.intellij.openapi.actionSystem.ActionManager.getInstance()
-                        .getAction("ClaudeCodeGUI.RenameTabAction");
+                        .getAction("CCXGUI.RenameTabAction");
         com.intellij.openapi.actionSystem.AnAction detachTabAction =
                 com.intellij.openapi.actionSystem.ActionManager.getInstance()
-                        .getAction("ClaudeCodeGUI.DetachTabAction");
+                        .getAction("CCXGUI.DetachTabAction");
         com.intellij.openapi.actionSystem.AnAction saveAsTemplateAction =
                 com.intellij.openapi.actionSystem.ActionManager.getInstance()
-                        .getAction("ClaudeCodeGUI.SaveAsTemplateAction");
+                        .getAction("CCXGUI.SaveAsTemplateAction");
         com.intellij.openapi.actionSystem.AnAction createFromTemplateAction =
                 com.intellij.openapi.actionSystem.ActionManager.getInstance()
-                        .getAction("ClaudeCodeGUI.CreateFromTemplateAction");
+                        .getAction("CCXGUI.CreateFromTemplateAction");
 
         com.intellij.openapi.actionSystem.DefaultActionGroup gearActions =
                 new com.intellij.openapi.actionSystem.DefaultActionGroup();

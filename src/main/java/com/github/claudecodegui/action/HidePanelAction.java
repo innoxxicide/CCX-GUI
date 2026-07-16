@@ -11,7 +11,7 @@ import org.jetbrains.annotations.NotNull;
 
 public class HidePanelAction extends AnAction implements DumbAware {
 
-    private static final String TOOL_WINDOW_ID = "CCG";
+    private static final String TOOL_WINDOW_ID = "CCXG";
 
     @Override
     public @NotNull ActionUpdateThread getActionUpdateThread() {

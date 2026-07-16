@@ -66,7 +66,7 @@
 
     <extensions defaultExtensionNs="com.intellij">
         <!-- CCX GUI tool window (includes history feature) -->
-        <toolWindow id="CCG"
+        <toolWindow id="CCXG"
                     anchor="right"
                     factoryClass="com.github.claudecodegui.ui.toolwindow.ClaudeSDKToolWindow"
                     icon="/icons/ccx-gui-icon.svg"
@@ -82,7 +82,7 @@
         <postStartupActivity implementation="com.github.claudecodegui.service.RunConfigMonitorService"/>
 
         <!-- StatusBar widget for task notification -->
-        <statusBarWidgetFactory id="ClaudeStatusBarWidget"
+        <statusBarWidgetFactory id="CCXGUIStatusBarWidget"
                                 implementation="com.github.claudecodegui.notifications.ClaudeStatusBarWidget$Factory"/>
 
         <!-- Notification group for DevTools and other balloon notifications -->
@@ -91,7 +91,7 @@
 
     <actions>
         <!-- Action to send selected code to CCX GUI -->
-        <action id="ClaudeCodeGUI.SendSelectionToTerminalAction"
+        <action id="CCXGUI.SendSelectionToTerminalAction"
                 class="com.github.claudecodegui.action.editor.SendSelectionToTerminalAction"
                 icon="/icons/ccx-gui-icon.svg">
             <!-- Add to editor context menu (displayed at the top) -->
@@ -102,58 +102,58 @@
         </action>
 
         <!-- Copy AI Reference Action -->
-        <action id="ClaudeCodeGUI.CopySelectionReferenceAction"
+        <action id="CCXGUI.CopySelectionReferenceAction"
                 class="com.github.claudecodegui.action.editor.CopySelectionReferenceAction"
                 icon="/icons/ccx-gui-icon.svg">
             <add-to-group group-id="EditorPopupMenu"
                            anchor="after"
-                           relative-to-action="ClaudeCodeGUI.SendSelectionToTerminalAction"/>
+                           relative-to-action="CCXGUI.SendSelectionToTerminalAction"/>
         </action>
 
         <!-- Quick Fix with Claude Action -->
-        <action id="ClaudeCodeGUI.QuickFixWithClaudeAction"
+        <action id="CCXGUI.QuickFixWithClaudeAction"
                 class="com.github.claudecodegui.action.editor.QuickFixWithClaudeAction"
                 icon="/icons/ccx-gui-icon.svg">
             <add-to-group group-id="EditorPopupMenu"
                            anchor="after"
-                           relative-to-action="ClaudeCodeGUI.SendSelectionToTerminalAction"/>
+                           relative-to-action="CCXGUI.SendSelectionToTerminalAction"/>
             <keyboard-shortcut keymap="$default" first-keystroke="ctrl shift Q"/>
             <keyboard-shortcut keymap="Mac OS X" first-keystroke="meta shift Q"/>
             <keyboard-shortcut keymap="macOS" first-keystroke="meta shift Q"/>
         </action>
 
         <!-- Create New Tab Action (can be invoked via Find Action or programmatically) -->
-        <action id="ClaudeCodeGUI.CreateNewTabAction"
+        <action id="CCXGUI.CreateNewTabAction"
                 class="com.github.claudecodegui.action.tab.CreateNewTabAction"
                 icon="AllIcons.General.Add"/>
 
         <!-- Rename Tab Action -->
-        <action id="ClaudeCodeGUI.RenameTabAction"
+        <action id="CCXGUI.RenameTabAction"
                 class="com.github.claudecodegui.action.tab.RenameTabAction"
                 icon="AllIcons.Actions.Edit"/>
 
         <!-- Detach Tab Action -->
-        <action id="ClaudeCodeGUI.DetachTabAction"
+        <action id="CCXGUI.DetachTabAction"
                 class="com.github.claudecodegui.action.tab.DetachTabAction"
                 icon="AllIcons.Actions.MoveToWindow"/>
 
         <!-- Save As Template Action -->
-        <action id="ClaudeCodeGUI.SaveAsTemplateAction"
+        <action id="CCXGUI.SaveAsTemplateAction"
                 class="com.github.claudecodegui.action.SaveAsTemplateAction"
                 icon="AllIcons.Actions.Menu_saveall"/>
 
         <!-- Create From Template Action -->
-        <action id="ClaudeCodeGUI.CreateFromTemplateAction"
+        <action id="CCXGUI.CreateFromTemplateAction"
                 class="com.github.claudecodegui.action.CreateFromTemplateAction"
                 icon="AllIcons.Actions.AddMulticaret"/>
 
         <!-- Open DevTools Action for JCEF debugging -->
-        <action id="ClaudeCodeGUI.OpenDevToolsAction"
+        <action id="CCXGUI.OpenDevToolsAction"
                 class="com.github.claudecodegui.action.dev.OpenDevToolsAction"
                 icon="AllIcons.Xml.Browsers.Chromium"/>
 
         <!-- Action to send file path from the file tree to the input box -->
-        <action id="ClaudeCodeGUI.SendFilePathToInputAction"
+        <action id="CCXGUI.SendFilePathToInputAction"
                 class="com.github.claudecodegui.action.editor.SendFilePathToInputAction"
                 icon="/icons/ccx-gui-icon.svg">
             <!-- Add to project file tree and editor tab context menus -->
@@ -162,14 +162,14 @@
         </action>
 
         <!-- Action to send the selected console text to CCX GUI -->
-        <action id="ClaudeCodeGUI.SendConsoleSelectionToInputAction"
+        <action id="CCXGUI.SendConsoleSelectionToInputAction"
                 class="com.github.claudecodegui.action.console.SendConsoleSelectionToInputAction"
                 icon="/icons/ccx-gui-icon.svg">
             <add-to-group group-id="ConsoleView.PopupMenu" anchor="last"/>
         </action>
 
         <!-- Generate Commit Message with AI Action -->
-        <action id="ClaudeCodeGUI.GenerateCommitMessageAction"
+        <action id="CCXGUI.GenerateCommitMessageAction"
                 class="com.github.claudecodegui.action.vcs.GenerateCommitMessageAction"
                 icon="/icons/logo-16.png">
             <!-- Add to VCS Commit toolbar -->
@@ -177,7 +177,7 @@
         </action>
 
         <!-- Chat tool window clipboard actions (scoped to CCG tool window) -->
-        <action id="ClaudeCodeGUI.ChatCopyAction"
+        <action id="CCXGUI.ChatCopyAction"
                 class="com.github.claudecodegui.action.ChatCopyAction"
                 text="Copy (Chat Window)"
                 description="Copy selected text in Claude chat window">
@@ -185,7 +185,7 @@
             <keyboard-shortcut keymap="Mac OS X" first-keystroke="meta C"/>
             <keyboard-shortcut keymap="macOS" first-keystroke="meta C"/>
         </action>
-        <action id="ClaudeCodeGUI.ChatCutAction"
+        <action id="CCXGUI.ChatCutAction"
                 class="com.github.claudecodegui.action.ChatCutAction"
                 text="Cut (Chat Window)"
                 description="Cut selected text in Claude chat window">
@@ -193,7 +193,7 @@
             <keyboard-shortcut keymap="Mac OS X" first-keystroke="meta X"/>
             <keyboard-shortcut keymap="macOS" first-keystroke="meta X"/>
         </action>
-        <action id="ClaudeCodeGUI.ChatPasteAction"
+        <action id="CCXGUI.ChatPasteAction"
                 class="com.github.claudecodegui.action.ChatPasteAction"
                 text="Paste (Chat Window)"
                 description="Paste clipboard text in Claude chat window">
@@ -203,13 +203,13 @@
         </action>
 
         <!-- Chat tool window send action (no default shortcut; dynamically managed by SendShortcutSync) -->
-        <action id="ClaudeCodeGUI.ChatSendAction"
+        <action id="CCXGUI.ChatSendAction"
                 class="com.github.claudecodegui.action.ChatSendAction"
                 text="Send Message (Chat Window)"
                 description="Send message in Claude chat window"/>
 
         <!-- Chat tool window newline action (Shift+Enter always newline; Ctrl+Enter dynamically managed by SendShortcutSync) -->
-        <action id="ClaudeCodeGUI.ChatNewlineAction"
+        <action id="CCXGUI.ChatNewlineAction"
                 class="com.github.claudecodegui.action.ChatNewlineAction"
                 text="Insert Newline (Chat Window)"
                 description="Insert newline in Claude chat window input">
@@ -227,7 +227,7 @@
           action. Shift+Esc is intentionally not registered here to avoid clashing with the IDE's
           built-in HideActiveWindow shortcut.
         -->
-        <action id="ClaudeCodeGUI.HidePanelAction"
+        <action id="CCXGUI.HidePanelAction"
                 class="com.github.claudecodegui.action.HidePanelAction"
                 text="Hide CCX GUI Panel"
                 description="Hide the CCX GUI tool window panel"/>

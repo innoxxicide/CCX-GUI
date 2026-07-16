@@ -21,7 +21,7 @@ import org.jetbrains.annotations.Nullable;
 public abstract class ChatToolWindowAction extends AnAction implements DumbAware {
 
     private static final Logger LOG = Logger.getInstance(ChatToolWindowAction.class);
-    private static final String TOOL_WINDOW_ID = "CCG";
+    private static final String TOOL_WINDOW_ID = "CCXG";
 
     @Override
     public @NotNull ActionUpdateThread getActionUpdateThread() {

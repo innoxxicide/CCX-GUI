@@ -51,7 +51,7 @@ public class ClaudeStatusBarWidget implements CustomStatusBarWidget, StatusBarWi
 
     @Override
     public @NotNull String ID() {
-        return "ClaudeStatusBarWidget";
+        return "CCXGUIStatusBarWidget";
     }
 
     @Override
@@ -81,7 +81,7 @@ public class ClaudeStatusBarWidget implements CustomStatusBarWidget, StatusBarWi
                 @Override
                 public void mouseClicked(MouseEvent e) {
                     if (project.isDisposed()) { return; }
-                    var toolWindow = ToolWindowManager.getInstance(project).getToolWindow("CCG");
+                    var toolWindow = ToolWindowManager.getInstance(project).getToolWindow("CCXG");
                     if (toolWindow != null) {
                         toolWindow.activate(null);
                     }
@@ -251,7 +251,7 @@ public class ClaudeStatusBarWidget implements CustomStatusBarWidget, StatusBarWi
     public static class Factory implements StatusBarWidgetFactory {
         @Override
         public @NotNull String getId() {
-            return "ClaudeStatusBarWidget";
+            return "CCXGUIStatusBarWidget";
         }
 
         @Override
@@ -283,7 +283,7 @@ public class ClaudeStatusBarWidget implements CustomStatusBarWidget, StatusBarWi
         public static ClaudeStatusBarWidget getWidget(@NotNull Project project) {
             StatusBar statusBar = WindowManager.getInstance().getStatusBar(project);
             if (statusBar != null) {
-                StatusBarWidget widget = statusBar.getWidget("ClaudeStatusBarWidget");
+                StatusBarWidget widget = statusBar.getWidget("CCXGUIStatusBarWidget");
                 if (widget instanceof ClaudeStatusBarWidget) { return (ClaudeStatusBarWidget) widget; }
             }
             return null;

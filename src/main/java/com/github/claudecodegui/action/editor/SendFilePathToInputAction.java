@@ -120,7 +120,7 @@ public class SendFilePathToInputAction extends AnAction implements DumbAware {
         try {
             // Get the plugin tool window
             ToolWindowManager toolWindowManager = ToolWindowManager.getInstance(project);
-            ToolWindow toolWindow = toolWindowManager.getToolWindow("CCG");
+            ToolWindow toolWindow = toolWindowManager.getToolWindow("CCXG");
 
             if (toolWindow != null) {
                 // If window is not visible, activate it first, then send content after it opens

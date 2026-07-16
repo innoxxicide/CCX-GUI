@@ -23,7 +23,7 @@ import java.util.Arrays;
 public class SendTerminalSelectionToInputAction extends AnAction implements DumbAware {
 
     private static final Logger LOG = Logger.getInstance(SendTerminalSelectionToInputAction.class);
-    static final String ACTION_ID = "ClaudeCodeGUI.SendTerminalSelectionToInputAction";
+    static final String ACTION_ID = "CCXGUI.SendTerminalSelectionToInputAction";
     static final String TERMINAL_OUTPUT_CONTEXT_MENU = "Terminal.OutputContextMenu";
     static final String TERMINAL_PROMPT_CONTEXT_MENU = "Terminal.PromptContextMenu";
     static final String TERMINAL_REWORKED_CONTEXT_MENU = "Terminal.ReworkedTerminalContextMenu";

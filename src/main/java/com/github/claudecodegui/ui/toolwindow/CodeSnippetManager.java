@@ -54,7 +54,7 @@ public class CodeSnippetManager {
             LOG.info("Window instance not found, opening tool window automatically: " + project.getName());
             ApplicationManager.getApplication().invokeLater(() -> {
                 try {
-                    ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("CCG");
+                    ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("CCXG");
                     if (toolWindow != null) {
                         toolWindow.show(null);
                         scheduleCodeSnippetRetry(project, selectionInfo, 3);
@@ -93,7 +93,7 @@ public class CodeSnippetManager {
         }
 
         try {
-            ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("CCG");
+            ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("CCXG");
             if (toolWindow == null) {
                 return null;
             }

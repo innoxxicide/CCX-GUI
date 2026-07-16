@@ -54,7 +54,7 @@ public class RenameTabAction extends AnAction implements DumbAware {
             return;
         }
 
-        ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("CCG");
+        ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("CCXG");
         if (toolWindow == null) {
             LOG.warn("[RenameTabAction] Tool window not found");
             return;
@@ -118,7 +118,7 @@ public class RenameTabAction extends AnAction implements DumbAware {
             return;
         }
 
-        ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("CCG");
+        ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("CCXG");
         if (toolWindow == null) {
             e.getPresentation().setEnabledAndVisible(false);
             return;

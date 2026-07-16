@@ -279,7 +279,7 @@ public class OpenDevToolsAction extends AnAction {
 
     @Nullable
     private JBCefBrowser findBrowserInToolWindow(Project project) {
-        ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("CCG");
+        ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("CCXG");
         if (toolWindow == null) {
             return null;
         }

@@ -18,8 +18,8 @@ import java.util.stream.Collectors;
  * Stores templates as JSON in the IDE's persistent state.
  */
 @State(
-    name = "SessionTemplates",
-    storages = @Storage("sessionTemplates.xml")
+    name = "CCXGUISessionTemplates",
+    storages = @Storage("ccxGuiSessionTemplates.xml")
 )
 @Service(Service.Level.APP)
 public final class SessionTemplateService implements PersistentStateComponent<SessionTemplateService.State> {

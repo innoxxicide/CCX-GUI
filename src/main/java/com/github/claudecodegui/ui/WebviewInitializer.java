@@ -227,7 +227,7 @@ public class WebviewInitializer {
                     Project project = host.getProject();
                     if (project != null && !project.isDisposed()) {
                         ApplicationManager.getApplication().invokeLater(() -> {
-                            ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("CCG");
+                            ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("CCXG");
                             if (toolWindow != null && toolWindow.isVisible()) {
                                 toolWindow.hide();
                             }

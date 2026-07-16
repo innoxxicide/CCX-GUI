@@ -11,7 +11,7 @@ import com.intellij.openapi.project.Project;
  */
 public class ChatNewlineAction extends ChatToolWindowAction {
 
-    public static final String ACTION_ID = "ClaudeCodeGUI.ChatNewlineAction";
+    public static final String ACTION_ID = "CCXGUI.ChatNewlineAction";
 
     @Override
     protected void performAction(@NotNull AnActionEvent e, @NotNull Project project, @NotNull ClaudeChatWindow chatWindow) {

@@ -48,7 +48,7 @@ public class DetachTabAction extends AnAction implements DumbAware {
             return;
         }
 
-        ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("CCG");
+        ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("CCXG");
         if (toolWindow == null) {
             LOG.warn("[DetachTabAction] Tool window not found");
             return;
@@ -178,7 +178,7 @@ public class DetachTabAction extends AnAction implements DumbAware {
             return;
         }
 
-        ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("CCG");
+        ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("CCXG");
         if (toolWindow == null) {
             e.getPresentation().setEnabledAndVisible(false);
             return;

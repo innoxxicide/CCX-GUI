@@ -9,7 +9,7 @@
     </extensions>
 
     <actions>
-        <action id="ClaudeCodeGUI.SendTerminalSelectionToInputAction"
+        <action id="CCXGUI.SendTerminalSelectionToInputAction"
                 class="com.github.claudecodegui.terminal.SendTerminalSelectionToInputAction"
                 icon="/icons/ccx-gui-icon.svg">
             <add-to-group group-id="Terminal.OutputContextMenu" anchor="last"/>

@@ -17,7 +17,7 @@ public class PluginActionRegistrationTest {
 
     @Test
     public void sendFilePathActionAppearsInProjectTreeAndEditorTabMenus() throws Exception {
-        Set<String> groupIds = getActionGroupIds("ClaudeCodeGUI.SendFilePathToInputAction");
+        Set<String> groupIds = getActionGroupIds("CCXGUI.SendFilePathToInputAction");
 
         Assert.assertTrue(groupIds.contains("ProjectViewPopupMenu"));
         Assert.assertTrue(groupIds.contains("EditorTabPopupMenu"));
@@ -25,8 +25,8 @@ public class PluginActionRegistrationTest {
 
     @Test
     public void copySelectionReferenceActionAppearsInEditorPopupMenuAfterSendSelectionAction() throws Exception {
-        ActionRegistration action = getActionRegistration("ClaudeCodeGUI.CopySelectionReferenceAction");
-        ActionRegistration quickFixAction = getActionRegistration("ClaudeCodeGUI.QuickFixWithClaudeAction");
+        ActionRegistration action = getActionRegistration("CCXGUI.CopySelectionReferenceAction");
+        ActionRegistration quickFixAction = getActionRegistration("CCXGUI.QuickFixWithClaudeAction");
 
         Assert.assertEquals(
                 "com.github.claudecodegui.action.editor.CopySelectionReferenceAction",
@@ -34,15 +34,15 @@ public class PluginActionRegistrationTest {
         );
         AddToGroupRegistration editorPopup = action.getAddToGroup("EditorPopupMenu");
         Assert.assertEquals("after", editorPopup.anchor);
-        Assert.assertEquals("ClaudeCodeGUI.SendSelectionToTerminalAction", editorPopup.relativeToAction);
+        Assert.assertEquals("CCXGUI.SendSelectionToTerminalAction", editorPopup.relativeToAction);
         Assert.assertTrue(action.declarationIndex < quickFixAction.declarationIndex);
     }
 
     @Test
     public void editorPopupActionsUseExpectedIcons() throws Exception {
-        ActionRegistration sendSelectionAction = getActionRegistration("ClaudeCodeGUI.SendSelectionToTerminalAction");
-        ActionRegistration copyReferenceAction = getActionRegistration("ClaudeCodeGUI.CopySelectionReferenceAction");
-        ActionRegistration quickFixAction = getActionRegistration("ClaudeCodeGUI.QuickFixWithClaudeAction");
+        ActionRegistration sendSelectionAction = getActionRegistration("CCXGUI.SendSelectionToTerminalAction");
+        ActionRegistration copyReferenceAction = getActionRegistration("CCXGUI.CopySelectionReferenceAction");
+        ActionRegistration quickFixAction = getActionRegistration("CCXGUI.QuickFixWithClaudeAction");
 
         Assert.assertEquals("/icons/ccx-gui-icon.svg", sendSelectionAction.icon);
         Assert.assertEquals("/icons/ccx-gui-icon.svg", copyReferenceAction.icon);
@@ -51,8 +51,8 @@ public class PluginActionRegistrationTest {
 
     @Test
     public void sessionTemplateActionsAreRegistered() throws Exception {
-        ActionRegistration saveAsTemplateAction = getActionRegistration("ClaudeCodeGUI.SaveAsTemplateAction");
-        ActionRegistration createFromTemplateAction = getActionRegistration("ClaudeCodeGUI.CreateFromTemplateAction");
+        ActionRegistration saveAsTemplateAction = getActionRegistration("CCXGUI.SaveAsTemplateAction");
+        ActionRegistration createFromTemplateAction = getActionRegistration("CCXGUI.CreateFromTemplateAction");
 
         Assert.assertEquals("com.github.claudecodegui.action.SaveAsTemplateAction", saveAsTemplateAction.actionClass);
         Assert.assertEquals("com.github.claudecodegui.action.CreateFromTemplateAction", createFromTemplateAction.actionClass);
