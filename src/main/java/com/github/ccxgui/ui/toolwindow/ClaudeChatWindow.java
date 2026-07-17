@@ -662,7 +662,12 @@ public class ClaudeChatWindow {
                     // Compare with current active session
                     String currentSessionId = session != null ? session.getSessionId() : null;
                     if (currentSessionId == null || !currentSessionId.equals(updatedSessionId)) {
-                        // Event is for a different session, ignore
+                        // Event is for a session this window no longer holds (the user
+                        // navigated away, or a resume forked the id). Log it — this branch
+                        // is otherwise silent and a divergence here would strand a
+                        // background-task refresh.
+                        LOG.info("[ClaudeChatWindow] session_updated ignored: updatedSessionId="
+                                + updatedSessionId + " != currentSessionId=" + currentSessionId);
                         return;
                     }
 
@@ -692,6 +697,32 @@ public class ClaudeChatWindow {
                     // loadFromServer() returns, so a reload never lands on a session
                     // that the user has navigated away from.
                     requestSessionReload(updatedSessionId);
+                } else if ("inter_turn_activity".equals(event)) {
+                    // A background-task continuation started/ended between turns. Show
+                    // the agent as "working" so the wake-up is visible; the paired
+                    // session_updated events stream in the actual messages. We drive the
+                    // thinking indicator (not loading), because loading is toggled by the
+                    // per-message reloads (onStateChange → showLoading) and would flicker.
+                    String activitySessionId = data.has("sessionId") ? data.get("sessionId").getAsString() : null;
+                    boolean active = data.has("active") && data.get("active").getAsBoolean();
+                    if (activitySessionId == null) {
+                        return;
+                    }
+                    String currentSessionId = session != null ? session.getSessionId() : null;
+                    if (currentSessionId == null || !currentSessionId.equals(activitySessionId)) {
+                        return;
+                    }
+                    // A live user turn drives its own indicators — don't interfere.
+                    if (streamCoalescer != null && streamCoalescer.isStreamActive()) {
+                        return;
+                    }
+                    LOG.info("[ClaudeChatWindow] inter_turn_activity active=" + active
+                            + " for sessionId=" + activitySessionId);
+                    ApplicationManager.getApplication().invokeLater(() -> {
+                        if (!disposed) {
+                            callJavaScript("showThinkingStatus", active ? "true" : "false");
+                        }
+                    });
                 }
             };
             this.claudeSDKBridge.addDaemonEventListener(this.titleEventListener);

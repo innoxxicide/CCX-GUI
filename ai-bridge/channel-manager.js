@@ -162,12 +162,33 @@ const providerHandlers = {
     // Instead, set process.exitCode and let the process exit naturally so all I/O completes.
     process.exitCode = 0;
 
-    // For the rewindFiles command we need to force-exit, because it restores
-    // an SDK session whose MCP connections may stay open and prevent the
-    // process from exiting naturally. Its output is small, so truncation is not a concern.
-    if (command === 'rewindFiles') {
-      // Allow a short delay for the stdout buffer to flush
-      setTimeout(() => process.exit(0), 100);
+    // One-shot commands that load the SDK stack (history reads, usage, MCP status,
+    // session rewind) can leave MCP/socket/timer handles open, so the process never
+    // exits "naturally". The Java parent (ClaudeSessionQueryService.runSessionQuery)
+    // reads our stdout until EOF, so a process that never exits hangs the caller
+    // forever and leaks. Force a clean exit AFTER stdout has drained so output is
+    // not truncated, with a safety-net timer in case the drain callback never fires.
+    const FORCE_EXIT_COMMANDS = new Set([
+      'rewindFiles',
+      'getSession',
+      'getLatestUserMessage',
+      'getContextUsage',
+      'getMcpServerStatus',
+      'getMcpServerTools',
+    ]);
+    if (FORCE_EXIT_COMMANDS.has(command)) {
+      let exited = false;
+      const forceExit = () => {
+        if (exited) return;
+        exited = true;
+        process.exit(process.exitCode || 0);
+      };
+      // Flush the stdout buffer, then exit in the write callback.
+      process.stdout.write('', forceExit);
+      // Safety net: if 'drain'/callback never fires, exit anyway. unref() so this
+      // timer does not itself keep an otherwise-idle event loop alive.
+      const safety = setTimeout(forceExit, 1000);
+      if (typeof safety.unref === 'function') safety.unref();
     }
 
   } catch (error) {

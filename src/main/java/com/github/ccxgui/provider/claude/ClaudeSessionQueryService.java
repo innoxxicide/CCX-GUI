@@ -149,17 +149,47 @@ class ClaudeSessionQueryService {
             process = pb.start();
             processManager.registerProcess(channelId, process);
 
+            // Signal EOF on the child's stdin so it can never block on an unexpected read.
+            try {
+                process.getOutputStream().close();
+            } catch (Exception ignored) {
+                // best effort
+            }
+
+            // Watchdog: the child loads the SDK stack for history/usage reads and can
+            // leave MCP/socket handles open so it never closes stdout. A plain
+            // readLine() loop would then block forever — the previous code's waitFor
+            // timeout sat AFTER the read loop and was therefore unreachable, which
+            // hung the session_updated reload and leaked the process. The watchdog
+            // force-terminates the process on timeout, yielding stdout EOF so the read
+            // below unblocks and the caller can never hang.
+            final Process startedProcess = process;
+            final java.util.concurrent.atomic.AtomicBoolean timedOut =
+                    new java.util.concurrent.atomic.AtomicBoolean(false);
+            Thread watchdog = new Thread(() -> {
+                try {
+                    if (!startedProcess.waitFor(PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                        timedOut.set(true);
+                        PlatformUtils.terminateProcess(startedProcess);
+                    }
+                } catch (InterruptedException ignored) {
+                    // Read finished first and interrupted us; nothing to do.
+                }
+            }, "claude-session-query-watchdog");
+            watchdog.setDaemon(true);
+            watchdog.start();
+
             try (BufferedReader reader = new BufferedReader(
                     new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     output.append(line).append("\n");
                 }
+            } finally {
+                watchdog.interrupt();
             }
 
-            boolean finished = process.waitFor(PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-            if (!finished) {
-                PlatformUtils.terminateProcess(process);
+            if (timedOut.get()) {
                 throw new RuntimeException("Node.js process timed out after " + PROCESS_TIMEOUT_SECONDS + " seconds");
             }
         } finally {

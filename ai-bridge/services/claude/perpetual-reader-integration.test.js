@@ -115,14 +115,15 @@ test('Integration: perpetual reader routes in-turn messages to turnSink', async 
 // Inter-Turn Event Emission (regression guard for the daemon writer wiring)
 // ============================================================================
 
-test('Integration: inter-turn result emits a session_updated event for a registered runtime', async () => {
+test('Integration: inter-turn continuation streams a refresh per assistant message plus the result, wrapped in activity on/off', async () => {
   const ctl = createControlledQuery();
   const runtime = { closed: false, sessionId: 'sess-bg', turnSink: null, query: ctl.query };
   const events = captureInterTurnEvents();
 
   const reader = startPerpetualReader(runtime);
   try {
-    // No active turn (turnSink == null): a completed turn from the CLI.
+    // No active turn (turnSink == null): a background-task completion injects a
+    // synthetic turn — a task-notification user message, an assistant reply, a result.
     ctl.deliver({ type: 'user', content: '<task-notification>' });
     ctl.deliver({ type: 'assistant', content: 'Task completed' });
     ctl.deliver({ type: 'result', is_error: false });
@@ -134,10 +135,17 @@ test('Integration: inter-turn result emits a session_updated event for a registe
     events.restore();
   }
 
+  // Live streaming: the assistant message and the terminating result each push a
+  // refresh so content appears incrementally (2 total, all sess-bg).
   const updates = events.list.filter((e) => e.event === 'session_updated');
-  assert.equal(updates.length, 1);
-  assert.equal(updates[0].type, 'daemon');
-  assert.equal(updates[0].sessionId, 'sess-bg');
+  assert.equal(updates.length, 2);
+  assert.ok(updates.every((u) => u.type === 'daemon' && u.sessionId === 'sess-bg'));
+
+  // Working indicator flips on at the first message and off at the result.
+  const activity = events.list.filter((e) => e.event === 'inter_turn_activity');
+  assert.equal(activity.length, 2);
+  assert.deepEqual(activity.map((a) => a.active), [true, false]);
+  assert.ok(activity.every((a) => a.sessionId === 'sess-bg'));
 });
 
 test('Integration: inter-turn result on anonymous runtime emits no event', async () => {
@@ -159,7 +167,12 @@ test('Integration: inter-turn result on anonymous runtime emits no event', async
   assert.equal(events.list.filter((e) => e.event === 'session_updated').length, 0);
 });
 
-test('Integration: non-result inter-turn messages do not emit events', async () => {
+test('Integration: inter-turn assistant message streams a refresh; user message only marks activity', async () => {
+  // Live inter-turn streaming: a background-task continuation is surfaced as it
+  // arrives. The first message flips the "working" indicator on; assistant
+  // messages trigger a session refresh so new content appears; the synthetic
+  // task-notification user message only marks activity (its content lands in the
+  // next refresh), so it emits no extra session_updated.
   const ctl = createControlledQuery();
   const runtime = { closed: false, sessionId: 'sess-x', turnSink: null, query: ctl.query };
   const events = captureInterTurnEvents();
@@ -176,7 +189,14 @@ test('Integration: non-result inter-turn messages do not emit events', async () 
     events.restore();
   }
 
-  assert.equal(events.list.filter((e) => e.event === 'session_updated').length, 0);
+  // Exactly one refresh (from the assistant message).
+  assert.equal(events.list.filter((e) => e.event === 'session_updated').length, 1);
+  // Activity turned on once (first message). It has not turned off yet — no result
+  // arrived — so the reader's finally hook clears it on stream end.
+  const activity = events.list.filter((e) => e.event === 'inter_turn_activity');
+  assert.equal(activity[0].active, true, 'first inter-turn message flips working on');
+  assert.equal(activity[activity.length - 1].active, false, 'stream end clears working');
+  assert.ok(events.list.every((e) => e.sessionId === 'sess-x'));
 });
 
 // ============================================================================

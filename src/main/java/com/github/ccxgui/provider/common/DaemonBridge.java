@@ -644,6 +644,27 @@ public class DaemonBridge {
                 break;
             }
 
+            case "inter_turn_activity": {
+                // Emitted by the perpetual reader when a background-task continuation
+                // (run_in_background Bash, Monitor watch, background subagent) starts
+                // and ends. Routed to listeners so the chat window can show the agent
+                // "working" between the wake-up and its terminating result. The paired
+                // session_updated events carry the actual content.
+                String sessionId = obj.has("sessionId") ? obj.get("sessionId").getAsString() : null;
+                if (sessionId == null || sessionId.isEmpty()) {
+                    LOG.warn("[DaemonBridge] inter_turn_activity event missing sessionId, skipping");
+                    break;
+                }
+                for (DaemonEventListener listener : eventListeners) {
+                    try {
+                        listener.onDaemonEvent(event, obj);
+                    } catch (Exception ex) {
+                        LOG.warn("[DaemonBridge] Listener threw while handling " + event, ex);
+                    }
+                }
+                break;
+            }
+
             default:
                 LOG.debug("[DaemonBridge] Unhandled daemon event: " + event);
         }
