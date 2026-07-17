@@ -1,5 +1,6 @@
 package com.github.ccxgui.provider.claude;
 
+import com.github.ccxgui.util.PlatformUtils;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -171,7 +172,7 @@ public final class ClaudeUsageLimitsService {
         String configDir = System.getenv("CLAUDE_CONFIG_DIR");
         Path base = (configDir != null && !configDir.isBlank())
                 ? Paths.get(configDir)
-                : Paths.get(System.getProperty("user.home"), ".claude");
+                : Paths.get(PlatformUtils.getHomeDirectory(), ".claude");
         return base.resolve(".credentials.json");
     }
 }
