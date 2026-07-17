@@ -358,7 +358,14 @@ public class ClaudeMessageHandler implements MessageCallback {
             // [USAGE] tags emitted by emitUsageTag() in persistent-query-service.executeTurn become
             // the only authoritative source — handled by handleUsage(). Do not move the [USAGE]
             // emission behind shouldOutputMessage without re-routing this final-usage update.
-            if (mergedRaw.has("message") && mergedRaw.get("message").isJsonObject()) {
+            // Skip subagent (sidechain) messages: they run in a separate context window,
+            // so their smaller usage would make the main-session context gauge drop and
+            // then rebound when the main agent resumes. parent_tool_use_id is non-null
+            // only for messages spawned by an Agent/Task tool.
+            boolean isSubagentMessage = messageJson.has("parent_tool_use_id")
+                    && !messageJson.get("parent_tool_use_id").isJsonNull();
+            if (!isSubagentMessage
+                    && mergedRaw.has("message") && mergedRaw.get("message").isJsonObject()) {
                 JsonObject messageObj = mergedRaw.getAsJsonObject("message");
                 if (messageObj.has("usage") && messageObj.get("usage").isJsonObject()) {
                     JsonObject usage = messageObj.getAsJsonObject("usage");

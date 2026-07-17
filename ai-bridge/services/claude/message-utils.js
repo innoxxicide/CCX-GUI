@@ -169,6 +169,10 @@ export function truncateErrorContent(content, maxLen = 1000) {
  * The Java backend parses stdout lines starting with "[USAGE]" to extract token metrics.
  */
 export function emitUsageTag(msg) {
+  // Skip subagent (sidechain) messages — their separate, smaller context window
+  // would make the main-session context gauge drop and rebound. parent_tool_use_id
+  // is non-null only for messages spawned by an Agent/Task tool.
+  if (msg.parent_tool_use_id != null) return;
   if (msg.type === 'assistant' && msg.message?.usage) {
     const {
       input_tokens = 0, output_tokens = 0,

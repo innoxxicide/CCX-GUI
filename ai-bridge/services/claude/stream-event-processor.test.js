@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createTurnState,
+  emitUsageTag,
   processMessageContent,
   processStreamEvent,
   shouldOutputMessage,
@@ -877,6 +878,93 @@ test('REGRESSION (eb1786): message_start reset preserves cross-turn usage accumu
 
   assert.equal(state.accumulatedUsage?.output_tokens, 20, 'prior-turn output_tokens must survive the reset');
   assert.equal(state.accumulatedUsage?.input_tokens, 8, 'input_tokens follows mergeUsage latest-value semantics');
+});
+
+// =========================================================================
+// Subagent (sidechain) usage filtering.
+//
+// Subagent messages stream inline through the same query() output tagged with
+// parent_tool_use_id (the spawning Agent/Task tool call). They run in a separate,
+// much smaller context window, so feeding their usage into the main-session gauge
+// made the counter lurch down (e.g. 35% -> 10%) and rebound when the main agent
+// resumed. Usage from parent_tool_use_id-bearing messages must be ignored.
+// =========================================================================
+
+test('emitUsageTag: main-chain assistant message emits [USAGE]', () => {
+  const captured = captureStdout(() => {
+    emitUsageTag({
+      type: 'assistant',
+      parent_tool_use_id: null,
+      message: { usage: { input_tokens: 100, output_tokens: 5, cache_read_input_tokens: 60000 } },
+    });
+  });
+  const usageLines = tagLines(captured, '[USAGE]');
+  assert.equal(usageLines.length, 1, 'main-chain usage must be emitted');
+  assert.match(usageLines[0], /"cache_read_input_tokens":60000/);
+});
+
+test('emitUsageTag: subagent message (parent_tool_use_id set) emits no [USAGE]', () => {
+  const captured = captureStdout(() => {
+    emitUsageTag({
+      type: 'assistant',
+      parent_tool_use_id: 'toolu_task_123',
+      message: { usage: { input_tokens: 200, output_tokens: 10, cache_read_input_tokens: 8000 } },
+    });
+  });
+  assert.equal(tagLines(captured, '[USAGE]').length, 0, 'subagent usage must be suppressed');
+});
+
+test('processStreamEvent: subagent message_delta emits no [USAGE] and leaves accumulatedUsage untouched', () => {
+  const state = makeTurnState(true);
+
+  // Main-chain turn establishes the accumulator.
+  processStreamEvent(
+    { type: 'stream_event', parent_tool_use_id: null,
+      event: { type: 'message_start', message: { usage: { input_tokens: 50000 } } } },
+    state,
+  );
+
+  const captured = captureStdout(() => {
+    // Subagent stream events must not overwrite the main-session accumulator.
+    processStreamEvent(
+      { type: 'stream_event', parent_tool_use_id: 'toolu_task_123',
+        event: { type: 'message_start', message: { usage: { input_tokens: 5000 } } } },
+      state,
+    );
+    processStreamEvent(
+      { type: 'stream_event', parent_tool_use_id: 'toolu_task_123',
+        event: { type: 'message_delta', usage: { output_tokens: 30 } } },
+      state,
+    );
+  });
+
+  assert.equal(tagLines(captured, '[USAGE]').length, 0, 'subagent stream usage must not emit [USAGE]');
+  assert.equal(
+    state.accumulatedUsage?.input_tokens,
+    50000,
+    'subagent message_start must not overwrite the main-session input_tokens',
+  );
+});
+
+test('processStreamEvent: main-chain message_delta still emits [USAGE]', () => {
+  const state = makeTurnState(true);
+
+  const captured = captureStdout(() => {
+    processStreamEvent(
+      { type: 'stream_event', parent_tool_use_id: null,
+        event: { type: 'message_start', message: { usage: { input_tokens: 40000 } } } },
+      state,
+    );
+    processStreamEvent(
+      { type: 'stream_event', parent_tool_use_id: null,
+        event: { type: 'message_delta', usage: { output_tokens: 25 } } },
+      state,
+    );
+  });
+
+  assert.equal(tagLines(captured, '[USAGE]').length, 1, 'main-chain message_delta must emit [USAGE]');
+  assert.equal(state.accumulatedUsage?.input_tokens, 40000);
+  assert.equal(state.accumulatedUsage?.output_tokens, 25);
 });
 
 // =========================================================================

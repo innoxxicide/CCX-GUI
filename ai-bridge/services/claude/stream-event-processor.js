@@ -3,6 +3,11 @@ import { truncateErrorContent, truncateToolResultBlock } from './message-output-
 import { normalizeStreamDelta, resolveSnapshotDelta, resetTurnBlockState } from './stream-delta-normalizer.js';
 
 export function emitUsageTag(msg) {
+  // Skip subagent (sidechain) messages. They run in a separate context window, so
+  // their much smaller usage would make the main-session context gauge lurch down
+  // and then jump back up when the main agent resumes. parent_tool_use_id is
+  // non-null only for messages spawned by an Agent/Task tool.
+  if (msg.parent_tool_use_id != null) return;
   if (msg.type === 'assistant' && msg.message?.usage) {
     const {
       input_tokens = 0,
@@ -38,6 +43,11 @@ export function processStreamEvent(msg, turnState) {
   const event = msg.event;
   if (!event) return;
 
+  // Subagent stream events carry the spawning Agent tool's id. Their usage must not
+  // feed the main-session accumulator / context gauge (see emitUsageTag). Text and
+  // thinking deltas below are still processed so subagent output keeps rendering.
+  const isSubagentEvent = msg.parent_tool_use_id != null;
+
   if (event.type === 'message_start') {
     // Turn boundary: each assistant message (incl. every tool_use loop iteration)
     // re-numbers its content blocks from index 0. Clear the index-keyed block maps
@@ -52,12 +62,12 @@ export function processStreamEvent(msg, turnState) {
     if (turnState.streamingEnabled) {
       process.stdout.write('[BLOCK_RESET]\n');
     }
-    if (event.message?.usage) {
+    if (!isSubagentEvent && event.message?.usage) {
       turnState.accumulatedUsage = mergeUsage(turnState.accumulatedUsage, event.message.usage);
     }
   }
 
-  if (event.type === 'message_delta' && event.usage) {
+  if (event.type === 'message_delta' && event.usage && !isSubagentEvent) {
     turnState.accumulatedUsage = mergeUsage(turnState.accumulatedUsage, event.usage);
     emitAccumulatedUsage(turnState.accumulatedUsage);
   }

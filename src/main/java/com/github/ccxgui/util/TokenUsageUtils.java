@@ -42,6 +42,18 @@ public final class TokenUsageUtils {
     }
 
     /**
+     * A message belongs to a subagent (sidechain) when parent_tool_use_id is present
+     * and non-null — the id of the spawning Agent/Task tool call. Such messages track
+     * the subagent's separate context window and must be skipped when reporting the
+     * main session's context occupancy, otherwise the gauge lurches down and rebounds.
+     */
+    private static boolean isSubagentMessage(JsonObject raw) {
+        return raw != null
+                && raw.has("parent_tool_use_id")
+                && !raw.get("parent_tool_use_id").isJsonNull();
+    }
+
+    /**
      * Find the last usage JSON from a list of raw server messages (JsonObject).
      * Scans from end to find the last assistant message with usage data.
      */
@@ -49,6 +61,7 @@ public final class TokenUsageUtils {
         for (int i = messages.size() - 1; i >= 0; i--) {
             JsonObject msg = messages.get(i);
             if (!msg.has("type") || !"assistant".equals(msg.get("type").getAsString())) { continue; }
+            if (isSubagentMessage(msg)) { continue; }
             if (msg.has("message") && msg.get("message").isJsonObject()) {
                 JsonObject message = msg.getAsJsonObject("message");
                 if (message.has("usage") && message.get("usage").isJsonObject()) {
@@ -67,6 +80,7 @@ public final class TokenUsageUtils {
         for (int i = messages.size() - 1; i >= 0; i--) {
             ClaudeSession.Message msg = messages.get(i);
             if (msg.type != ClaudeSession.Message.Type.ASSISTANT || msg.raw == null) { continue; }
+            if (isSubagentMessage(msg.raw)) { continue; }
             // Check usage inside message object
             if (msg.raw.has("message") && msg.raw.get("message").isJsonObject()) {
                 JsonObject message = msg.raw.getAsJsonObject("message");
