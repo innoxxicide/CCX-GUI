@@ -294,6 +294,28 @@ public class ProjectConfigHandler {
         return jsonOf("permissionDialogTimeoutSeconds", effectiveSeconds);
     }
 
+    public void handleGetAutoCloseDialogOnTimeout() {
+        respondWithJson("window.updateAutoCloseDialogOnTimeout",
+            () -> jsonOf("autoCloseDialogOnTimeout", settingsService.getAutoCloseDialogOnTimeout()),
+            jsonOf("autoCloseDialogOnTimeout", CodemossSettingsService.DEFAULT_AUTO_CLOSE_DIALOG_ON_TIMEOUT),
+            "Failed to get auto-close dialog on timeout");
+    }
+
+    public void handleSetAutoCloseDialogOnTimeout(String content) {
+        try {
+            JsonObject json = gson.fromJson(content, JsonObject.class);
+            boolean enabled = readBoolean(json, "autoCloseDialogOnTimeout",
+                    CodemossSettingsService.DEFAULT_AUTO_CLOSE_DIALOG_ON_TIMEOUT);
+            settingsService.setAutoCloseDialogOnTimeout(enabled);
+            LOG.info("[ProjectConfigHandler] Set auto-close dialog on timeout: " + enabled);
+            pushJson("window.updateAutoCloseDialogOnTimeout", jsonOf("autoCloseDialogOnTimeout", enabled));
+        } catch (Exception e) {
+            LOG.error("[ProjectConfigHandler] Failed to set auto-close dialog on timeout; errorClass="
+                    + e.getClass().getSimpleName(), e);
+            showError("Failed to save auto-close dialog on timeout. See IDE log for details.");
+        }
+    }
+
     public void handleGetSendShortcut() {
         try {
             String sendShortcut = PropertiesComponent.getInstance().getValue(SEND_SHORTCUT_PROPERTY_KEY, "enter");

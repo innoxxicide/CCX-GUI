@@ -11,6 +11,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class CodemossSettingsServicePermissionTimeoutTest {
     private String originalHomeDir;
@@ -55,6 +57,53 @@ public class CodemossSettingsServicePermissionTimeoutTest {
 
         JsonObject config = service.readConfig();
         assertEquals(30, config.get("permissionDialogTimeoutSeconds").getAsInt());
+    }
+
+    @Test
+    public void defaultsAutoCloseDialogOnTimeoutToTrueWhenMissing() throws Exception {
+        Path tempHome = Files.createTempDirectory("auto-close-default-home");
+        useTemporaryHomeDirectory(tempHome);
+
+        CodemossSettingsService service = new CodemossSettingsService();
+        assertTrue(service.getAutoCloseDialogOnTimeout());
+    }
+
+    @Test
+    public void persistsAutoCloseDialogOnTimeout() throws Exception {
+        Path tempHome = Files.createTempDirectory("auto-close-persist-home");
+        useTemporaryHomeDirectory(tempHome);
+
+        CodemossSettingsService service = new CodemossSettingsService();
+        service.setAutoCloseDialogOnTimeout(false);
+        assertFalse(service.getAutoCloseDialogOnTimeout());
+
+        JsonObject config = service.readConfig();
+        assertFalse(config.get("autoCloseDialogOnTimeout").getAsBoolean());
+    }
+
+    @Test
+    public void resolvePermissionSafetyNetMsReturnsTimeoutPlusBufferWhenAutoCloseEnabled() throws Exception {
+        Path tempHome = Files.createTempDirectory("safety-net-enabled-home");
+        useTemporaryHomeDirectory(tempHome);
+
+        CodemossSettingsService service = new CodemossSettingsService();
+        service.setPermissionDialogTimeoutSeconds(120);
+        service.setAutoCloseDialogOnTimeout(true);
+
+        assertEquals(180_000L, PermissionDialogTimeoutSettings.resolvePermissionSafetyNetMs(service));
+    }
+
+    @Test
+    public void resolvePermissionSafetyNetMsReturnsZeroSentinelWhenAutoCloseDisabled() throws Exception {
+        Path tempHome = Files.createTempDirectory("safety-net-disabled-home");
+        useTemporaryHomeDirectory(tempHome);
+
+        CodemossSettingsService service = new CodemossSettingsService();
+        service.setPermissionDialogTimeoutSeconds(120);
+        service.setAutoCloseDialogOnTimeout(false);
+
+        // 0 is the "wait indefinitely" sentinel handed to the Node bridge.
+        assertEquals(0L, PermissionDialogTimeoutSettings.resolvePermissionSafetyNetMs(service));
     }
 
     private void useTemporaryHomeDirectory(Path tempHome) throws Exception {

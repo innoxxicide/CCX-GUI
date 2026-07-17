@@ -144,6 +144,50 @@ describe('useDialogCountdownTimeout', () => {
     expect(onTimeout).toHaveBeenCalledTimes(1);
   });
 
+  it('never fires onTimeout and stays submittable when disabled (wait indefinitely)', () => {
+    vi.useFakeTimers();
+    const onTimeout = vi.fn();
+
+    const { result } = renderHook(() => useDialogCountdownTimeout({
+      isOpen: true,
+      requestKey: 'request-1',
+      timeoutSeconds: 3,
+      onTimeout,
+      enabled: false,
+    }));
+
+    // No countdown UI and the remaining seconds never tick down.
+    expect(result.current.countdownEnabled).toBe(false);
+    expect(result.current.remainingSeconds).toBe(3);
+
+    act(() => {
+      vi.advanceTimersByTime(60_000);
+    });
+
+    // Even long after the nominal timeout, the dialog waits and submission is still allowed.
+    expect(onTimeout).not.toHaveBeenCalled();
+    expect(result.current.remainingSeconds).toBe(3);
+    expect(result.current.markSubmitted()).toBe(true);
+  });
+
+  it('does not raise a time warning when disabled even if the timeout is below the warning threshold', () => {
+    vi.useFakeTimers();
+    const onTimeout = vi.fn();
+
+    // 30s sits exactly at the warning threshold, so remainingSeconds would flag a warning
+    // immediately if `enabled` were not gating it.
+    const { result } = renderHook(() => useDialogCountdownTimeout({
+      isOpen: true,
+      requestKey: 'request-1',
+      timeoutSeconds: 30,
+      onTimeout,
+      enabled: false,
+    }));
+
+    expect(result.current.isTimeWarning).toBe(false);
+    expect(result.current.isTimedOut).toBe(false);
+  });
+
   it('uses the new timeoutSeconds when a fresh dialog opens (requestKey changes)', () => {
     vi.useFakeTimers();
     const onTimeout = vi.fn();

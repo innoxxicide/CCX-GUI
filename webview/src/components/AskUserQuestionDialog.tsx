@@ -36,6 +36,8 @@ interface AskUserQuestionDialogProps {
   onSubmit: (requestId: string, answers: Record<string, string | string[]>) => void;
   onCancel: (requestId: string) => void;
   timeoutSeconds?: number;
+  /** When false, the dialog waits indefinitely with no countdown or auto-cancel. */
+  autoCloseOnTimeout?: boolean;
 }
 
 function normalizeQuestion(raw: any): Question | null {
@@ -64,6 +66,7 @@ const AskUserQuestionDialog = ({
   onSubmit,
   onCancel,
   timeoutSeconds = DEFAULT_PERMISSION_DIALOG_TIMEOUT_SECONDS,
+  autoCloseOnTimeout = true,
 }: AskUserQuestionDialogProps) => {
   const { t } = useTranslation();
   const [answers, setAnswers] = useState<Record<string, Set<string>>>({});
@@ -78,11 +81,12 @@ const AskUserQuestionDialog = ({
     }
   }, [request, onCancel]);
 
-  const { remainingSeconds, isTimeWarning, markSubmitted } = useDialogCountdownTimeout({
+  const { remainingSeconds, isTimeWarning, markSubmitted, countdownEnabled } = useDialogCountdownTimeout({
     isOpen,
     requestKey: request?.requestId,
     timeoutSeconds,
     onTimeout: handleTimeout,
+    enabled: autoCloseOnTimeout,
   });
   const normalizedQuestions = (Array.isArray(request?.questions) ? request!.questions : [])
     .map(normalizeQuestion)
@@ -329,11 +333,13 @@ const AskUserQuestionDialog = ({
                   total: normalizedQuestions.length,
                 })}
               </span>
-              {/* Countdown display */}
-              <span className={`countdown-timer ${isTimeWarning ? 'warning' : ''}`}>
-                <span className="codicon codicon-clock" />
-                <span className="countdown-time">{formatCountdown(remainingSeconds)}</span>
-              </span>
+              {/* Countdown display — hidden when the dialog waits indefinitely */}
+              {countdownEnabled && (
+                <span className={`countdown-timer ${isTimeWarning ? 'warning' : ''}`}>
+                  <span className="codicon codicon-clock" />
+                  <span className="countdown-time">{formatCountdown(remainingSeconds)}</span>
+                </span>
+              )}
             </div>
 
             {/* Question area */}

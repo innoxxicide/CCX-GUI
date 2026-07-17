@@ -31,6 +31,7 @@ export function registerUsageModeCallbacks(options: UseWindowCallbacksOptions): 
     setSendShortcut,
     setAutoOpenFileEnabled,
     setPermissionDialogTimeoutSeconds,
+    setAutoCloseDialogOnTimeout,
     currentProviderRef,
     syncActiveProviderModelMapping,
   } = options;
@@ -179,6 +180,18 @@ export function registerUsageModeCallbacks(options: UseWindowCallbacksOptions): 
     } catch (error) {
       const errorName = error instanceof Error ? error.name : 'UnknownError';
       console.error(`[Frontend] Failed to parse permission dialog timeout payload: ${errorName}`);
+    }
+  };
+
+  window.updateAutoCloseDialogOnTimeout = (jsonStr: string) => {
+    try {
+      const data = JSON.parse(jsonStr);
+      // Default to true (auto-close) for any non-boolean payload so a malformed
+      // response cannot silently switch users into the indefinite-wait mode.
+      setAutoCloseDialogOnTimeout(data.autoCloseDialogOnTimeout !== false);
+    } catch (error) {
+      const errorName = error instanceof Error ? error.name : 'UnknownError';
+      console.error(`[Frontend] Failed to parse auto-close dialog on timeout payload: ${errorName}`);
     }
   };
 

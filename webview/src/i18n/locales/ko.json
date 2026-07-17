@@ -257,6 +257,12 @@
         "cmdEnter": "⌘/Ctrl+Enter로 전송",
         "cmdEnterDesc": "⌘/Ctrl+Enter를 눌러 메시지 전송, Enter로 줄바꿈"
       },
+      "autoCloseDialogOnTimeout": {
+        "label": "시간 초과 시 대화 상자 자동 닫기",
+        "enabled": "활성화",
+        "disabled": "비활성화(무한 대기)",
+        "hint": "활성화하면 권한 및 질문 대화 상자가 아래에 설정된 제한 시간 후 자동으로 닫힙니다. 비활성화하면 제한 시간이 적용되지 않으며, 응답할 때까지 대화 상자가 무한정 대기합니다."
+      },
       "permissionDialogTimeout": {
         "label": "권한 및 질문 대화 상자 제한 시간",
         "unit": "초",

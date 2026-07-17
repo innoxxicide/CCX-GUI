@@ -623,6 +623,15 @@ if (typeof window !== 'undefined' && !window.updatePermissionDialogTimeout) {
   };
 }
 
+// Pre-register updateAutoCloseDialogOnTimeout to handle backend responses that arrive before React initializes
+if (typeof window !== 'undefined' && !window.updateAutoCloseDialogOnTimeout) {
+  debugLog('[Main] Pre-registering updateAutoCloseDialogOnTimeout placeholder');
+  window.updateAutoCloseDialogOnTimeout = (json: string) => {
+    debugLog('[Main] Storing pending auto-close dialog on timeout, length=' + (json ? json.length : 0));
+    window.__pendingAutoCloseDialogOnTimeout = json;
+  };
+}
+
 // Pre-register updateUsageStatistics to handle backend status responses that arrive before Settings/UsageStatisticsSection initializes
 if (typeof window !== 'undefined' && !window.updateUsageStatistics) {
   debugLog('[Main] Pre-registering updateUsageStatistics placeholder');

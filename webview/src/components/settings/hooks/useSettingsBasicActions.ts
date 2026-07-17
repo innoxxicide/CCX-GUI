@@ -31,6 +31,8 @@ export interface UseSettingsBasicActionsProps {
   onAutoOpenFileEnabledChangeProp?: (enabled: boolean) => void;
   permissionDialogTimeoutSecondsProp?: number;
   onPermissionDialogTimeoutChangeProp?: (seconds: number) => void;
+  autoCloseDialogOnTimeoutProp?: boolean;
+  onAutoCloseDialogOnTimeoutChangeProp?: (enabled: boolean) => void;
 }
 
 export interface UseSettingsBasicActionsReturn {
@@ -116,6 +118,8 @@ export interface UseSettingsBasicActionsReturn {
   handleAskUserQuestionNotificationEnabledChange: (enabled: boolean) => void;
   permissionDialogTimeoutSeconds: number;
   handlePermissionDialogTimeoutChange: (seconds: number) => void;
+  autoCloseDialogOnTimeout: boolean;
+  handleAutoCloseDialogOnTimeoutChange: (enabled: boolean) => void;
   handleCommitAiProviderChange: (provider: CommitAiProvider) => void;
   handleCommitAiModelChange: (model: string) => void;
   handleCommitAiResetToDefault: () => void;
@@ -179,6 +183,8 @@ export function useSettingsBasicActions({
   onAutoOpenFileEnabledChangeProp,
   permissionDialogTimeoutSecondsProp,
   onPermissionDialogTimeoutChangeProp,
+  autoCloseDialogOnTimeoutProp,
+  onAutoCloseDialogOnTimeoutChangeProp,
 }: UseSettingsBasicActionsProps): UseSettingsBasicActionsReturn {
   // Node.js path
   const [nodePath, setNodePath] = useState('');
@@ -289,6 +295,10 @@ export function useSettingsBasicActions({
   // by accident in future refactors.
   const permissionDialogTimeoutSeconds =
     permissionDialogTimeoutSecondsProp ?? DEFAULT_PERMISSION_DIALOG_TIMEOUT_SECONDS;
+
+  // Auto-close toggle — App.tsx owns the canonical state; treat the prop as authoritative.
+  // Defaults to true so a missing prop preserves the auto-close behaviour.
+  const autoCloseDialogOnTimeout = autoCloseDialogOnTimeoutProp ?? true;
 
   const [commitAiConfig, setCommitAiConfig] = useState<CommitAiConfig>(
     DEFAULT_COMMIT_AI_CONFIG
@@ -508,6 +518,14 @@ export function useSettingsBasicActions({
     sendToJava(`set_permission_dialog_timeout:${JSON.stringify(payload)}`);
   }, [onPermissionDialogTimeoutChangeProp]);
 
+  // Auto-close-on-timeout toggle change handler
+  const handleAutoCloseDialogOnTimeoutChange = useCallback((enabled: boolean) => {
+    // App.tsx owns the canonical state and provides the callback in production.
+    onAutoCloseDialogOnTimeoutChangeProp?.(enabled);
+    const payload = { autoCloseDialogOnTimeout: enabled };
+    sendToJava(`set_auto_close_dialog_on_timeout:${JSON.stringify(payload)}`);
+  }, [onAutoCloseDialogOnTimeoutChangeProp]);
+
   const handleCommitAiProviderChange = useCallback((provider: CommitAiProvider) => {
     const providerAvailable = commitAiConfig.availability[provider];
     const nextConfig: CommitAiConfig = {
@@ -715,6 +733,8 @@ export function useSettingsBasicActions({
     handleAskUserQuestionNotificationEnabledChange,
     permissionDialogTimeoutSeconds,
     handlePermissionDialogTimeoutChange,
+    autoCloseDialogOnTimeout,
+    handleAutoCloseDialogOnTimeoutChange,
     commitAiConfig,
     setCommitAiConfig,
     handleCommitAiProviderChange,

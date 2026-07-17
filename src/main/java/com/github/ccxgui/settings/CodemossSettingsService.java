@@ -574,6 +574,8 @@ public class CodemossSettingsService {
             PermissionDialogTimeoutSettings.MAX_PERMISSION_DIALOG_TIMEOUT_SECONDS;
     public static final long PERMISSION_SAFETY_NET_BUFFER_SECONDS =
             PermissionDialogTimeoutSettings.PERMISSION_SAFETY_NET_BUFFER_SECONDS;
+    public static final boolean DEFAULT_AUTO_CLOSE_DIALOG_ON_TIMEOUT =
+            PermissionDialogTimeoutSettings.DEFAULT_AUTO_CLOSE_DIALOG_ON_TIMEOUT;
 
     public static int clampPermissionDialogTimeoutSeconds(int seconds) {
         return PermissionDialogTimeoutSettings.clampPermissionDialogTimeoutSeconds(seconds);
@@ -585,6 +587,14 @@ public class CodemossSettingsService {
 
     public void setPermissionDialogTimeoutSeconds(int seconds) throws IOException {
         PermissionDialogTimeoutSettings.setPermissionDialogTimeoutSeconds(this, seconds);
+    }
+
+    public boolean getAutoCloseDialogOnTimeout() throws IOException {
+        return PermissionDialogTimeoutSettings.getAutoCloseDialogOnTimeout(this);
+    }
+
+    public void setAutoCloseDialogOnTimeout(boolean enabled) throws IOException {
+        PermissionDialogTimeoutSettings.setAutoCloseDialogOnTimeout(this, enabled);
     }
 
     // ==================== Streaming Config Management ====================

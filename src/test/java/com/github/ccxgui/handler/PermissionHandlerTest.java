@@ -257,6 +257,20 @@ public class PermissionHandlerTest {
     }
 
     @Test
+    public void safetyNetIsNotScheduledWhenAutoCloseDisabled() {
+        FakeSafetyNetScheduler scheduler = new FakeSafetyNetScheduler();
+        PermissionHandler handlerNoAutoClose =
+                new PermissionHandler(contextStub(new FakeSettingsService(120, false)), scheduler);
+        CompletableFuture<Integer> future = new CompletableFuture<>();
+
+        handlerNoAutoClose.scheduleSafetyNet(future, () -> future.complete(42));
+
+        // No safety net means the request waits indefinitely: nothing scheduled, future stays pending.
+        assertNull("no safety net task should be scheduled when auto-close is disabled", scheduler.task);
+        assertFalse(future.isDone());
+    }
+
+    @Test
     public void safetyNetTaskStillCompletesFutureWhenItWinsRace() {
         FakeSafetyNetScheduler scheduler = new FakeSafetyNetScheduler();
         PermissionHandler configuredHandler = new PermissionHandler(contextStub(new FakeSettingsService(30)), scheduler);
@@ -329,14 +343,25 @@ public class PermissionHandlerTest {
 
     private static class FakeSettingsService extends CodemossSettingsService {
         private final int timeoutSeconds;
+        private final boolean autoCloseDialogOnTimeout;
 
         private FakeSettingsService(int timeoutSeconds) {
+            this(timeoutSeconds, true);
+        }
+
+        private FakeSettingsService(int timeoutSeconds, boolean autoCloseDialogOnTimeout) {
             this.timeoutSeconds = timeoutSeconds;
+            this.autoCloseDialogOnTimeout = autoCloseDialogOnTimeout;
         }
 
         @Override
         public int getPermissionDialogTimeoutSeconds() throws IOException {
             return timeoutSeconds;
+        }
+
+        @Override
+        public boolean getAutoCloseDialogOnTimeout() throws IOException {
+            return autoCloseDialogOnTimeout;
         }
     }
 

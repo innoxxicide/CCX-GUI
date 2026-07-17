@@ -101,6 +101,9 @@ interface BasicConfigSectionProps {
   // Permission dialog timeout configuration
   permissionDialogTimeoutSeconds?: number;
   onPermissionDialogTimeoutChange?: (seconds: number) => void;
+  // Auto-close-on-timeout toggle
+  autoCloseDialogOnTimeout?: boolean;
+  onAutoCloseDialogOnTimeoutChange?: (enabled: boolean) => void;
 }
 
 const BasicConfigSection = (props: BasicConfigSectionProps) => {
@@ -186,6 +189,8 @@ const BasicConfigSection = (props: BasicConfigSectionProps) => {
           onAskUserQuestionNotificationEnabledChange={props.onAskUserQuestionNotificationEnabledChange}
           permissionDialogTimeoutSeconds={props.permissionDialogTimeoutSeconds}
           onPermissionDialogTimeoutChange={props.onPermissionDialogTimeoutChange}
+          autoCloseDialogOnTimeout={props.autoCloseDialogOnTimeout}
+          onAutoCloseDialogOnTimeoutChange={props.onAutoCloseDialogOnTimeoutChange}
         />
       )}
 

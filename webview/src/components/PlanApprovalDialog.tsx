@@ -27,6 +27,8 @@ interface PlanApprovalDialogProps {
   onApprove: (requestId: string, targetMode: string) => void;
   onReject: (requestId: string) => void;
   timeoutSeconds?: number;
+  /** When false, the dialog waits indefinitely with no countdown or auto-reject. */
+  autoCloseOnTimeout?: boolean;
 }
 
 // Execution modes available after plan approval
@@ -42,6 +44,7 @@ const PlanApprovalDialog = ({
   onApprove,
   onReject,
   timeoutSeconds = DEFAULT_PERMISSION_DIALOG_TIMEOUT_SECONDS,
+  autoCloseOnTimeout = true,
 }: PlanApprovalDialogProps) => {
   const { t } = useTranslation();
   const [selectedMode, setSelectedMode] = useState('default');
@@ -54,11 +57,12 @@ const PlanApprovalDialog = ({
     }
   }, [request, onReject]);
 
-  const { remainingSeconds, isTimeWarning, markSubmitted } = useDialogCountdownTimeout({
+  const { remainingSeconds, isTimeWarning, markSubmitted, countdownEnabled } = useDialogCountdownTimeout({
     isOpen,
     requestKey: request?.requestId,
     timeoutSeconds,
     onTimeout: handleTimeout,
+    enabled: autoCloseOnTimeout,
   });
 
   const handleApprove = useCallback(() => {
@@ -115,10 +119,12 @@ const PlanApprovalDialog = ({
             <span className="collapsed-title">
               {t('planApproval.title', '计划已准备就绪')}
             </span>
-            <span className={`countdown-timer ${isTimeWarning ? 'warning' : ''}`}>
-              <span className="codicon codicon-clock" />
-              <span className="countdown-time">{formatCountdown(remainingSeconds)}</span>
-            </span>
+            {countdownEnabled && (
+              <span className={`countdown-timer ${isTimeWarning ? 'warning' : ''}`}>
+                <span className="codicon codicon-clock" />
+                <span className="countdown-time">{formatCountdown(remainingSeconds)}</span>
+              </span>
+            )}
           </div>
           <button
             className="expand-button"
@@ -160,11 +166,13 @@ const PlanApprovalDialog = ({
             </p>
           </div>
           <div className="header-right">
-            {/* Countdown display */}
-            <span className={`countdown-timer ${isTimeWarning ? 'warning' : ''}`}>
-              <span className="codicon codicon-clock" />
-              <span className="countdown-time">{formatCountdown(remainingSeconds)}</span>
-            </span>
+            {/* Countdown display — hidden when the dialog waits indefinitely */}
+            {countdownEnabled && (
+              <span className={`countdown-timer ${isTimeWarning ? 'warning' : ''}`}>
+                <span className="codicon codicon-clock" />
+                <span className="countdown-time">{formatCountdown(remainingSeconds)}</span>
+              </span>
+            )}
             {/* Collapse button */}
             <button
               className="collapse-button"

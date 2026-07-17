@@ -28,6 +28,17 @@ public class EnvironmentConfiguratorPermissionTimeoutTest {
         assertTrue(env.containsKey("CLAUDE_SESSION_ID"));
     }
 
+    @Test
+    public void configurePermissionEnvEmitsZeroSafetyNetWhenAutoCloseDisabled() {
+        EnvironmentConfigurator configurator = new EnvironmentConfigurator(new FakeSettingsService(120, false));
+        Map<String, String> env = new HashMap<>();
+
+        configurator.configurePermissionEnv(env);
+
+        // 0 is the "no safety net" sentinel: the Node bridge must wait forever for a response.
+        assertEquals("0", env.get("CLAUDE_PERMISSION_SAFETY_NET_MS"));
+    }
+
     // =========================================================================
     // Regression: WSL Node binaries must receive a Linux-readable IPC dir
     // =========================================================================
@@ -163,14 +174,25 @@ public class EnvironmentConfiguratorPermissionTimeoutTest {
 
     private static class FakeSettingsService extends CodemossSettingsService {
         private final int timeoutSeconds;
+        private final boolean autoCloseDialogOnTimeout;
 
         private FakeSettingsService(int timeoutSeconds) {
+            this(timeoutSeconds, true);
+        }
+
+        private FakeSettingsService(int timeoutSeconds, boolean autoCloseDialogOnTimeout) {
             this.timeoutSeconds = timeoutSeconds;
+            this.autoCloseDialogOnTimeout = autoCloseDialogOnTimeout;
         }
 
         @Override
         public int getPermissionDialogTimeoutSeconds() throws IOException {
             return timeoutSeconds;
+        }
+
+        @Override
+        public boolean getAutoCloseDialogOnTimeout() throws IOException {
+            return autoCloseDialogOnTimeout;
         }
     }
 }

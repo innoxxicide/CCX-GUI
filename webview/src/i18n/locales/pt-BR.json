@@ -269,6 +269,12 @@
         "cmdEnter": "⌘/Ctrl+Enter para Enviar",
         "cmdEnterDesc": "Pressione ⌘/Ctrl+Enter para enviar mensagem, Enter para nova linha"
       },
+      "autoCloseDialogOnTimeout": {
+        "label": "Fechar diálogos automaticamente ao esgotar o tempo",
+        "enabled": "Ativado",
+        "disabled": "Desativado (aguardar indefinidamente)",
+        "hint": "Quando ativado, os diálogos de permissão e pergunta se fecham automaticamente após o tempo limite abaixo. Quando desativado, o tempo limite não se aplica e os diálogos aguardam a sua resposta indefinidamente."
+      },
       "permissionDialogTimeout": {
         "label": "Tempo Limite de Diálogos de Permissão e Pergunta",
         "unit": "segundos",

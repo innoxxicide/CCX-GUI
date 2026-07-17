@@ -229,6 +229,12 @@ public class SettingsHandler extends BaseMessageHandler {
             case "set_permission_dialog_timeout":
                 projectConfigHandler.handleSetPermissionDialogTimeout(content);
                 return true;
+            case "get_auto_close_dialog_on_timeout":
+                projectConfigHandler.handleGetAutoCloseDialogOnTimeout();
+                return true;
+            case "set_auto_close_dialog_on_timeout":
+                projectConfigHandler.handleSetAutoCloseDialogOnTimeout(content);
+                return true;
             case "get_commit_generation_enabled":
                 projectConfigHandler.handleGetCommitGenerationEnabled();
                 return true;

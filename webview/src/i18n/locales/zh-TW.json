@@ -257,6 +257,12 @@
         "cmdEnter": "⌘/Ctrl+Enter 發送",
         "cmdEnterDesc": "按 ⌘/Ctrl+Enter 發送訊息，Enter 換行"
       },
+      "autoCloseDialogOnTimeout": {
+        "label": "逾時自動關閉對話框",
+        "enabled": "已開啟",
+        "disabled": "已關閉（無限等待）",
+        "hint": "開啟後，權限與提問對話框將在下方設定的逾時後自動關閉。關閉後，逾時不生效，對話框會一直等待，直到你作出回應。"
+      },
       "permissionDialogTimeout": {
         "label": "權限與提問對話框超時時間",
         "unit": "秒",

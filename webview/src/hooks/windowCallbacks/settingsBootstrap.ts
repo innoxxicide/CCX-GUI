@@ -29,6 +29,7 @@ export const startInitialSettingsRequest = (): void => {
       window.sendToJava('get_send_shortcut:');
       window.sendToJava('get_auto_open_file_enabled:');
       window.sendToJava('get_permission_dialog_timeout:');
+      window.sendToJava('get_auto_close_dialog_on_timeout:');
     } else {
       settingsRetryCount++;
       if (settingsRetryCount < MAX_RETRIES) {
@@ -149,6 +150,12 @@ export const drainPendingSettings = (): void => {
     const pending = w.__pendingPermissionDialogTimeout as string;
     delete w.__pendingPermissionDialogTimeout;
     window.updatePermissionDialogTimeout?.(pending);
+  }
+
+  if (w.__pendingAutoCloseDialogOnTimeout) {
+    const pending = w.__pendingAutoCloseDialogOnTimeout as string;
+    delete w.__pendingAutoCloseDialogOnTimeout;
+    window.updateAutoCloseDialogOnTimeout?.(pending);
   }
 
   if (w.__pendingModeReceived) {

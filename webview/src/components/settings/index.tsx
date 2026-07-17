@@ -54,6 +54,9 @@ interface SettingsViewProps {
   // Permission dialog timeout configuration (passed from App.tsx for state sync)
   permissionDialogTimeoutSeconds?: number;
   onPermissionDialogTimeoutChange?: (seconds: number) => void;
+  // Auto-close-on-timeout toggle (passed from App.tsx for state sync)
+  autoCloseDialogOnTimeout?: boolean;
+  onAutoCloseDialogOnTimeoutChange?: (enabled: boolean) => void;
 }
 
 const SettingsView = ({
@@ -68,6 +71,8 @@ const SettingsView = ({
   onAutoOpenFileEnabledChange: onAutoOpenFileEnabledChangeProp,
   permissionDialogTimeoutSeconds: permissionDialogTimeoutSecondsProp,
   onPermissionDialogTimeoutChange: onPermissionDialogTimeoutChangeProp,
+  autoCloseDialogOnTimeout: autoCloseDialogOnTimeoutProp,
+  onAutoCloseDialogOnTimeoutChange: onAutoCloseDialogOnTimeoutChangeProp,
 }: SettingsViewProps) => {
   const { t } = useTranslation();
   const isCodexMode = currentProvider === 'codex';
@@ -200,6 +205,8 @@ const SettingsView = ({
     handleAskUserQuestionNotificationEnabledChange,
     permissionDialogTimeoutSeconds,
     handlePermissionDialogTimeoutChange,
+    autoCloseDialogOnTimeout,
+    handleAutoCloseDialogOnTimeoutChange,
     commitAiConfig,
     setCommitAiConfig,
     handleCommitAiProviderChange,
@@ -217,6 +224,8 @@ const SettingsView = ({
     onAutoOpenFileEnabledChangeProp,
     permissionDialogTimeoutSecondsProp,
     onPermissionDialogTimeoutChangeProp,
+    autoCloseDialogOnTimeoutProp,
+    onAutoCloseDialogOnTimeoutChangeProp,
   });
 
   // Use provider management hook
@@ -538,6 +547,8 @@ const SettingsView = ({
               onAskUserQuestionNotificationEnabledChange={handleAskUserQuestionNotificationEnabledChange}
               permissionDialogTimeoutSeconds={permissionDialogTimeoutSeconds}
               onPermissionDialogTimeoutChange={handlePermissionDialogTimeoutChange}
+              autoCloseDialogOnTimeout={autoCloseDialogOnTimeout}
+              onAutoCloseDialogOnTimeoutChange={handleAutoCloseDialogOnTimeoutChange}
             />
           </div>
 

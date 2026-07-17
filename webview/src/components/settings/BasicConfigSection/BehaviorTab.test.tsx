@@ -116,3 +116,40 @@ describe('BehaviorTab permission dialog timeout', () => {
     expect(onPermissionDialogTimeoutChange).toHaveBeenCalledWith(3600);
   });
 });
+
+describe('BehaviorTab auto-close on timeout toggle', () => {
+  it('renders checked by default and leaves the timeout input editable', () => {
+    renderBehaviorTab();
+
+    const toggle = screen.getByRole('checkbox', {
+      name: /settings.basic.autoCloseDialogOnTimeout.enabled/i,
+    }) as HTMLInputElement;
+    expect(toggle.checked).toBe(true);
+
+    const input = screen.getByRole('spinbutton', {
+      name: /settings.basic.permissionDialogTimeout.label/i,
+    }) as HTMLInputElement;
+    expect(input.disabled).toBe(false);
+  });
+
+  it('disables the timeout input when auto-close is off', () => {
+    renderBehaviorTab({ autoCloseDialogOnTimeout: false });
+
+    const input = screen.getByRole('spinbutton', {
+      name: /settings.basic.permissionDialogTimeout.label/i,
+    }) as HTMLInputElement;
+    expect(input.disabled).toBe(true);
+  });
+
+  it('fires the change callback with false on click', () => {
+    const onAutoCloseDialogOnTimeoutChange = vi.fn();
+    renderBehaviorTab({ onAutoCloseDialogOnTimeoutChange });
+
+    const toggle = screen.getByRole('checkbox', {
+      name: /settings.basic.autoCloseDialogOnTimeout.enabled/i,
+    });
+    fireEvent.click(toggle);
+
+    expect(onAutoCloseDialogOnTimeoutChange).toHaveBeenCalledWith(false);
+  });
+});

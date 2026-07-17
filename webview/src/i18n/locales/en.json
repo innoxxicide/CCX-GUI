@@ -273,6 +273,12 @@
         "cmdEnter": "⌘/Ctrl+Enter to Send",
         "cmdEnterDesc": "Press ⌘/Ctrl+Enter to send message, Enter for new line"
       },
+      "autoCloseDialogOnTimeout": {
+        "label": "Auto-close Dialogs on Timeout",
+        "enabled": "Enabled",
+        "disabled": "Disabled (wait indefinitely)",
+        "hint": "When enabled, permission and question dialogs close automatically after the timeout below. When disabled, the timeout does not apply and dialogs wait indefinitely until you respond."
+      },
       "permissionDialogTimeout": {
         "label": "Permission & Question Dialog Timeout",
         "unit": "seconds",

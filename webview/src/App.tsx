@@ -93,6 +93,8 @@ const App = () => {
 
   // ── Permission dialog timeout (synced with backend config) ──
   const [permissionDialogTimeoutSeconds, setPermissionDialogTimeoutSeconds] = useState(DEFAULT_PERMISSION_DIALOG_TIMEOUT_SECONDS);
+  // When false, permission/question/plan dialogs wait indefinitely (no countdown, no safety net).
+  const [autoCloseDialogOnTimeout, setAutoCloseDialogOnTimeout] = useState(true);
 
   // ── Local refs (don't trigger re-render, kept in App.tsx) ──
   const isFirstMountRef = useRef(true);
@@ -318,6 +320,7 @@ const App = () => {
     customSessionTitleRef, currentSessionIdRef, updateHistoryTitle, applyHistoryTitleLocal,
     setCustomSessionTitle,
     setPermissionDialogTimeoutSeconds,
+    setAutoCloseDialogOnTimeout,
   });
 
   // ── Message processing ──
@@ -480,6 +483,8 @@ const App = () => {
           onAutoOpenFileEnabledChange={handleAutoOpenFileEnabledChange}
           permissionDialogTimeoutSeconds={permissionDialogTimeoutSeconds}
           onPermissionDialogTimeoutChange={setPermissionDialogTimeoutSeconds}
+          autoCloseDialogOnTimeout={autoCloseDialogOnTimeout}
+          onAutoCloseDialogOnTimeoutChange={setAutoCloseDialogOnTimeout}
         />
       ) : currentView === 'chat' ? (
         <ChatScreen
@@ -574,6 +579,7 @@ const App = () => {
         onRewindCancel={handleRewindCancel}
         currentProvider={currentProvider}
         permissionDialogTimeoutSeconds={permissionDialogTimeoutSeconds}
+        autoCloseDialogOnTimeout={autoCloseDialogOnTimeout}
       />
 
       <UsageStatsModal

@@ -103,7 +103,26 @@ public class PermissionHandler extends BaseMessageHandler {
         }
     }
 
+    boolean isAutoCloseDialogOnTimeoutEnabled() {
+        CodemossSettingsService settingsService = context.getSettingsService();
+        if (settingsService == null) {
+            return CodemossSettingsService.DEFAULT_AUTO_CLOSE_DIALOG_ON_TIMEOUT;
+        }
+        try {
+            return settingsService.getAutoCloseDialogOnTimeout();
+        } catch (Exception e) {
+            LOG.warn("[PERM_SHOW] Failed to read auto-close dialog setting for safety net; errorClass="
+                    + e.getClass().getSimpleName(), e);
+            return CodemossSettingsService.DEFAULT_AUTO_CLOSE_DIALOG_ON_TIMEOUT;
+        }
+    }
+
     void scheduleSafetyNet(CompletableFuture<?> future, Runnable timeoutTask) {
+        // When the user disables auto-close, the dialog must wait indefinitely for a response,
+        // so no safety net is scheduled — the request stays pending until the user answers.
+        if (!isAutoCloseDialogOnTimeoutEnabled()) {
+            return;
+        }
         CancellableTask cancellableTask = safetyNetScheduler.schedule(timeoutTask, getSafetyNetTimeoutSeconds());
         future.whenComplete((ignored, error) -> cancellableTask.cancel());
     }

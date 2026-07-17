@@ -63,6 +63,8 @@ export interface AppDialogsProps {
   currentProvider: string;
   /** Permission dialog timeout in seconds (from backend config). */
   permissionDialogTimeoutSeconds?: number;
+  /** When false, dialogs wait indefinitely (no countdown / auto-close). */
+  autoCloseDialogOnTimeout?: boolean;
 }
 
 /**
@@ -85,6 +87,7 @@ export const AppDialogs = ({
   onRewindCancel,
   currentProvider,
   permissionDialogTimeoutSeconds = DEFAULT_PERMISSION_DIALOG_TIMEOUT_SECONDS,
+  autoCloseDialogOnTimeout = true,
 }: AppDialogsProps) => {
   const { t } = useTranslation();
   const {
@@ -160,6 +163,7 @@ export const AppDialogs = ({
         onSkip={handlePermissionSkip}
         onApproveAlways={handlePermissionApproveAlways}
         timeoutSeconds={permissionDialogTimeoutSeconds}
+        autoCloseOnTimeout={autoCloseDialogOnTimeout}
       />
       <AskUserQuestionDialog
         isOpen={askUserQuestionDialogOpen}
@@ -167,6 +171,7 @@ export const AppDialogs = ({
         onSubmit={handleAskUserQuestionSubmit}
         onCancel={handleAskUserQuestionCancel}
         timeoutSeconds={permissionDialogTimeoutSeconds}
+        autoCloseOnTimeout={autoCloseDialogOnTimeout}
       />
       <PlanApprovalDialog
         isOpen={planApprovalDialogOpen}
@@ -174,6 +179,7 @@ export const AppDialogs = ({
         onApprove={handlePlanApprovalApprove}
         onReject={handlePlanApprovalReject}
         timeoutSeconds={permissionDialogTimeoutSeconds}
+        autoCloseOnTimeout={autoCloseDialogOnTimeout}
       />
       <RewindSelectDialog
         isOpen={rewindSelectDialogOpen}

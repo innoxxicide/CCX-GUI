@@ -257,6 +257,12 @@
         "cmdEnter": "⌘/Ctrl+Enterで送信",
         "cmdEnterDesc": "⌘/Ctrl+Enterでメッセージを送信、Enterで改行"
       },
+      "autoCloseDialogOnTimeout": {
+        "label": "タイムアウト時にダイアログを自動的に閉じる",
+        "enabled": "有効",
+        "disabled": "無効（無期限に待機）",
+        "hint": "有効にすると、権限と質問のダイアログは下記のタイムアウト後に自動的に閉じます。無効にすると、タイムアウトは適用されず、応答するまでダイアログは無期限に待機します。"
+      },
       "permissionDialogTimeout": {
         "label": "権限と質問ダイアログのタイムアウト",
         "unit": "秒",

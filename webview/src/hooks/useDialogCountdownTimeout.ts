@@ -7,6 +7,11 @@ interface UseDialogCountdownTimeoutOptions {
   requestKey?: string | null;
   timeoutSeconds: number;
   onTimeout: () => void;
+  /**
+   * When false, the dialog waits indefinitely: no countdown runs, {@link onTimeout} never fires,
+   * and {@link markSubmitted} always succeeds. Defaults to true (auto-close on timeout).
+   */
+  enabled?: boolean;
 }
 
 interface UseDialogCountdownTimeoutReturn {
@@ -14,6 +19,8 @@ interface UseDialogCountdownTimeoutReturn {
   isTimeWarning: boolean;
   isTimedOut: boolean;
   markSubmitted: () => boolean;
+  /** Whether the countdown is active — dialogs hide the timer UI when this is false. */
+  countdownEnabled: boolean;
 }
 
 export function useDialogCountdownTimeout({
@@ -21,6 +28,7 @@ export function useDialogCountdownTimeout({
   requestKey,
   timeoutSeconds,
   onTimeout,
+  enabled = true,
 }: UseDialogCountdownTimeoutOptions): UseDialogCountdownTimeoutReturn {
   const [remainingSeconds, setRemainingSeconds] = useState(timeoutSeconds);
   const remainingSecondsRef = useRef(timeoutSeconds);
@@ -34,6 +42,11 @@ export function useDialogCountdownTimeout({
   // adding timeoutSeconds to its dependency list.
   const capturedTimeoutRef = useRef(timeoutSeconds);
   capturedTimeoutRef.current = timeoutSeconds;
+
+  // Capture `enabled` the same way. The value is read when the dialog opens; toggling the
+  // setting while a dialog is already open does not change that dialog's countdown behaviour.
+  const capturedEnabledRef = useRef(enabled);
+  capturedEnabledRef.current = enabled;
 
   const triggerTimeout = useCallback(() => {
     expiredRef.current = true;
@@ -62,12 +75,17 @@ export function useDialogCountdownTimeout({
   useEffect(() => {
     if (isOpen && requestKey) {
       const effectiveTimeout = capturedTimeoutRef.current;
+      const effectiveEnabled = capturedEnabledRef.current;
       submittedRef.current = false;
       expiredRef.current = false;
       timeoutFiredRef.current = false;
       remainingSecondsRef.current = effectiveTimeout;
       setRemainingSeconds(effectiveTimeout);
-      deadlineMsRef.current = Date.now() + effectiveTimeout * 1000;
+      // An infinite deadline keeps markSubmitted() permissive forever, so a submission is never
+      // rejected as "too late" while the user takes their time.
+      deadlineMsRef.current = effectiveEnabled
+        ? Date.now() + effectiveTimeout * 1000
+        : Number.POSITIVE_INFINITY;
     }
   }, [isOpen, requestKey]);
 
@@ -79,7 +97,7 @@ export function useDialogCountdownTimeout({
       }
     };
 
-    if (!isOpen || !requestKey) {
+    if (!isOpen || !requestKey || !capturedEnabledRef.current) {
       clearTimer();
       return;
     }
@@ -101,13 +119,17 @@ export function useDialogCountdownTimeout({
     return clearTimer;
   }, [isOpen, requestKey, triggerTimeout]);
 
-  const isTimeWarning = remainingSeconds <= WARNING_THRESHOLD_SECONDS && remainingSeconds > 0;
-  const isTimedOut = remainingSeconds <= 0;
+  // When the countdown is disabled the dialog waits indefinitely, so there is no "answer soon"
+  // warning and no timed-out state — even if timeoutSeconds happens to be at/below the warning
+  // threshold (e.g. 30s), which would otherwise flag remainingSeconds as a warning immediately.
+  const isTimeWarning = enabled && remainingSeconds <= WARNING_THRESHOLD_SECONDS && remainingSeconds > 0;
+  const isTimedOut = enabled && remainingSeconds <= 0;
 
   return {
     remainingSeconds,
     isTimeWarning,
     isTimedOut,
     markSubmitted,
+    countdownEnabled: enabled,
   };
 }

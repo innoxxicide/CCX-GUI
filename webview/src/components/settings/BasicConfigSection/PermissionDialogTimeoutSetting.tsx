@@ -11,11 +11,14 @@ import {
 export interface PermissionDialogTimeoutSettingProps {
   permissionDialogTimeoutSeconds?: number;
   onPermissionDialogTimeoutChange?: (seconds: number) => void;
+  /** When true, the timeout is not in effect and the input is read-only. */
+  disabled?: boolean;
 }
 
 export function PermissionDialogTimeoutSetting({
   permissionDialogTimeoutSeconds = DEFAULT_PERMISSION_DIALOG_TIMEOUT_SECONDS,
   onPermissionDialogTimeoutChange = () => {},
+  disabled = false,
 }: PermissionDialogTimeoutSettingProps) {
   const { t } = useTranslation();
   const [timeoutInputValue, setTimeoutInputValue] = useState(String(permissionDialogTimeoutSeconds));
@@ -44,6 +47,7 @@ export function PermissionDialogTimeoutSetting({
           min={MIN_PERMISSION_DIALOG_TIMEOUT_SECONDS}
           max={MAX_PERMISSION_DIALOG_TIMEOUT_SECONDS}
           value={timeoutInputValue}
+          disabled={disabled}
           onChange={(e) => {
             setTimeoutInputValue(e.target.value);
           }}

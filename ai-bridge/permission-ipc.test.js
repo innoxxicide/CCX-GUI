@@ -39,6 +39,14 @@ test('safety net env override is clamped and defaults conservatively', () => {
   assert.equal(resolvePermissionRequestSafetyNetMs('180000'), 180000);
 });
 
+test('safety net sentinel 0 means wait indefinitely (auto-close disabled)', () => {
+  // The Java side emits "0" when the user turns off auto-close-on-timeout. The poll
+  // loops compare elapsed < timeout, and elapsed < Infinity is always true, so the
+  // request waits forever until the user answers.
+  assert.equal(resolvePermissionRequestSafetyNetMs('0'), Infinity);
+  assert.equal(resolvePermissionRequestSafetyNetMs(0), Infinity);
+});
+
 test('log metadata helpers do not include raw permission payload values', () => {
   const inputMetadata = describeInputForLog({
     command: 'cat /secret/token.txt',

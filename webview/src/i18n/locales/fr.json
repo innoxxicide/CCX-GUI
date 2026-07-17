@@ -257,6 +257,12 @@
         "cmdEnter": "⌘/Ctrl+Entrée pour envoyer",
         "cmdEnterDesc": "Appuyez sur ⌘/Ctrl+Entrée pour envoyer le message, Entrée pour nouvelle ligne"
       },
+      "autoCloseDialogOnTimeout": {
+        "label": "Fermer automatiquement les dialogues à l'expiration",
+        "enabled": "Activé",
+        "disabled": "Désactivé (attente illimitée)",
+        "hint": "Lorsque cette option est activée, les dialogues de permission et de question se ferment automatiquement après le délai ci-dessous. Lorsqu'elle est désactivée, le délai ne s'applique pas et les dialogues attendent votre réponse indéfiniment."
+      },
       "permissionDialogTimeout": {
         "label": "Délai d'expiration des dialogues de permission et de question",
         "unit": "secondes",

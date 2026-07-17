@@ -21,6 +21,8 @@ interface PermissionDialogProps {
   onSkip: (channelId: string) => void;
   onApproveAlways: (channelId: string) => void;
   timeoutSeconds?: number;
+  /** When false, the dialog waits indefinitely with no countdown or auto-skip. */
+  autoCloseOnTimeout?: boolean;
 }
 
 // Format a single tool-input value for display. Pure helper hoisted to module
@@ -91,6 +93,7 @@ const PermissionDialog = ({
   onSkip,
   onApproveAlways,
   timeoutSeconds = DEFAULT_PERMISSION_DIALOG_TIMEOUT_SECONDS,
+  autoCloseOnTimeout = true,
 }: PermissionDialogProps) => {
   const [showCommand, setShowCommand] = useState(true);
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -103,11 +106,12 @@ const PermissionDialog = ({
     }
   }, [request, onSkip]);
 
-  const { remainingSeconds, isTimeWarning, markSubmitted } = useDialogCountdownTimeout({
+  const { remainingSeconds, isTimeWarning, markSubmitted, countdownEnabled } = useDialogCountdownTimeout({
     isOpen,
     requestKey: request?.channelId,
     timeoutSeconds,
     onTimeout: handleTimeout,
+    enabled: autoCloseOnTimeout,
   });
 
   const handleApprove = useCallback(() => {
@@ -207,10 +211,12 @@ const PermissionDialog = ({
         <div className="permission-dialog-v3-resize-handle" onPointerDown={handleResizeStart} />
         <div className="permission-dialog-v3-header-row">
           <h3 className="permission-dialog-v3-title">{getToolTitle(request.toolName)}</h3>
-          <span className={`countdown-timer ${isTimeWarning ? 'warning' : ''}`}>
-            <span className="codicon codicon-clock" />
-            <span className="countdown-time">{formatCountdown(remainingSeconds)}</span>
-          </span>
+          {countdownEnabled && (
+            <span className={`countdown-timer ${isTimeWarning ? 'warning' : ''}`}>
+              <span className="codicon codicon-clock" />
+              <span className="countdown-time">{formatCountdown(remainingSeconds)}</span>
+            </span>
+          )}
         </div>
         {isTimeWarning && (
           <div className="timeout-warning-banner">

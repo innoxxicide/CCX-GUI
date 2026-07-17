@@ -52,6 +52,7 @@ export interface UseWindowCallbacksOptions {
   setSendShortcut: React.Dispatch<React.SetStateAction<'enter' | 'cmdEnter'>>;
   setAutoOpenFileEnabled: React.Dispatch<React.SetStateAction<boolean>>;
   setPermissionDialogTimeoutSeconds: React.Dispatch<React.SetStateAction<number>>;
+  setAutoCloseDialogOnTimeout: React.Dispatch<React.SetStateAction<boolean>>;
   setSdkStatus: React.Dispatch<React.SetStateAction<Record<string, { installed?: boolean; status?: string }>>>;
   setSdkStatusLoaded: React.Dispatch<React.SetStateAction<boolean>>;
   setIsRewinding: (loading: boolean) => void;

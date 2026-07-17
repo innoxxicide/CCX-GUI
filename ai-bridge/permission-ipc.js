@@ -84,6 +84,11 @@ export function resolvePermissionRequestSafetyNetMs(value) {
   if (!Number.isFinite(parsed)) {
     return DEFAULT_PERMISSION_REQUEST_SAFETY_NET_MS;
   }
+  // 0 is the "no safety net" sentinel from the Java side (auto-close disabled): the request
+  // must wait forever, resolving only when the user answers. Infinity keeps every poll loop alive.
+  if (parsed === 0) {
+    return Infinity;
+  }
   return Math.max(
     MIN_PERMISSION_REQUEST_SAFETY_NET_MS,
     Math.min(MAX_PERMISSION_REQUEST_SAFETY_NET_MS, Math.trunc(parsed))
@@ -94,6 +99,13 @@ export function resolvePermissionRequestSafetyNetMs(value) {
 export const PERMISSION_REQUEST_SAFETY_NET_MS = resolvePermissionRequestSafetyNetMs(
   process.env.CLAUDE_PERMISSION_SAFETY_NET_MS
 );
+
+// Read the safety-net budget fresh per request. The daemon applies request env (including the
+// Java-supplied CLAUDE_PERMISSION_SAFETY_NET_MS) before each call and restores it after, so a
+// mid-session toggle of "auto-close on timeout" takes effect on the very next request.
+export function getPermissionRequestSafetyNetMs() {
+  return resolvePermissionRequestSafetyNetMs(process.env.CLAUDE_PERMISSION_SAFETY_NET_MS);
+}
 
 debugLog('INIT', `Permission dir: ${PERMISSION_DIR}`);
 debugLog('INIT', `Session ID: ${SESSION_ID}`);
@@ -151,7 +163,7 @@ export async function requestAskUserQuestionAnswers(input) {
       return null;
     }
 
-    const timeout = PERMISSION_REQUEST_SAFETY_NET_MS;
+    const timeout = getPermissionRequestSafetyNetMs();
     let pollCount = 0;
     const pollInterval = 100;
 
@@ -251,7 +263,7 @@ export async function requestPlanApproval(input) {
       return { approved: false, message: 'Failed to write plan approval request' };
     }
 
-    const timeout = PERMISSION_REQUEST_SAFETY_NET_MS;
+    const timeout = getPermissionRequestSafetyNetMs();
     let pollCount = 0;
     const pollInterval = 100;
 
@@ -356,7 +368,7 @@ export async function requestPermissionFromJava(toolName, input) {
       return false;
     }
 
-    const timeout = PERMISSION_REQUEST_SAFETY_NET_MS;
+    const timeout = getPermissionRequestSafetyNetMs();
     let pollCount = 0;
     const pollInterval = 100;
 

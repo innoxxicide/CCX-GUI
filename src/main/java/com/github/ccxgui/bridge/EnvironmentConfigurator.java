@@ -2,6 +2,7 @@
 package com.github.ccxgui.bridge;
 
 import com.github.ccxgui.settings.CodemossSettingsService;
+import com.github.ccxgui.settings.PermissionDialogTimeoutSettings;
 import com.github.ccxgui.util.PlatformUtils;
 import com.github.ccxgui.util.ShellExecutor;
 import com.intellij.openapi.diagnostic.Logger;
@@ -294,8 +295,9 @@ public class EnvironmentConfigurator {
 
     long getPermissionSafetyNetMs() {
         try {
-            long timeoutSeconds = settingsService.getPermissionDialogTimeoutSeconds();
-            return (timeoutSeconds + CodemossSettingsService.PERMISSION_SAFETY_NET_BUFFER_SECONDS) * 1000L;
+            // 0 is the "no safety net" sentinel understood by the Node bridge: when the user has
+            // disabled auto-close, the IPC poll must wait forever instead of timing out the request.
+            return PermissionDialogTimeoutSettings.resolvePermissionSafetyNetMs(settingsService);
         } catch (Exception e) {
             LOG.warn("[EnvironmentConfigurator] Failed to read permission timeout for Node safety net; errorClass="
                     + e.getClass().getSimpleName());

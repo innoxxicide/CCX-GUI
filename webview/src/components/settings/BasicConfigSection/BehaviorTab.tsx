@@ -114,6 +114,8 @@ export interface BehaviorTabProps {
   onAskUserQuestionNotificationEnabledChange?: (enabled: boolean) => void;
   permissionDialogTimeoutSeconds?: number;
   onPermissionDialogTimeoutChange?: (seconds: number) => void;
+  autoCloseDialogOnTimeout?: boolean;
+  onAutoCloseDialogOnTimeoutChange?: (enabled: boolean) => void;
 }
 
 const BehaviorTab = ({
@@ -150,6 +152,8 @@ const BehaviorTab = ({
   onAskUserQuestionNotificationEnabledChange = () => {},
   permissionDialogTimeoutSeconds = DEFAULT_PERMISSION_DIALOG_TIMEOUT_SECONDS,
   onPermissionDialogTimeoutChange = () => {},
+  autoCloseDialogOnTimeout = true,
+  onAutoCloseDialogOnTimeoutChange = () => {},
 }: BehaviorTabProps) => {
   const { t } = useTranslation();
 
@@ -199,9 +203,37 @@ const BehaviorTab = ({
         </div>
       </div>
 
+      {/* Auto-close dialogs on timeout toggle — gates the timeout field below.
+          When off, permission/question/plan dialogs wait indefinitely for a response. */}
+      <div className={styles.streamingSection}>
+        <div className={styles.fieldHeader}>
+          <span className="codicon codicon-clock" />
+          <span className={styles.fieldLabel}>{t('settings.basic.autoCloseDialogOnTimeout.label')}</span>
+        </div>
+        <label className={styles.toggleWrapper}>
+          <input
+            type="checkbox"
+            className={styles.toggleInput}
+            checked={autoCloseDialogOnTimeout}
+            onChange={(e) => onAutoCloseDialogOnTimeoutChange(e.target.checked)}
+          />
+          <span className={styles.toggleSlider} />
+          <span className={styles.toggleLabel}>
+            {autoCloseDialogOnTimeout
+              ? t('settings.basic.autoCloseDialogOnTimeout.enabled')
+              : t('settings.basic.autoCloseDialogOnTimeout.disabled')}
+          </span>
+        </label>
+        <small className={styles.formHint}>
+          <span className="codicon codicon-info" />
+          <span>{t('settings.basic.autoCloseDialogOnTimeout.hint')}</span>
+        </small>
+      </div>
+
       <PermissionDialogTimeoutSetting
         permissionDialogTimeoutSeconds={permissionDialogTimeoutSeconds}
         onPermissionDialogTimeoutChange={onPermissionDialogTimeoutChange}
+        disabled={!autoCloseDialogOnTimeout}
       />
 
       {/* Streaming configuration */}

@@ -50,6 +50,7 @@ describe('useWindowCallbacks integration', () => {
     setSendShortcut: vi.fn(),
     setAutoOpenFileEnabled: vi.fn(),
     setPermissionDialogTimeoutSeconds: vi.fn(),
+    setAutoCloseDialogOnTimeout: vi.fn(),
     setSdkStatus: vi.fn(),
     setSdkStatusLoaded: vi.fn(),
     setIsRewinding: vi.fn(),
@@ -113,6 +114,7 @@ describe('useWindowCallbacks integration', () => {
     // leaked a value onto window we'd see a false-positive drain. Wipe it here
     // so each test starts from a clean pending state.
     delete (window as unknown as Record<string, unknown>).__pendingPermissionDialogTimeout;
+    delete (window as unknown as Record<string, unknown>).__pendingAutoCloseDialogOnTimeout;
   });
 
   /** Stub timer/rAF globals to execute synchronously for streaming tests. */
@@ -531,6 +533,49 @@ describe('useWindowCallbacks integration', () => {
     renderHook(() => useWindowCallbacks(opts));
 
     expect(opts.setPermissionDialogTimeoutSeconds).not.toHaveBeenCalled();
+  });
+
+  // ===== Auto-close-on-timeout toggle =====
+
+  it('updateAutoCloseDialogOnTimeout sets the flag from JSON', () => {
+    const opts = createOptions();
+    renderHook(() => useWindowCallbacks(opts));
+    act(() => {
+      window.updateAutoCloseDialogOnTimeout!(JSON.stringify({ autoCloseDialogOnTimeout: false }));
+    });
+    expect(opts.setAutoCloseDialogOnTimeout).toHaveBeenLastCalledWith(false);
+
+    act(() => {
+      window.updateAutoCloseDialogOnTimeout!(JSON.stringify({ autoCloseDialogOnTimeout: true }));
+    });
+    expect(opts.setAutoCloseDialogOnTimeout).toHaveBeenLastCalledWith(true);
+  });
+
+  it('updateAutoCloseDialogOnTimeout defaults to true for malformed or missing payloads', () => {
+    const opts = createOptions();
+    renderHook(() => useWindowCallbacks(opts));
+
+    act(() => {
+      window.updateAutoCloseDialogOnTimeout!(JSON.stringify({ otherField: 1 }));
+    });
+    expect(opts.setAutoCloseDialogOnTimeout).toHaveBeenLastCalledWith(true);
+
+    // Invalid JSON must not switch the user into indefinite-wait mode silently.
+    act(() => {
+      window.updateAutoCloseDialogOnTimeout!('not-json');
+    });
+    expect(opts.setAutoCloseDialogOnTimeout).not.toHaveBeenLastCalledWith(false);
+  });
+
+  it('drains __pendingAutoCloseDialogOnTimeout into the setter on registration', () => {
+    const w = window as unknown as Record<string, unknown>;
+    w.__pendingAutoCloseDialogOnTimeout = JSON.stringify({ autoCloseDialogOnTimeout: false });
+
+    const opts = createOptions();
+    renderHook(() => useWindowCallbacks(opts));
+
+    expect(opts.setAutoCloseDialogOnTimeout).toHaveBeenCalledWith(false);
+    expect(w.__pendingAutoCloseDialogOnTimeout).toBeUndefined();
   });
 
   it('addErrorMessage shows toast but does not set status', () => {

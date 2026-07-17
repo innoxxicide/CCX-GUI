@@ -371,6 +371,11 @@ interface Window {
   updatePermissionDialogTimeout?: (json: string) => void;
 
   /**
+   * Update whether dialogs auto-close on timeout (when false, dialogs wait indefinitely)
+   */
+  updateAutoCloseDialogOnTimeout?: (json: string) => void;
+
+  /**
    * Update current Claude config
    */
   updateCurrentClaudeConfig?: (json: string) => void;
@@ -915,6 +920,11 @@ interface Window {
    * Pending permission dialog timeout before React initialization
    */
   __pendingPermissionDialogTimeout?: string;
+
+  /**
+   * Pending auto-close dialog on timeout status before React initialization
+   */
+  __pendingAutoCloseDialogOnTimeout?: string;
 
   __pendingPermissionDialogRequests?: string[];
 

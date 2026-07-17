@@ -1,5 +1,7 @@
 package com.github.ccxgui.provider.claude;
 
+import com.github.ccxgui.settings.CodemossSettingsService;
+import com.github.ccxgui.settings.PermissionDialogTimeoutSettings;
 import com.google.gson.JsonObject;
 import com.intellij.openapi.diagnostic.Logger;
 
@@ -27,7 +29,24 @@ final class ClaudeBridgeUtils {
             envVars.addProperty("IDEA_PROJECT_PATH", cwd);
             envVars.addProperty("PROJECT_PATH", cwd);
         }
+        // Send the safety-net budget per request, not just at daemon spawn. The daemon is a
+        // long-running pooled process, so a mid-session toggle of "auto-close on timeout" would
+        // otherwise never reach it. 0 = "wait indefinitely": the AskUserQuestion / permission IPC
+        // poll then blocks until the user answers instead of returning null after the default ~6 min.
+        envVars.addProperty("CLAUDE_PERMISSION_SAFETY_NET_MS",
+                String.valueOf(resolvePermissionSafetyNetMs()));
         return envVars;
+    }
+
+    private static long resolvePermissionSafetyNetMs() {
+        try {
+            return PermissionDialogTimeoutSettings.resolvePermissionSafetyNetMs(new CodemossSettingsService());
+        } catch (Exception e) {
+            // Fall back to DEFAULT + buffer (not the 0 sentinel): a transient settings-read failure
+            // must not silently switch every request into indefinite-wait mode.
+            return (CodemossSettingsService.DEFAULT_PERMISSION_DIALOG_TIMEOUT_SECONDS
+                    + CodemossSettingsService.PERMISSION_SAFETY_NET_BUFFER_SECONDS) * 1000L;
+        }
     }
 
     /**
