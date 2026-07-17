@@ -18,6 +18,7 @@ export function registerUsageModeCallbacks(options: UseWindowCallbacksOptions): 
     setUsagePercentage,
     setUsageUsedTokens,
     setUsageMaxTokens,
+    setClaudeLimits,
     setPermissionMode,
     setClaudePermissionMode,
     setCodexPermissionMode,
@@ -64,6 +65,17 @@ export function registerUsageModeCallbacks(options: UseWindowCallbacksOptions): 
       }
     } catch (error) {
       console.error('[Frontend] Failed to parse usage update:', error);
+    }
+  };
+
+  window.onClaudeLimitsUpdate = (json) => {
+    try {
+      const data = JSON.parse(json);
+      if (data && typeof data.available === 'boolean') {
+        setClaudeLimits(data);
+      }
+    } catch (error) {
+      console.error('[Frontend] Failed to parse Claude limits update:', error);
     }
   };
 

@@ -127,6 +127,14 @@ public class ClaudeSession {
         default void onUsageUpdate(int usedTokens, int maxTokens) {
         }
 
+        /**
+         * Notify the webview of the signed-in Claude account's usage limits
+         * (5-hour session + weekly windows). The argument is the normalized JSON
+         * produced by {@code ClaudeUsageLimitsService}.
+         */
+        default void onClaudeLimitsUpdate(String json) {
+        }
+
         default void onUserMessageUuidPatched(String content, String uuid) {
         }
     }

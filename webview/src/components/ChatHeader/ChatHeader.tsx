@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
 
 import { BackIcon } from '../Icons';
+import type { ClaudeLimitsState } from '../../types/usageLimits';
+import { ClaudeLimitsIndicators } from './ClaudeLimitsIndicators';
 
 export interface ChatHeaderProps {
   currentView: 'chat' | 'history' | 'settings';
@@ -19,6 +21,12 @@ export interface ChatHeaderProps {
   onOpenSearch?: () => void;
   onTitleChange?: (newTitle: string) => void;
   titleEditable?: boolean;
+  /** Claude account usage limits (5-hour + weekly). Undefined for non-Claude. */
+  claudeLimits?: ClaudeLimitsState | null;
+  /** True only when the active provider is Claude (gates the battery gauges). */
+  showClaudeLimits?: boolean;
+  /** Opens the usage-statistics modal when the battery block is clicked. */
+  onUsageStatsClick?: () => void;
 }
 
 export function ChatHeader({
@@ -33,6 +41,9 @@ export function ChatHeader({
   onOpenSearch,
   onTitleChange,
   titleEditable = false,
+  claudeLimits,
+  showClaudeLimits = false,
+  onUsageStatsClick,
 }: ChatHeaderProps): React.ReactElement | null {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -136,6 +147,13 @@ export function ChatHeader({
       <div className="header-right">
         {currentView === 'chat' && (
           <>
+            {showClaudeLimits && claudeLimits?.available && onUsageStatsClick && (
+              <ClaudeLimitsIndicators
+                limits={claudeLimits}
+                onClick={onUsageStatsClick}
+                t={t}
+              />
+            )}
             {onOpenSearch && (
               <button
                 className="icon-button"

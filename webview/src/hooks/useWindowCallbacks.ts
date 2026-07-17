@@ -8,6 +8,7 @@ import type { PermissionRequest } from '../components/PermissionDialog';
 import type { AskUserQuestionRequest } from '../components/AskUserQuestionDialog';
 import type { PlanApprovalRequest } from '../components/PlanApprovalDialog';
 import type { RewindRequest } from '../components/RewindDialog';
+import type { ClaudeLimitsState } from '../types/usageLimits';
 import { registerWindowCallbacks } from './windowCallbacks/registerCallbacks';
 
 // Re-export from messageSync to avoid duplicate definition
@@ -38,6 +39,7 @@ export interface UseWindowCallbacksOptions {
   setUsagePercentage: React.Dispatch<React.SetStateAction<number>>;
   setUsageUsedTokens: React.Dispatch<React.SetStateAction<number | undefined>>;
   setUsageMaxTokens: React.Dispatch<React.SetStateAction<number | undefined>>;
+  setClaudeLimits: React.Dispatch<React.SetStateAction<ClaudeLimitsState | null>>;
   setPermissionMode: React.Dispatch<React.SetStateAction<PermissionMode>>;
   setClaudePermissionMode: React.Dispatch<React.SetStateAction<PermissionMode>>;
   setCodexPermissionMode: React.Dispatch<React.SetStateAction<PermissionMode>>;

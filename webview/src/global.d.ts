@@ -135,6 +135,12 @@ interface Window {
   onUsageUpdate?: (json: string) => void;
 
   /**
+   * Claude account usage-limits update callback (5-hour session + weekly
+   * windows). Drives the header battery indicators. Claude provider only.
+   */
+  onClaudeLimitsUpdate?: (json: string) => void;
+
+  /**
    * Mode changed callback
    */
   onModeChanged?: (mode: string) => void;

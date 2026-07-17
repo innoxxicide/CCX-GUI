@@ -11,6 +11,7 @@ import { isSpecialProviderId } from '../types/provider';
 import { useClaudeProvider } from './providers/useClaudeProvider';
 import { useCodexProvider } from './providers/useCodexProvider';
 import { useUsageTracking } from './providers/useUsageTracking';
+import { useClaudeLimits } from './providers/useClaudeLimits';
 import { useProviderSettings } from './providers/useProviderSettings';
 import { useModelStatePersistence } from './providers/useModelStatePersistence';
 
@@ -50,6 +51,7 @@ export function useModelProviderState({ addToast, t }: UseModelProviderStateOpti
   const claude = useClaudeProvider();
   const codex = useCodexProvider();
   const { isSdkInstalled, ...usage } = useUsageTracking();
+  const claudeLimits = useClaudeLimits();
   const settings = useProviderSettings({ addToast, t });
 
   const {
@@ -191,6 +193,7 @@ export function useModelProviderState({ addToast, t }: UseModelProviderStateOpti
     ...claude,
     ...codex,
     ...usage,
+    ...claudeLimits,
     ...settings,
     currentProvider, setCurrentProvider,
     permissionMode, setPermissionMode,

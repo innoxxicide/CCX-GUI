@@ -33,6 +33,30 @@
     flex-shrink: 0; /* Prevent buttons from shrinking */
 }
 
+/* Claude usage-limit battery gauges (5-hour session + weekly). Claude only. */
+.claude-limits-indicators {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: transparent;
+    border: 1px solid var(--border-secondary);
+    border-radius: 6px;
+    padding: 4px 8px;
+    margin-right: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.claude-limits-indicators:hover {
+    background: var(--bg-hover);
+    border-color: var(--accent-secondary);
+}
+
+.claude-limits-indicators:active {
+    transform: scale(0.98);
+}
+
 .new-chat-button {
     background: var(--bg-tertiary);
     border: 1px solid var(--border-secondary);

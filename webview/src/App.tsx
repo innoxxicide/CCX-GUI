@@ -37,6 +37,7 @@ import { useSession } from './contexts/SessionContext';
 import { useUIState } from './contexts/UIStateContext';
 import { useDialogs } from './contexts/DialogContext';
 import { AppDialogs } from './components/AppDialogs';
+import { UsageStatsModal } from './components/UsageStatsModal/UsageStatsModal';
 import { DEFAULT_PERMISSION_DIALOG_TIMEOUT_SECONDS } from './utils/permissionDialogTimeout';
 
 const App = () => {
@@ -87,6 +88,7 @@ const App = () => {
     toasts, addToast, dismissToast, clearToasts,
     setContextInfo,
     searchOpen, setSearchOpen,
+    usageStatsModalOpen, setUsageStatsModalOpen,
   } = useUIState();
 
   // ── Permission dialog timeout (synced with backend config) ──
@@ -149,6 +151,7 @@ const App = () => {
     reasoningEffort, codexFastMode, streamingEnabledSetting, sendShortcut, autoOpenFileEnabled,
     longContextEnabled,
     usagePercentage, usageUsedTokens, usageMaxTokens,
+    claudeLimits, setClaudeLimits,
     setPermissionMode,
     setClaudePermissionMode, setCodexPermissionMode,
     setSelectedClaudeModel, setSelectedCodexModel,
@@ -268,12 +271,26 @@ const App = () => {
 
   useHistoryLoader({ currentView, currentProvider });
 
+  // ── Claude usage limits (5-hour + weekly battery indicators) ──
+  // Request an initial snapshot when Claude is active; ongoing updates are
+  // pushed by the backend on each agent [USAGE] tag. When switching to another
+  // provider, clear the data and close the modal — only Claude has these limits.
+  useEffect(() => {
+    if (currentProvider === 'claude') {
+      sendBridgeEvent('get_claude_limits');
+    } else {
+      setClaudeLimits(null);
+      setUsageStatsModalOpen(false);
+    }
+  }, [currentProvider, setClaudeLimits, setUsageStatsModalOpen]);
+
   // ── Window callbacks (bridge communication) ──
   useWindowCallbacks({
     t, addToast, clearToasts,
     setMessages, setStatus, setLoading, setLoadingStartTime,
     setIsThinking, setStreamingActive, setHistoryData,
     setCurrentSessionId, setUsagePercentage, setUsageUsedTokens, setUsageMaxTokens,
+    setClaudeLimits,
     setPermissionMode, setClaudePermissionMode, setCodexPermissionMode,
     setSelectedClaudeModel, setSelectedCodexModel,
     setProviderConfigVersion, setActiveProviderConfig,
@@ -442,6 +459,12 @@ const App = () => {
             updateHistoryTitle(currentSessionId, newTitle);
           }
         }}
+        showClaudeLimits={currentProvider === 'claude'}
+        claudeLimits={claudeLimits}
+        onUsageStatsClick={() => {
+          setUsageStatsModalOpen(true);
+          sendBridgeEvent('get_claude_limits', 'force');
+        }}
       />
 
       {currentView === 'settings' ? (
@@ -551,6 +574,13 @@ const App = () => {
         onRewindCancel={handleRewindCancel}
         currentProvider={currentProvider}
         permissionDialogTimeoutSeconds={permissionDialogTimeoutSeconds}
+      />
+
+      <UsageStatsModal
+        isOpen={usageStatsModalOpen}
+        onClose={() => setUsageStatsModalOpen(false)}
+        limits={claudeLimits}
+        onRefresh={() => sendBridgeEvent('get_claude_limits', 'force')}
       />
     </>
   );

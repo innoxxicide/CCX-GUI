@@ -3,6 +3,7 @@ package com.github.ccxgui.session;
 import com.github.ccxgui.session.ClaudeSession.Message;
 import com.github.ccxgui.handler.SettingsHandler;
 import com.github.ccxgui.notifications.ClaudeNotifier;
+import com.github.ccxgui.provider.claude.ClaudeUsageLimitsService;
 import com.github.ccxgui.provider.common.MessageCallback;
 import com.github.ccxgui.provider.common.SDKResult;
 import com.github.ccxgui.util.TokenUsageUtils;
@@ -929,12 +930,35 @@ public class ClaudeMessageHandler implements MessageCallback {
             ClaudeNotifier.setTokenUsage(project, usedTokens, maxTokens);
             // Notify webview of usage update
             callbackHandler.notifyUsageUpdate(usedTokens, maxTokens);
+            // Refresh the account's 5-hour + weekly limit indicators on agent activity
+            // (throttled by the service's TTL, so at most one network call per window).
+            maybeRefreshClaudeLimits();
             // Ensure assistant message exists before backfilling usage
             ensureCurrentAssistantMessageExists();
             backfillUsageToAssistantMessage(usageJson);
             LOG.debug("Updated token usage from [USAGE] tag: " + usedTokens);
         } catch (Exception e) {
             LOG.warn("Failed to parse usage data: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Fetch the signed-in Claude account's usage limits and push them to the
+     * webview battery indicators. Only runs for the Claude provider; the service
+     * de-duplicates and throttles so this is safe to call on every [USAGE] tag.
+     */
+    private void maybeRefreshClaudeLimits() {
+        if (!"claude".equalsIgnoreCase(state.getProvider())) {
+            return;
+        }
+        try {
+            ClaudeUsageLimitsService.refreshIfStale().thenAccept(limitsJson -> {
+                if (limitsJson != null) {
+                    callbackHandler.notifyClaudeLimitsUpdate(limitsJson);
+                }
+            });
+        } catch (Exception e) {
+            LOG.debug("Claude limits refresh skipped: " + e.getMessage());
         }
     }
 

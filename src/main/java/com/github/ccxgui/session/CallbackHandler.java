@@ -150,6 +150,15 @@ public class CallbackHandler {
     }
 
     /**
+     * Notify of a Claude account usage-limits update (5-hour + weekly windows).
+     */
+    public void notifyClaudeLimitsUpdate(String json) {
+        if (callback != null) {
+            callback.onClaudeLimitsUpdate(json);
+        }
+    }
+
+    /**
      * Notify that a specific message received its provider UUID.
      */
     public void notifyUserMessageUuidPatched(String content, String uuid) {

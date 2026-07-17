@@ -36,6 +36,7 @@ describe('useWindowCallbacks integration', () => {
     setUsagePercentage: vi.fn(),
     setUsageUsedTokens: vi.fn(),
     setUsageMaxTokens: vi.fn(),
+    setClaudeLimits: vi.fn(),
     setSubagentHistories: vi.fn(),
     setPermissionMode: vi.fn(),
     setClaudePermissionMode: vi.fn(),

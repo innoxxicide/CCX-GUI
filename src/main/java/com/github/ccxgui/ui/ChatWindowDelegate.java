@@ -4,6 +4,7 @@ import com.github.ccxgui.i18n.ClaudeCodeGuiBundle;
 import com.github.ccxgui.session.ClaudeSession;
 import com.github.ccxgui.settings.CodemossSettingsService;
 import com.github.ccxgui.handler.AgentHandler;
+import com.github.ccxgui.handler.ClaudeLimitsHandler;
 import com.github.ccxgui.handler.ClipboardHandler;
 import com.github.ccxgui.handler.ContextHandler;
 import com.github.ccxgui.handler.CodexMcpServerHandler;
@@ -258,6 +259,7 @@ public class ChatWindowDelegate {
         messageDispatcher.registerHandler(new SkillHandler(handlerContext));
         messageDispatcher.registerHandler(new FileHandler(handlerContext));
         messageDispatcher.registerHandler(new SettingsHandler(handlerContext));
+        messageDispatcher.registerHandler(new ClaudeLimitsHandler(handlerContext));
         messageDispatcher.registerHandler(new SessionHandler(handlerContext));
         messageDispatcher.registerHandler(new ContextHandler(handlerContext));
         messageDispatcher.registerHandler(new FileExportHandler(handlerContext));
