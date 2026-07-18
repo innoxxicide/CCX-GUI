@@ -57,6 +57,19 @@
     transform: scale(0.98);
 }
 
+// Muted placeholder shown when the account has no OAuth login and the usage
+// endpoint returns no data: a dim battery outline that invites a click to learn
+// why the gauges are unavailable, without competing with real header actions.
+.claude-limits-indicators--hint {
+    color: var(--text-tertiary);
+    padding: 4px 6px;
+    gap: 0;
+}
+
+.claude-limits-indicators--hint:hover {
+    color: var(--text-secondary);
+}
+
 .new-chat-button {
     background: var(--bg-tertiary);
     border: 1px solid var(--border-secondary);

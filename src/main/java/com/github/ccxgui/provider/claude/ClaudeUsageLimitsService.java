@@ -1,6 +1,6 @@
 package com.github.ccxgui.provider.claude;
 
-import com.github.ccxgui.util.PlatformUtils;
+import com.github.ccxgui.bridge.NodeDetector;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -286,9 +286,12 @@ public final class ClaudeUsageLimitsService {
 
     private static Path resolveCredentialsPath() {
         String configDir = System.getenv("CLAUDE_CONFIG_DIR");
+        // Resolve the home dir the same WSL-aware way the rest of the plugin reads
+        // ~/.claude files: when the runtime node lives inside WSL, `claude login`
+        // writes the credentials to the WSL home, not the native Windows home.
         Path base = (configDir != null && !configDir.isBlank())
                 ? Paths.get(configDir)
-                : Paths.get(PlatformUtils.getHomeDirectory(), ".claude");
+                : Paths.get(NodeDetector.resolveHomeForFileOps(), ".claude");
         return base.resolve(".credentials.json");
     }
 }

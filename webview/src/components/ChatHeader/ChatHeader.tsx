@@ -147,9 +147,9 @@ export function ChatHeader({
       <div className="header-right">
         {currentView === 'chat' && (
           <>
-            {showClaudeLimits && claudeLimits?.available && onUsageStatsClick && (
+            {showClaudeLimits && onUsageStatsClick && (
               <ClaudeLimitsIndicators
-                limits={claudeLimits}
+                limits={claudeLimits ?? null}
                 onClick={onUsageStatsClick}
                 t={t}
               />
