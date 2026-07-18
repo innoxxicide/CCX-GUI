@@ -11,6 +11,7 @@ English:
 - Add **Claude session + weekly limit battery indicators**: live utilization gauges for the 5-hour and weekly OAuth rate-limit windows
 - Add **auto-resume after the usage limit resets**: when a turn dies on the 5-hour or weekly OAuth limit, the plugin classifies the block from a fresh usage fetch, schedules a wake for the reset time, verifies the limit actually lifted, and re-sends a configurable resume prompt. Off by default (Providers > Claude); wakes that grow stale across an IDE restart fall back to a manual "limit reset — continue?" banner
 - Add a **toggle to disable the permission/question dialog timeout**, so permission prompts and AskUserQuestion dialogs can wait for an answer indefinitely
+- Add **agent error notifications**: an opt-in system toast and sound when an agent run fails with an error, for both Claude and Codex. Configured in Basic configuration → Behavior with its own toggles and a separately selectable sound, including a new bundled "Error" tone
 
 🐛 Fixes
 - Fix **usage-limit indicators freezing permanently** when a fetch leaked its in-flight lock: the lock is now reclaimed after a guard window

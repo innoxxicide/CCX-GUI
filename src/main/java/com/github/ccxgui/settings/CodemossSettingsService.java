@@ -1430,6 +1430,103 @@ public class CodemossSettingsService {
         LOG.info("[CodemossSettings] Set ask user question notification enabled: " + enabled);
     }
 
+    // ==================== Error Notification Management ====================
+
+    /**
+     * Get whether the agent-error system notification is enabled.
+     *
+     * @return whether the error notification is enabled, default is false (opt-in)
+     */
+    public boolean getErrorNotificationEnabled() throws IOException {
+        JsonObject config = readConfig();
+
+        if (config.has("errorNotificationEnabled") && !config.get("errorNotificationEnabled").isJsonNull()) {
+            return config.get("errorNotificationEnabled").getAsBoolean();
+        }
+
+        return false;
+    }
+
+    /**
+     * Set whether the agent-error system notification is enabled.
+     *
+     * @param enabled whether to enable
+     */
+    public void setErrorNotificationEnabled(boolean enabled) throws IOException {
+        JsonObject config = readConfig();
+        config.addProperty("errorNotificationEnabled", enabled);
+        writeConfig(config);
+        LOG.info("[CodemossSettings] Set error notification enabled: " + enabled);
+    }
+
+    /**
+     * Get whether the agent-error notification sound is enabled.
+     * Stored under the nested {@code errorSoundNotification} object.
+     *
+     * @return whether the error sound is enabled, default is false (opt-in)
+     */
+    public boolean getErrorSoundEnabled() throws IOException {
+        JsonObject config = readConfig();
+        if (config.has("errorSoundNotification") && config.get("errorSoundNotification").isJsonObject()) {
+            JsonObject sound = config.getAsJsonObject("errorSoundNotification");
+            if (sound.has("enabled") && !sound.get("enabled").isJsonNull()) {
+                return sound.get("enabled").getAsBoolean();
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Set whether the agent-error notification sound is enabled.
+     *
+     * @param enabled whether to enable
+     */
+    public void setErrorSoundEnabled(boolean enabled) throws IOException {
+        JsonObject config = readConfig();
+        JsonObject sound = config.has("errorSoundNotification") && config.get("errorSoundNotification").isJsonObject()
+                ? config.getAsJsonObject("errorSoundNotification")
+                : new JsonObject();
+        sound.addProperty("enabled", enabled);
+        config.add("errorSoundNotification", sound);
+        writeConfig(config);
+        LOG.info("[CodemossSettings] Set error sound enabled: " + enabled);
+    }
+
+    /**
+     * Get the sound id used for agent-error notifications.
+     *
+     * @return the selected error sound id, default {@code "error"}
+     */
+    public String getErrorSelectedSound() throws IOException {
+        JsonObject config = readConfig();
+        if (config.has("errorSoundNotification") && config.get("errorSoundNotification").isJsonObject()) {
+            JsonObject sound = config.getAsJsonObject("errorSoundNotification");
+            if (sound.has("selectedSound") && !sound.get("selectedSound").isJsonNull()) {
+                String soundId = sound.get("selectedSound").getAsString();
+                if (soundId != null && !soundId.isEmpty()) {
+                    return soundId;
+                }
+            }
+        }
+        return "error";
+    }
+
+    /**
+     * Set the sound id used for agent-error notifications.
+     *
+     * @param soundId the sound id (error/default/chime/bell/ding/success)
+     */
+    public void setErrorSelectedSound(String soundId) throws IOException {
+        JsonObject config = readConfig();
+        JsonObject sound = config.has("errorSoundNotification") && config.get("errorSoundNotification").isJsonObject()
+                ? config.getAsJsonObject("errorSoundNotification")
+                : new JsonObject();
+        sound.addProperty("selectedSound", (soundId == null || soundId.isEmpty()) ? "error" : soundId);
+        config.add("errorSoundNotification", sound);
+        writeConfig(config);
+        LOG.info("[CodemossSettings] Set error selected sound: " + soundId);
+    }
+
     // ==================== AI Feature Toggle Management ====================
 
     /**

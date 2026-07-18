@@ -98,6 +98,14 @@ interface BasicConfigSectionProps {
   // AskUserQuestion reminder notification configuration
   askUserQuestionNotificationEnabled?: boolean;
   onAskUserQuestionNotificationEnabledChange?: (enabled: boolean) => void;
+  // Agent error notification configuration
+  errorNotificationEnabled?: boolean;
+  onErrorNotificationEnabledChange?: (enabled: boolean) => void;
+  errorSoundEnabled?: boolean;
+  onErrorSoundEnabledChange?: (enabled: boolean) => void;
+  errorSelectedSound?: string;
+  onErrorSelectedSoundChange?: (soundId: string) => void;
+  onTestErrorSound?: () => void;
   // Permission dialog timeout configuration
   permissionDialogTimeoutSeconds?: number;
   onPermissionDialogTimeoutChange?: (seconds: number) => void;
@@ -187,6 +195,13 @@ const BasicConfigSection = (props: BasicConfigSectionProps) => {
           onTaskCompletionNotificationEnabledChange={props.onTaskCompletionNotificationEnabledChange}
           askUserQuestionNotificationEnabled={props.askUserQuestionNotificationEnabled}
           onAskUserQuestionNotificationEnabledChange={props.onAskUserQuestionNotificationEnabledChange}
+          errorNotificationEnabled={props.errorNotificationEnabled}
+          onErrorNotificationEnabledChange={props.onErrorNotificationEnabledChange}
+          errorSoundEnabled={props.errorSoundEnabled}
+          onErrorSoundEnabledChange={props.onErrorSoundEnabledChange}
+          errorSelectedSound={props.errorSelectedSound}
+          onErrorSelectedSoundChange={props.onErrorSelectedSoundChange}
+          onTestErrorSound={props.onTestErrorSound}
           permissionDialogTimeoutSeconds={props.permissionDialogTimeoutSeconds}
           onPermissionDialogTimeoutChange={props.onPermissionDialogTimeoutChange}
           autoCloseDialogOnTimeout={props.autoCloseDialogOnTimeout}

@@ -256,6 +256,19 @@
         "disabled": "Désactivé",
         "hint": "Lorsque activé, affiche une notification système lorsque Claude vous pose une question, pour ne pas la manquer. Lorsque désactivé, aucune notification apparaît."
       },
+      "errorNotification": {
+        "label": "Notification d'erreur de l'agent",
+        "enabled": "Activé",
+        "disabled": "Désactivé",
+        "hint": "Lorsque activé, affiche une notification système lorsque l'agent échoue avec une erreur. Lorsque désactivé, aucune notification apparaît."
+      },
+      "errorSound": {
+        "label": "Son d'erreur de l'agent",
+        "enabled": "Activé",
+        "disabled": "Désactivé",
+        "hint": "Lorsque activé, joue un son lorsque l'agent échoue avec une erreur. Le son se choisit séparément du son de fin de tâche.",
+        "selectSound": "Son de notification"
+      },
       "sendShortcut": {
         "label": "Raccourci d'envoi",
         "enter": "Entrée pour envoyer",

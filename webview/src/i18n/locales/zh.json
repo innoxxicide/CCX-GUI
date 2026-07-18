@@ -272,6 +272,19 @@
         "disabled": "已关闭",
         "hint": "开启后，当 Claude 向你提问时显示系统通知提醒，避免错过。关闭后不显示通知。"
       },
+      "errorNotification": {
+        "label": "错误提醒通知",
+        "enabled": "已开启",
+        "disabled": "已关闭",
+        "hint": "开启后，当智能体运行出错中断时显示系统通知。关闭后不显示通知。"
+      },
+      "errorSound": {
+        "label": "错误提示音",
+        "enabled": "已开启",
+        "disabled": "已关闭",
+        "hint": "开启后，当智能体运行出错中断时播放提示音，提示音可与任务完成音分开选择。",
+        "selectSound": "提示音"
+      },
       "sendShortcut": {
         "label": "发送快捷键",
         "enter": "Enter 发送",
@@ -320,6 +333,7 @@
         "soundBell": "钟声",
         "soundDing": "叮咚",
         "soundSuccess": "成功提示",
+        "soundError": "错误提示",
         "soundCustom": "自定义...",
         "customSound": "自定义音频文件",
         "customSoundPlaceholder": "选择或输入音频文件路径",

@@ -112,6 +112,13 @@ export interface BehaviorTabProps {
   onTaskCompletionNotificationEnabledChange?: (enabled: boolean) => void;
   askUserQuestionNotificationEnabled?: boolean;
   onAskUserQuestionNotificationEnabledChange?: (enabled: boolean) => void;
+  errorNotificationEnabled?: boolean;
+  onErrorNotificationEnabledChange?: (enabled: boolean) => void;
+  errorSoundEnabled?: boolean;
+  onErrorSoundEnabledChange?: (enabled: boolean) => void;
+  errorSelectedSound?: string;
+  onErrorSelectedSoundChange?: (soundId: string) => void;
+  onTestErrorSound?: () => void;
   permissionDialogTimeoutSeconds?: number;
   onPermissionDialogTimeoutChange?: (seconds: number) => void;
   autoCloseDialogOnTimeout?: boolean;
@@ -150,6 +157,13 @@ const BehaviorTab = ({
   onTaskCompletionNotificationEnabledChange = () => {},
   askUserQuestionNotificationEnabled = false,
   onAskUserQuestionNotificationEnabledChange = () => {},
+  errorNotificationEnabled = false,
+  onErrorNotificationEnabledChange = () => {},
+  errorSoundEnabled = false,
+  onErrorSoundEnabledChange = () => {},
+  errorSelectedSound = 'error',
+  onErrorSelectedSoundChange = () => {},
+  onTestErrorSound = () => {},
   permissionDialogTimeoutSeconds = DEFAULT_PERMISSION_DIALOG_TIMEOUT_SECONDS,
   onPermissionDialogTimeoutChange = () => {},
   autoCloseDialogOnTimeout = true,
@@ -164,6 +178,16 @@ const BehaviorTab = ({
     { value: 'ding', label: t('settings.basic.soundNotification.soundDing') },
     { value: 'success', label: t('settings.basic.soundNotification.soundSuccess') },
     { value: 'custom', label: t('settings.basic.soundNotification.soundCustom') },
+  ], [t]);
+
+  // Built-in sounds only (no custom file) — the error sound has its own selection.
+  const errorSoundOptions = useMemo(() => [
+    { value: 'error', label: t('settings.basic.soundNotification.soundError') },
+    { value: 'default', label: t('settings.basic.soundNotification.soundDefault') },
+    { value: 'chime', label: t('settings.basic.soundNotification.soundChime') },
+    { value: 'bell', label: t('settings.basic.soundNotification.soundBell') },
+    { value: 'ding', label: t('settings.basic.soundNotification.soundDing') },
+    { value: 'success', label: t('settings.basic.soundNotification.soundSuccess') },
   ], [t]);
 
   return (
@@ -572,6 +596,74 @@ const BehaviorTab = ({
                 </small>
               </div>
             )}
+          </div>
+        )}
+      </div>
+
+      {/* Agent error notification toggle */}
+      <div className={styles.streamingSection}>
+        <div className={styles.fieldHeader}>
+          <span className="codicon codicon-error" />
+          <span className={styles.fieldLabel}>{t('settings.basic.errorNotification.label')}</span>
+        </div>
+        <label className={styles.toggleWrapper}>
+          <input
+            type="checkbox"
+            className={styles.toggleInput}
+            checked={errorNotificationEnabled}
+            onChange={(e) => onErrorNotificationEnabledChange(e.target.checked)}
+          />
+          <span className={styles.toggleSlider} />
+          <span className={styles.toggleLabel}>
+            {errorNotificationEnabled
+              ? t('settings.basic.errorNotification.enabled')
+              : t('settings.basic.errorNotification.disabled')}
+          </span>
+        </label>
+        <small className={styles.formHint}>
+          <span className="codicon codicon-info" />
+          <span>{t('settings.basic.errorNotification.hint')}</span>
+        </small>
+      </div>
+
+      {/* Agent error sound */}
+      <div className={styles.streamingSection}>
+        <div className={styles.fieldHeader}>
+          <span className="codicon codicon-unmute" />
+          <span className={styles.fieldLabel}>{t('settings.basic.errorSound.label')}</span>
+        </div>
+        <label className={styles.toggleWrapper}>
+          <input
+            type="checkbox"
+            className={styles.toggleInput}
+            checked={errorSoundEnabled}
+            onChange={(e) => onErrorSoundEnabledChange(e.target.checked)}
+          />
+          <span className={styles.toggleSlider} />
+          <span className={styles.toggleLabel}>
+            {errorSoundEnabled
+              ? t('settings.basic.errorSound.enabled')
+              : t('settings.basic.errorSound.disabled')}
+          </span>
+        </label>
+        <small className={styles.formHint}>
+          <span className="codicon codicon-info" />
+          <span>{t('settings.basic.errorSound.hint')}</span>
+        </small>
+
+        {errorSoundEnabled && (
+          <div className={styles.customSoundSection}>
+            <div className={styles.fieldHeader}>
+              <span className="codicon codicon-library" />
+              <span className={styles.fieldLabel}>{t('settings.basic.errorSound.selectSound')}</span>
+            </div>
+            <SoundSelectUpward
+              value={errorSelectedSound}
+              onChange={onErrorSelectedSoundChange}
+              options={errorSoundOptions}
+              onTestSound={onTestErrorSound}
+              testSoundLabel={t('settings.basic.soundNotification.testSound')}
+            />
           </div>
         )}
       </div>

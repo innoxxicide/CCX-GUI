@@ -44,6 +44,7 @@ public class SoundNotificationService {
         map.put("bell", "/sounds/bell.wav");
         map.put("ding", "/sounds/ding.wav");
         map.put("success", "/sounds/task-complete.wav");
+        map.put("error", "/sounds/error.wav");
         SOUND_RESOURCES = Collections.unmodifiableMap(map);
     }
 
@@ -86,6 +87,33 @@ public class SoundNotificationService {
                 playBySelection(selectedSound, settings.getCustomSoundPath());
             } catch (Exception e) {
                 LOG.warn("[SoundNotification] Failed to play notification sound: " + e.getMessage(), e);
+            }
+        });
+    }
+
+    /**
+     * Play the agent-error notification sound based on user settings.
+     * Uses its own opt-in toggle and sound selection, but shares the global
+     * "only when unfocused" preference with the completion sound.
+     */
+    public void playErrorSound() {
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            try {
+                CodemossSettingsService settings = new CodemossSettingsService();
+
+                if (!settings.getErrorSoundEnabled()) {
+                    LOG.debug("[SoundNotification] Error sound is disabled");
+                    return;
+                }
+
+                if (settings.getSoundOnlyWhenUnfocused() && ApplicationManager.getApplication().isActive()) {
+                    LOG.debug("[SoundNotification] IDE window is focused, skipping error sound");
+                    return;
+                }
+
+                playBySelection(settings.getErrorSelectedSound(), null);
+            } catch (Exception e) {
+                LOG.warn("[SoundNotification] Failed to play error sound: " + e.getMessage(), e);
             }
         });
     }

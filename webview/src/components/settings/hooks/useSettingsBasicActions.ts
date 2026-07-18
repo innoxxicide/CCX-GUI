@@ -83,6 +83,9 @@ export interface UseSettingsBasicActionsReturn {
   statusBarWidgetEnabled: boolean;
   taskCompletionNotificationEnabled: boolean;
   askUserQuestionNotificationEnabled: boolean;
+  errorNotificationEnabled: boolean;
+  errorSoundEnabled: boolean;
+  errorSelectedSound: string;
   commitAiConfig: CommitAiConfig;
   promptEnhancerConfig: PromptEnhancerConfig;
 
@@ -116,6 +119,10 @@ export interface UseSettingsBasicActionsReturn {
   handleStatusBarWidgetEnabledChange: (enabled: boolean) => void;
   handleTaskCompletionNotificationEnabledChange: (enabled: boolean) => void;
   handleAskUserQuestionNotificationEnabledChange: (enabled: boolean) => void;
+  handleErrorNotificationEnabledChange: (enabled: boolean) => void;
+  handleErrorSoundEnabledChange: (enabled: boolean) => void;
+  handleErrorSelectedSoundChange: (soundId: string) => void;
+  handleTestErrorSound: () => void;
   permissionDialogTimeoutSeconds: number;
   handlePermissionDialogTimeoutChange: (seconds: number) => void;
   autoCloseDialogOnTimeout: boolean;
@@ -170,6 +177,9 @@ export interface UseSettingsBasicActionsReturn {
   /** @internal */ setStatusBarWidgetEnabled: (enabled: boolean) => void;
   /** @internal */ setTaskCompletionNotificationEnabled: (enabled: boolean) => void;
   /** @internal */ setAskUserQuestionNotificationEnabled: (enabled: boolean) => void;
+  /** @internal */ setErrorNotificationEnabled: (enabled: boolean) => void;
+  /** @internal */ setErrorSoundEnabled: (enabled: boolean) => void;
+  /** @internal */ setErrorSelectedSound: (soundId: string) => void;
   /** @internal */ setCommitAiConfig: (config: CommitAiConfig) => void;
   /** @internal */ setPromptEnhancerConfig: (config: PromptEnhancerConfig) => void;
 }
@@ -241,6 +251,11 @@ export function useSettingsBasicActions({
   const [soundOnlyWhenUnfocused, setSoundOnlyWhenUnfocused] = useState<boolean>(false);
   const [selectedSound, setSelectedSound] = useState<string>('default');
   const [customSoundPath, setCustomSoundPath] = useState<string>('');
+
+  // Agent error notification configuration (all opt-in, default off)
+  const [errorNotificationEnabled, setErrorNotificationEnabled] = useState<boolean>(false);
+  const [errorSoundEnabled, setErrorSoundEnabled] = useState<boolean>(false);
+  const [errorSelectedSound, setErrorSelectedSound] = useState<string>('error');
 
   // Diff expanded by default configuration (localStorage-only)
   const [diffExpandedByDefault, setDiffExpandedByDefault] = useState<boolean>(() => {
@@ -509,6 +524,33 @@ export function useSettingsBasicActions({
     sendToJava(`set_ask_user_question_notification_enabled:${JSON.stringify(payload)}`);
   }, []);
 
+  // Agent error notification toggle change handler
+  const handleErrorNotificationEnabledChange = useCallback((enabled: boolean) => {
+    setErrorNotificationEnabled(enabled);
+    const payload = { errorNotificationEnabled: enabled };
+    sendToJava(`set_error_notification_enabled:${JSON.stringify(payload)}`);
+  }, []);
+
+  // Error sound toggle change handler
+  const handleErrorSoundEnabledChange = useCallback((enabled: boolean) => {
+    setErrorSoundEnabled(enabled);
+    const payload = { enabled };
+    sendToJava(`set_error_sound_enabled:${JSON.stringify(payload)}`);
+  }, []);
+
+  // Error sound selection change handler
+  const handleErrorSelectedSoundChange = useCallback((soundId: string) => {
+    setErrorSelectedSound(soundId);
+    const payload = { soundId };
+    sendToJava(`set_error_selected_sound:${JSON.stringify(payload)}`);
+  }, []);
+
+  // Test the error sound (built-in sounds only, no custom path)
+  const handleTestErrorSound = useCallback(() => {
+    const payload = { soundId: errorSelectedSound };
+    sendToJava(`test_sound:${JSON.stringify(payload)}`);
+  }, [errorSelectedSound]);
+
   // Permission dialog timeout change handler
   const handlePermissionDialogTimeoutChange = useCallback((seconds: number) => {
     const clamped = clampPermissionDialogTimeoutSeconds(seconds);
@@ -731,6 +773,16 @@ export function useSettingsBasicActions({
     askUserQuestionNotificationEnabled,
     setAskUserQuestionNotificationEnabled,
     handleAskUserQuestionNotificationEnabledChange,
+    errorNotificationEnabled,
+    setErrorNotificationEnabled,
+    handleErrorNotificationEnabledChange,
+    errorSoundEnabled,
+    setErrorSoundEnabled,
+    handleErrorSoundEnabledChange,
+    errorSelectedSound,
+    setErrorSelectedSound,
+    handleErrorSelectedSoundChange,
+    handleTestErrorSound,
     permissionDialogTimeoutSeconds,
     handlePermissionDialogTimeoutChange,
     autoCloseDialogOnTimeout,

@@ -112,6 +112,18 @@ public class SystemNotificationService {
     }
 
     /**
+     * Show the agent-error toast. Gated by the {@code errorNotificationEnabled}
+     * setting (opt-in, default false). Reuses the same slide-in toast window as
+     * the task-completion notification.
+     */
+    public void showTaskErrorToast(@NotNull Project project, String message) {
+        showVisualNotificationToast(project,
+            ClaudeCodeGuiBundle.message("notifier.taskError.title"),
+            message,
+            isErrorNotificationEnabled());
+    }
+
+    /**
      * Core toast renderer. The {@code enabled} flag is resolved by the caller against
      * the appropriate setting so a single notification feature's opt-in gate cannot
      * accidentally drive another feature's toast.
@@ -161,6 +173,15 @@ public class SystemNotificationService {
             return new CodemossSettingsService().getAskUserQuestionNotificationEnabled();
         } catch (Exception e) {
             LOG.debug("[SystemNotification] Failed to read ask user question flag, defaulting to false: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private boolean isErrorNotificationEnabled() {
+        try {
+            return new CodemossSettingsService().getErrorNotificationEnabled();
+        } catch (Exception e) {
+            LOG.debug("[SystemNotification] Failed to read error notification flag, defaulting to false: " + e.getMessage());
             return false;
         }
     }

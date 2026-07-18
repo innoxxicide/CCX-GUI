@@ -99,7 +99,7 @@ public class CodexMessageHandlerTest {
         RecordingCallback callback = new RecordingCallback();
         callbackHandler.setCallback(callback);
 
-        CodexMessageHandler handler = new CodexMessageHandler(state, callbackHandler);
+        CodexMessageHandler handler = new CodexMessageHandler(null, state, callbackHandler);
         handler.onMessage("stream_start", "");
         handler.onMessage("content_delta", "done");
         handler.onMessage("stream_end", "");
@@ -120,7 +120,7 @@ public class CodexMessageHandlerTest {
         RecordingCallback callback = new RecordingCallback();
         callbackHandler.setCallback(callback);
 
-        CodexMessageHandler handler = new CodexMessageHandler(state, callbackHandler);
+        CodexMessageHandler handler = new CodexMessageHandler(null, state, callbackHandler);
         handler.onMessage("stream_start", "");
         handler.onMessage("content_delta", "hello");
         handler.onMessage("content_delta", " world");
@@ -137,7 +137,7 @@ public class CodexMessageHandlerTest {
         RecordingCallback callback = new RecordingCallback();
         callbackHandler.setCallback(callback);
 
-        CodexMessageHandler handler = new CodexMessageHandler(state, callbackHandler);
+        CodexMessageHandler handler = new CodexMessageHandler(null, state, callbackHandler);
         handler.onMessage("stream_start", "");
         handler.onMessage("content_delta", "收到，测试正常。");
         handler.onMessage("assistant", "{\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"收到，测试正常。\"}]}}");
@@ -155,7 +155,7 @@ public class CodexMessageHandlerTest {
         RecordingCallback callback = new RecordingCallback();
         callbackHandler.setCallback(callback);
 
-        CodexMessageHandler handler = new CodexMessageHandler(state, callbackHandler);
+        CodexMessageHandler handler = new CodexMessageHandler(null, state, callbackHandler);
         handler.onMessage("stream_start", "");
         handler.onMessage("thinking_delta", "先分析");
         handler.onMessage("assistant", "{\"message\":{\"content\":[{\"type\":\"thinking\",\"thinking\":\"先分析\",\"text\":\"先分析\"}]}}");
@@ -181,7 +181,7 @@ public class CodexMessageHandlerTest {
         RecordingCallback callback = new RecordingCallback();
         callbackHandler.setCallback(callback);
 
-        CodexMessageHandler handler = new CodexMessageHandler(state, callbackHandler);
+        CodexMessageHandler handler = new CodexMessageHandler(null, state, callbackHandler);
         handler.onMessage("user", "{\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"text\","
                 + "\"text\":\"<agents-instructions>\\n# AGENTS.md instructions\\n"
                 + "<INSTRUCTIONS>中文回复</INSTRUCTIONS>\\n</agents-instructions>\\n\\n测试通讯\"}]}}");
@@ -206,7 +206,7 @@ public class CodexMessageHandlerTest {
         RecordingCallback callback = new RecordingCallback();
         callbackHandler.setCallback(callback);
 
-        CodexMessageHandler handler = new CodexMessageHandler(state, callbackHandler);
+        CodexMessageHandler handler = new CodexMessageHandler(null, state, callbackHandler);
         handler.onMessage("user", "{\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"text\",\"text\":\"<agents-instructions>\\n# AGENTS.md instructions\\n</agents-instructions>\"}]}}");
 
         assertEquals(0, state.getMessages().size());
@@ -223,7 +223,7 @@ public class CodexMessageHandlerTest {
         RecordingCallback callback = new RecordingCallback();
         callbackHandler.setCallback(callback);
 
-        CodexMessageHandler handler = new CodexMessageHandler(state, callbackHandler);
+        CodexMessageHandler handler = new CodexMessageHandler(null, state, callbackHandler);
         handler.onMessage("stream_start", "");
         handler.onMessage("content_delta", "partial");
         handler.onComplete(new SDKResult());
@@ -246,7 +246,7 @@ public class CodexMessageHandlerTest {
         RecordingCallback callback = new RecordingCallback();
         callbackHandler.setCallback(callback);
 
-        CodexMessageHandler handler = new CodexMessageHandler(state, callbackHandler);
+        CodexMessageHandler handler = new CodexMessageHandler(null, state, callbackHandler);
         handler.onMessage("assistant", "{\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"done\"}]}}");
         handler.onMessage("stream_end", "");
 
@@ -268,7 +268,7 @@ public class CodexMessageHandlerTest {
         RecordingCallback callback = new RecordingCallback();
         callbackHandler.setCallback(callback);
 
-        CodexMessageHandler handler = new CodexMessageHandler(state, callbackHandler);
+        CodexMessageHandler handler = new CodexMessageHandler(null, state, callbackHandler);
         handler.onMessage("assistant", "{\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"done\"}]}}");
         handler.onComplete(new SDKResult());
 
@@ -288,7 +288,7 @@ public class CodexMessageHandlerTest {
         RecordingCallback callback = new RecordingCallback();
         callbackHandler.setCallback(callback);
 
-        CodexMessageHandler handler = new CodexMessageHandler(state, callbackHandler);
+        CodexMessageHandler handler = new CodexMessageHandler(null, state, callbackHandler);
         handler.onMessage("assistant", "{\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"done\"}]}}");
         // ai-bridge Claude-compatible usage: input_tokens INCLUDE cached tokens (OpenAI convention)
         handler.onMessage("result", "{\"type\":\"result\",\"subtype\":\"usage\",\"usage\":{"
@@ -314,7 +314,7 @@ public class CodexMessageHandlerTest {
         RecordingCallback callback = new RecordingCallback();
         callbackHandler.setCallback(callback);
 
-        CodexMessageHandler handler = new CodexMessageHandler(state, callbackHandler);
+        CodexMessageHandler handler = new CodexMessageHandler(null, state, callbackHandler);
         handler.onMessage("assistant", "{\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"done\"}]}}");
         // token_count carries session-cumulative totals, not turn totals
         handler.onMessage("event_msg", "{\"payload\":{\"type\":\"token_count\",\"info\":{"
@@ -335,7 +335,7 @@ public class CodexMessageHandlerTest {
         RecordingCallback callback = new RecordingCallback();
         callbackHandler.setCallback(callback);
 
-        CodexMessageHandler handler = new CodexMessageHandler(state, callbackHandler);
+        CodexMessageHandler handler = new CodexMessageHandler(null, state, callbackHandler);
         handler.onMessage("stream_start", "");
         handler.onMessage("content_delta", "answer");
         handler.onMessage("stream_end", "");
@@ -360,7 +360,7 @@ public class CodexMessageHandlerTest {
         RecordingCallback callback = new RecordingCallback();
         callbackHandler.setCallback(callback);
 
-        CodexMessageHandler handler = new CodexMessageHandler(state, callbackHandler);
+        CodexMessageHandler handler = new CodexMessageHandler(null, state, callbackHandler);
         handler.onMessage("stream_start", "");
         handler.onMessage("content_delta", "partial");
 
@@ -391,7 +391,7 @@ public class CodexMessageHandlerTest {
         RecordingCallback callback = new RecordingCallback();
         callbackHandler.setCallback(callback);
 
-        CodexMessageHandler handler = new CodexMessageHandler(state, callbackHandler);
+        CodexMessageHandler handler = new CodexMessageHandler(null, state, callbackHandler);
         handler.onError("API request failed");
 
         assertEquals(0, callback.streamEndCount);

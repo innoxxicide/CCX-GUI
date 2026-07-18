@@ -778,6 +778,21 @@ public class ProjectConfigHandler {
             "Failed to save ask user question notification setting");
     }
 
+    public void handleGetErrorNotificationEnabled() {
+        respondWithJson("window.updateErrorNotificationEnabled",
+            () -> jsonOf("errorNotificationEnabled", settingsService.getErrorNotificationEnabled()),
+            jsonOf("errorNotificationEnabled", false),
+            "Failed to get error notification enabled");
+    }
+
+    public void handleSetErrorNotificationEnabled(String content) {
+        // Default to disabled when payload is missing or the field is absent/null (opt-in feature).
+        handleBooleanToggle(content, "errorNotificationEnabled", false, "error notification enabled",
+            settingsService::setErrorNotificationEnabled,
+            "window.updateErrorNotificationEnabled",
+            "Failed to save error notification setting");
+    }
+
     private void dispatchUiFontConfigUpdate() {
         try {
             String uiFontConfigJson = FontConfigService.getResolvedUiFontConfigJson(settingsService);

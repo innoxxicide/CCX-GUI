@@ -200,8 +200,8 @@ public class ClaudeMessageHandler implements MessageCallback {
         // notifyStateChange, which can replay a stale error mid-stream.
         callbackHandler.notifyTurnError(error);
 
-        // Show error in status bar
-        ClaudeNotifier.showError(project, error);
+        // Status bar + opt-in error toast/sound
+        ClaudeNotifier.showTurnError(project, error);
     }
 
     /**

@@ -272,6 +272,19 @@
         "disabled": "Disabled",
         "hint": "When enabled, shows a system notification when Claude asks you a question, so you won't miss it. When disabled, no notification appears."
       },
+      "errorNotification": {
+        "label": "Agent Error Notification",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "hint": "When enabled, shows a system notification when an agent run fails with an error. When disabled, no notification appears."
+      },
+      "errorSound": {
+        "label": "Agent Error Sound",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "hint": "When enabled, plays a sound when an agent run fails with an error. The sound is chosen separately from the completion sound.",
+        "selectSound": "Notification Sound"
+      },
       "sendShortcut": {
         "label": "Send Shortcut",
         "enter": "Enter to Send",
@@ -320,6 +333,7 @@
         "soundBell": "Bell",
         "soundDing": "Ding",
         "soundSuccess": "Success",
+        "soundError": "Error",
         "soundCustom": "Custom...",
         "customSound": "Custom Sound File",
         "customSoundPlaceholder": "Select or enter audio file path",

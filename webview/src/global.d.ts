@@ -366,6 +366,11 @@ interface Window {
   updateAskUserQuestionNotificationEnabled?: (json: string) => void;
 
   /**
+   * Update agent error notification enabled state
+   */
+  updateErrorNotificationEnabled?: (json: string) => void;
+
+  /**
    * Update permission dialog timeout setting
    */
   updatePermissionDialogTimeout?: (json: string) => void;

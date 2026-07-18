@@ -203,6 +203,16 @@ const SettingsView = ({
     askUserQuestionNotificationEnabled,
     setAskUserQuestionNotificationEnabled,
     handleAskUserQuestionNotificationEnabledChange,
+    errorNotificationEnabled,
+    setErrorNotificationEnabled,
+    handleErrorNotificationEnabledChange,
+    errorSoundEnabled,
+    setErrorSoundEnabled,
+    handleErrorSoundEnabledChange,
+    errorSelectedSound,
+    setErrorSelectedSound,
+    handleErrorSelectedSoundChange,
+    handleTestErrorSound,
     permissionDialogTimeoutSeconds,
     handlePermissionDialogTimeoutChange,
     autoCloseDialogOnTimeout,
@@ -362,6 +372,9 @@ const SettingsView = ({
     setStatusBarWidgetEnabled,
     setTaskCompletionNotificationEnabled,
     setAskUserQuestionNotificationEnabled,
+    setErrorNotificationEnabled,
+    setErrorSoundEnabled,
+    setErrorSelectedSound,
   });
 
   // Save provider (wrapper function with validation logic)
@@ -545,6 +558,13 @@ const SettingsView = ({
               onTaskCompletionNotificationEnabledChange={handleTaskCompletionNotificationEnabledChange}
               askUserQuestionNotificationEnabled={askUserQuestionNotificationEnabled}
               onAskUserQuestionNotificationEnabledChange={handleAskUserQuestionNotificationEnabledChange}
+              errorNotificationEnabled={errorNotificationEnabled}
+              onErrorNotificationEnabledChange={handleErrorNotificationEnabledChange}
+              errorSoundEnabled={errorSoundEnabled}
+              onErrorSoundEnabledChange={handleErrorSoundEnabledChange}
+              errorSelectedSound={errorSelectedSound}
+              onErrorSelectedSoundChange={handleErrorSelectedSoundChange}
+              onTestErrorSound={handleTestErrorSound}
               permissionDialogTimeoutSeconds={permissionDialogTimeoutSeconds}
               onPermissionDialogTimeoutChange={handlePermissionDialogTimeoutChange}
               autoCloseDialogOnTimeout={autoCloseDialogOnTimeout}

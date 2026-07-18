@@ -256,6 +256,19 @@
         "disabled": "已關閉",
         "hint": "開啟後，當 Claude 向你提問時顯示系統通知提醒，避免錯過。關閉後不顯示通知。"
       },
+      "errorNotification": {
+        "label": "錯誤提醒通知",
+        "enabled": "已開啟",
+        "disabled": "已關閉",
+        "hint": "開啟後，當智能體執行出錯中斷時顯示系統通知。關閉後不顯示通知。"
+      },
+      "errorSound": {
+        "label": "錯誤提示音",
+        "enabled": "已開啟",
+        "disabled": "已關閉",
+        "hint": "開啟後，當智能體執行出錯中斷時播放提示音，提示音可與任務完成音分開選擇。",
+        "selectSound": "提示音"
+      },
       "sendShortcut": {
         "label": "發送快捷鍵",
         "enter": "Enter 發送",

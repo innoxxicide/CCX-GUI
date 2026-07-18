@@ -34,6 +34,8 @@ public class SoundSettingsHandler {
             boolean onlyWhenUnfocused = settingsService.getSoundOnlyWhenUnfocused();
             String selectedSound = settingsService.getSelectedSound();
             String customPath = settingsService.getCustomSoundPath();
+            boolean errorSoundEnabled = settingsService.getErrorSoundEnabled();
+            String errorSelectedSound = settingsService.getErrorSelectedSound();
 
             ApplicationManager.getApplication().invokeLater(() -> {
                 JsonObject response = new JsonObject();
@@ -41,6 +43,8 @@ public class SoundSettingsHandler {
                 response.addProperty("onlyWhenUnfocused", onlyWhenUnfocused);
                 response.addProperty("selectedSound", selectedSound);
                 response.addProperty("customSoundPath", customPath != null ? customPath : "");
+                response.addProperty("errorSoundEnabled", errorSoundEnabled);
+                response.addProperty("errorSelectedSound", errorSelectedSound);
                 context.callJavaScript("window.updateSoundNotificationConfig", context.escapeJs(gson.toJson(response)));
             });
         } catch (Exception e) {
@@ -51,6 +55,8 @@ public class SoundSettingsHandler {
                 response.addProperty("onlyWhenUnfocused", false);
                 response.addProperty("selectedSound", "default");
                 response.addProperty("customSoundPath", "");
+                response.addProperty("errorSoundEnabled", false);
+                response.addProperty("errorSelectedSound", "error");
                 context.callJavaScript("window.updateSoundNotificationConfig", context.escapeJs(gson.toJson(response)));
             });
         }
@@ -155,6 +161,44 @@ public class SoundSettingsHandler {
     }
 
     /**
+     * Set error-notification sound enabled state.
+     */
+    public void handleSetErrorSoundEnabled(String content) {
+        try {
+            JsonObject json = gson.fromJson(content, JsonObject.class);
+            boolean enabled = json != null && json.has("enabled") && json.get("enabled").getAsBoolean();
+
+            settingsService.setErrorSoundEnabled(enabled);
+
+            LOG.info("[SoundSettingsHandler] Set error sound enabled: " + enabled);
+
+            dispatchSoundConfigUpdate();
+        } catch (Exception e) {
+            LOG.error("[SoundSettingsHandler] Failed to set error sound enabled: " + e.getMessage(), e);
+            ApplicationManager.getApplication().invokeLater(() -> {
+                context.callJavaScript("window.showError", context.escapeJs("Failed to save error sound config: " + e.getMessage()));
+            });
+        }
+    }
+
+    /**
+     * Set the sound ID used for error notifications.
+     */
+    public void handleSetErrorSelectedSound(String content) {
+        try {
+            JsonObject json = gson.fromJson(content, JsonObject.class);
+            String soundId = json != null && json.has("soundId") && !json.get("soundId").isJsonNull()
+                ? json.get("soundId").getAsString() : "error";
+
+            settingsService.setErrorSelectedSound(soundId);
+
+            dispatchSoundConfigUpdate();
+        } catch (Exception e) {
+            LOG.error("[SoundSettingsHandler] Failed to set error selected sound: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * Test play a sound by soundId + optional custom path.
      */
     public void handleTestSound(String content) {
@@ -244,23 +288,31 @@ public class SoundSettingsHandler {
         boolean onlyWhenUnfocused;
         String selectedSound;
         String customPath;
+        boolean errorSoundEnabled;
+        String errorSelectedSound;
 
         try {
             enabled = settingsService.getSoundNotificationEnabled();
             onlyWhenUnfocused = settingsService.getSoundOnlyWhenUnfocused();
             selectedSound = settingsService.getSelectedSound();
             customPath = settingsService.getCustomSoundPath();
+            errorSoundEnabled = settingsService.getErrorSoundEnabled();
+            errorSelectedSound = settingsService.getErrorSelectedSound();
         } catch (Exception e) {
             enabled = false;
             onlyWhenUnfocused = false;
             selectedSound = "default";
             customPath = null;
+            errorSoundEnabled = false;
+            errorSelectedSound = "error";
         }
 
         final boolean finalEnabled = enabled;
         final boolean finalOnlyWhenUnfocused = onlyWhenUnfocused;
         final String finalSelectedSound = selectedSound;
         final String finalCustomPath = customPath != null ? customPath : "";
+        final boolean finalErrorSoundEnabled = errorSoundEnabled;
+        final String finalErrorSelectedSound = errorSelectedSound;
 
         ApplicationManager.getApplication().invokeLater(() -> {
             JsonObject response = new JsonObject();
@@ -268,6 +320,8 @@ public class SoundSettingsHandler {
             response.addProperty("onlyWhenUnfocused", finalOnlyWhenUnfocused);
             response.addProperty("selectedSound", finalSelectedSound);
             response.addProperty("customSoundPath", finalCustomPath);
+            response.addProperty("errorSoundEnabled", finalErrorSoundEnabled);
+            response.addProperty("errorSelectedSound", finalErrorSelectedSound);
             context.callJavaScript("window.updateSoundNotificationConfig", context.escapeJs(gson.toJson(response)));
         });
     }

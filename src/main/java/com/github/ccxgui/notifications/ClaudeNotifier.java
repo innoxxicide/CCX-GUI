@@ -60,6 +60,17 @@ public class ClaudeNotifier {
     }
 
     /**
+     * Agent turn died with an error: status-bar message plus the opt-in error
+     * toast and error sound. Reserved for the per-turn error path — incidental
+     * failures (commit generation, quickfix, etc.) stay on {@link #showError}.
+     */
+    public static void showTurnError(@NotNull Project project, String message) {
+        show(project, "Claude [ERR]", message, 8000);
+        SystemNotificationService.getInstance().showTaskErrorToast(project, message);
+        SoundNotificationService.getInstance().playErrorSound();
+    }
+
+    /**
      * Build the toast title from a session: prefer the session summary
      * (the AI-generated session title shown in the UI), otherwise return null
      * so the toast falls back to the i18n default.

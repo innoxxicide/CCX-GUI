@@ -247,7 +247,7 @@ public class SessionSendService {
             String requestedReasoningEffort,
             String effectiveCodexServiceTier
     ) {
-        CodexMessageHandler handler = new CodexMessageHandler(state, callbackFacade.getCallbackHandler());
+        CodexMessageHandler handler = new CodexMessageHandler(project, state, callbackFacade.getCallbackHandler());
         String accessMode = CodemossSettingsService.CODEX_RUNTIME_ACCESS_INACTIVE;
         try {
             accessMode = new CodemossSettingsService().getCodexRuntimeAccessMode();

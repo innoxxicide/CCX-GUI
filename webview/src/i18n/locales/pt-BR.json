@@ -268,6 +268,19 @@
         "disabled": "Desativado",
         "hint": "Quando ativado, exibe uma notificação do sistema quando o Claude faz uma pergunta, para que você não a perca. Quando desativado, nenhuma notificação aparece."
       },
+      "errorNotification": {
+        "label": "Notificação de Erro do Agente",
+        "enabled": "Ativado",
+        "disabled": "Desativado",
+        "hint": "Quando ativado, exibe uma notificação do sistema quando o agente falha com um erro. Quando desativado, nenhuma notificação aparece."
+      },
+      "errorSound": {
+        "label": "Som de Erro do Agente",
+        "enabled": "Ativado",
+        "disabled": "Desativado",
+        "hint": "Quando ativado, reproduz um som quando o agente falha com um erro. O som é escolhido separadamente do som de conclusão.",
+        "selectSound": "Som de notificação"
+      },
       "sendShortcut": {
         "label": "Atalho de Envio",
         "enter": "Enter para Enviar",
@@ -316,6 +329,7 @@
         "soundBell": "Bell",
         "soundDing": "Ding",
         "soundSuccess": "Sucesso",
+        "soundError": "Erro",
         "soundCustom": "Personalizado...",
         "customSound": "Arquivo de Som Personalizado",
         "customSoundPlaceholder": "Selecione ou insira o caminho do arquivo de áudio",

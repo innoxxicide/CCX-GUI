@@ -19,6 +19,10 @@ public class CodexMessageHandler implements MessageCallback {
     private static final Logger LOG = Logger.getInstance(CodexMessageHandler.class);
 
     /**
+     * project.
+     */
+    private final com.intellij.openapi.project.Project project;
+    /**
      * state.
      */
     private final SessionState state;
@@ -53,11 +57,14 @@ public class CodexMessageHandler implements MessageCallback {
     /**
      * Constructor.
      *
+     * @param project project (for status-bar / error notifications)
      * @param state state
      * @param callbackHandler callback handler
      * @since 1.0.0
      */
-    public CodexMessageHandler(SessionState state, CallbackHandler callbackHandler) {
+    public CodexMessageHandler(com.intellij.openapi.project.Project project,
+                               SessionState state, CallbackHandler callbackHandler) {
+        this.project = project;
         this.state = state;
         this.callbackHandler = callbackHandler;
     }
@@ -150,6 +157,11 @@ public class CodexMessageHandler implements MessageCallback {
         callbackHandler.notifyMessageUpdate(state.getMessages());
         resetStreamingAccumulator();
         callbackHandler.notifyStateChange(state.isBusy(), state.isLoading(), state.getError());
+
+        if (project != null) {
+            // Status bar + opt-in error toast/sound (mirrors ClaudeMessageHandler.onError)
+            com.github.ccxgui.notifications.ClaudeNotifier.showTurnError(project, error);
+        }
     }
 
     /**

@@ -76,6 +76,8 @@ public class SettingsHandler extends BaseMessageHandler {
         "set_task_completion_notification_enabled",
         "get_ask_user_question_notification_enabled",
         "set_ask_user_question_notification_enabled",
+        "get_error_notification_enabled",
+        "set_error_notification_enabled",
         "get_ide_theme",
         "get_commit_prompt",
         "set_commit_prompt",
@@ -95,6 +97,8 @@ public class SettingsHandler extends BaseMessageHandler {
         "set_sound_only_when_unfocused",
         "set_selected_sound",
         "set_custom_sound_path",
+        "set_error_sound_enabled",
+        "set_error_selected_sound",
         "test_sound",
         "browse_sound_file",
         // User language preference
@@ -277,6 +281,12 @@ public class SettingsHandler extends BaseMessageHandler {
             case "set_ask_user_question_notification_enabled":
                 projectConfigHandler.handleSetAskUserQuestionNotificationEnabled(content);
                 return true;
+            case "get_error_notification_enabled":
+                projectConfigHandler.handleGetErrorNotificationEnabled();
+                return true;
+            case "set_error_notification_enabled":
+                projectConfigHandler.handleSetErrorNotificationEnabled(content);
+                return true;
             case "get_ai_title_generation_enabled":
                 projectConfigHandler.handleGetAiTitleGenerationEnabled();
                 return true;
@@ -338,6 +348,12 @@ public class SettingsHandler extends BaseMessageHandler {
                 return true;
             case "set_custom_sound_path":
                 soundSettingsHandler.handleSetCustomSoundPath(content);
+                return true;
+            case "set_error_sound_enabled":
+                soundSettingsHandler.handleSetErrorSoundEnabled(content);
+                return true;
+            case "set_error_selected_sound":
+                soundSettingsHandler.handleSetErrorSelectedSound(content);
                 return true;
             case "test_sound":
                 soundSettingsHandler.handleTestSound(content);
