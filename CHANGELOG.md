@@ -1,3 +1,10 @@
+##### **2026年7月18日（v0.0.1-fix2）**
+
+English:
+
+🐛 Fixes
+- Fix **Claude usage battery not appearing on macOS**: on macOS the Claude CLI keeps the OAuth token in the login Keychain rather than `~/.claude/.credentials.json`, so the usage service — which only read the file — reported no subscription and the header gauges stayed hidden even for a valid Pro/Max login. It now falls back to reading the token from the Keychain (`Claude Code-credentials`) when the file has none, so the battery indicators light up on macOS too
+
 ##### **2026年7月18日（v0.0.1-fix1）**
 
 English:
