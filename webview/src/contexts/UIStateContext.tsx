@@ -2,11 +2,8 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 import type { ToastMessage } from '../components/Toast';
 import type { SettingsTab } from '../components/settings/SettingsSidebar';
 import type { ContextInfo, ViewMode } from '../hooks';
-import { APP_VERSION } from '../version/version';
 import { DEFAULT_STATUS } from './MessagesContext';
 import { forceWebviewRepaint } from '../utils/forceWebviewRepaint';
-
-const LAST_SEEN_VERSION_KEY = 'lastSeenChangelogVersion';
 
 export interface UIStateContextValue {
   // Navigation
@@ -57,10 +54,8 @@ export function UIStateProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
   const [addModelDialogOpen, setAddModelDialogOpen] = useState<boolean>(false);
   const [usageStatsModalOpen, setUsageStatsModalOpen] = useState<boolean>(false);
-  const [showChangelogDialog, setShowChangelogDialog] = useState<boolean>(() => {
-    const lastSeen = localStorage.getItem(LAST_SEEN_VERSION_KEY);
-    return lastSeen !== APP_VERSION;
-  });
+  // Never auto-shown on version change; opened only manually (version click).
+  const [showChangelogDialog, setShowChangelogDialog] = useState<boolean>(false);
   const [contextInfo, setContextInfo] = useState<ContextInfo | null>(null);
   const [draftInput, setDraftInput] = useState<string>('');
   const [searchOpen, setSearchOpen] = useState<boolean>(false);
@@ -78,7 +73,6 @@ export function UIStateProvider({ children }: { children: ReactNode }) {
   const clearToasts = useCallback(() => { setToasts([]); }, []);
 
   const closeChangelogDialog = useCallback(() => {
-    localStorage.setItem(LAST_SEEN_VERSION_KEY, APP_VERSION);
     setShowChangelogDialog(false);
     // The fixed-position fullscreen overlay can leave ghosting after unmount on macOS JCEF.
     forceWebviewRepaint('changelog-dialog-close');
