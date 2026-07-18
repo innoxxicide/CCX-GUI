@@ -17,7 +17,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Fetches the signed-in Claude account's rate-limit utilization (the 5-hour
@@ -39,9 +39,28 @@ public final class ClaudeUsageLimitsService {
     private static final String USAGE_ENDPOINT = "https://api.anthropic.com/api/oauth/usage";
     private static final String OAUTH_BETA_HEADER = "oauth-2025-04-20";
     private static final long TTL_MS = 60_000L;
+    /**
+     * Shorter retry window used after a failed fetch, so the indicators recover
+     * from a transient endpoint/auth error within seconds instead of a full
+     * success-TTL — without re-hitting the network on every streaming [USAGE] tag.
+     */
+    private static final long ERROR_TTL_MS = 10_000L;
+    /**
+     * Safety window after which a running fetch is assumed to have leaked its
+     * lock and is forcibly reclaimed. Must exceed the connect + request timeouts
+     * below so a genuinely slow fetch is never mistaken for a leak.
+     */
+    private static final long IN_FLIGHT_GUARD_MS = 30_000L;
 
     private static final Gson GSON = new Gson();
-    private static final AtomicBoolean IN_FLIGHT = new AtomicBoolean(false);
+    /**
+     * Millis when the in-flight fetch started, or {@code 0} when none is running.
+     * A self-healing lock: a non-zero value older than {@link #IN_FLIGHT_GUARD_MS}
+     * is treated as leaked and reclaimed by {@link #tryAcquireInFlight()}, so a
+     * dispatch that fails before running its release path can never freeze the
+     * indicators permanently.
+     */
+    private static final AtomicLong inFlightSince = new AtomicLong(0L);
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .build();
@@ -51,6 +70,8 @@ public final class ClaudeUsageLimitsService {
     /** Last payload actually produced (available or unavailable) — answers pull requests. */
     private static volatile String lastJson;
     private static volatile long lastFetchAt = 0L;
+    /** Whether the most recent fetch failed, so the next refresh uses ERROR_TTL_MS. */
+    private static volatile boolean lastFetchFailed = false;
 
     private ClaudeUsageLimitsService() {
     }
@@ -61,14 +82,13 @@ public final class ClaudeUsageLimitsService {
      * {@code null} when nothing new should be sent (fresh cache / in-flight).
      */
     public static CompletableFuture<String> refreshIfStale() {
-        if (System.currentTimeMillis() - lastFetchAt < TTL_MS) {
+        if (System.currentTimeMillis() - lastFetchAt < currentTtlMs()) {
             return CompletableFuture.completedFuture(null);
         }
-        if (!IN_FLIGHT.compareAndSet(false, true)) {
+        if (!tryAcquireInFlight()) {
             return CompletableFuture.completedFuture(null);
         }
-        return CompletableFuture.supplyAsync(ClaudeUsageLimitsService::fetchAndCache,
-                AppExecutorUtil.getAppExecutorService());
+        return dispatchFetch(null);
     }
 
     /**
@@ -79,19 +99,63 @@ public final class ClaudeUsageLimitsService {
      */
     public static CompletableFuture<String> getOrFetch(boolean force) {
         String cached = lastJson;
-        if (!force && cached != null && System.currentTimeMillis() - lastFetchAt < TTL_MS) {
+        if (!force && cached != null && System.currentTimeMillis() - lastFetchAt < currentTtlMs()) {
             return CompletableFuture.completedFuture(cached);
         }
-        if (!IN_FLIGHT.compareAndSet(false, true)) {
+        if (!tryAcquireInFlight()) {
             // A fetch is already running; it will push the real result via its own path.
             return CompletableFuture.completedFuture(cached);
         }
-        return CompletableFuture.supplyAsync(ClaudeUsageLimitsService::fetchAndCache,
-                AppExecutorUtil.getAppExecutorService());
+        return dispatchFetch(cached);
+    }
+
+    private static long currentTtlMs() {
+        return lastFetchFailed ? ERROR_TTL_MS : TTL_MS;
+    }
+
+    /**
+     * Acquire the in-flight lock. Reclaims it when a previous dispatch has held it
+     * longer than {@link #IN_FLIGHT_GUARD_MS} — i.e. leaked it by never reaching
+     * its release path (e.g. the executor rejected the task). Without this reclaim
+     * a single leaked lock would freeze both the push and force-refresh paths
+     * permanently until the IDE restarts.
+     */
+    private static boolean tryAcquireInFlight() {
+        long now = System.currentTimeMillis();
+        long since = inFlightSince.get();
+        if (since == 0L) {
+            return inFlightSince.compareAndSet(0L, now);
+        }
+        if (now - since > IN_FLIGHT_GUARD_MS) {
+            return inFlightSince.compareAndSet(since, now);
+        }
+        return false;
+    }
+
+    private static void releaseInFlight() {
+        inFlightSince.set(0L);
+    }
+
+    /**
+     * Schedule {@link #fetchAndCache()} on the app pool. If the executor rejects
+     * the task, the in-flight lock is released immediately so it cannot leak, and
+     * the supplied fallback is returned ({@code null} on the push path, cached
+     * JSON on the pull path).
+     */
+    private static CompletableFuture<String> dispatchFetch(String fallbackOnReject) {
+        try {
+            return CompletableFuture.supplyAsync(ClaudeUsageLimitsService::fetchAndCache,
+                    AppExecutorUtil.getAppExecutorService());
+        } catch (Throwable t) {
+            releaseInFlight();
+            LOG.warn("[ClaudeUsageLimits] Failed to dispatch usage fetch: " + t.getMessage());
+            return CompletableFuture.completedFuture(fallbackOnReject);
+        }
     }
 
     private static String fetchAndCache() {
         String result;
+        boolean failed = false;
         try {
             JsonObject oauth = readOAuthCredentials();
             String token = (oauth != null && oauth.has("accessToken") && !oauth.get("accessToken").isJsonNull())
@@ -106,12 +170,15 @@ public final class ClaudeUsageLimitsService {
             }
         } catch (Exception e) {
             LOG.warn("[ClaudeUsageLimits] Failed to fetch usage limits: " + e.getMessage());
-            // Keep showing the last good value across transient network/auth errors.
+            // Keep showing the last good value across transient network/auth errors,
+            // but flag the failure so the next refresh retries after the shorter ERROR_TTL.
+            failed = true;
             result = cachedAvailableJson != null ? cachedAvailableJson : buildUnavailable("error");
         } finally {
-            IN_FLIGHT.set(false);
+            releaseInFlight();
         }
         lastJson = result;
+        lastFetchFailed = failed;
         lastFetchAt = System.currentTimeMillis();
         return result;
     }
