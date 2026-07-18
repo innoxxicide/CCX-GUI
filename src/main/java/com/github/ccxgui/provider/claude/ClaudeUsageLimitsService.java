@@ -1,12 +1,15 @@
 package com.github.ccxgui.provider.claude;
 
 import com.github.ccxgui.bridge.NodeDetector;
+import com.github.ccxgui.util.PlatformUtils;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.util.concurrency.AppExecutorUtil;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -17,7 +20,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 /**
  * Fetches the signed-in Claude account's rate-limit utilization (the 5-hour
@@ -38,6 +43,8 @@ public final class ClaudeUsageLimitsService {
 
     private static final String USAGE_ENDPOINT = "https://api.anthropic.com/api/oauth/usage";
     private static final String OAUTH_BETA_HEADER = "oauth-2025-04-20";
+    /** Keychain service name under which the Claude CLI stores credentials on macOS. */
+    private static final String MACOS_KEYCHAIN_SERVICE = "Claude Code-credentials";
     private static final long TTL_MS = 60_000L;
     /**
      * Shorter retry window used after a failed fetch, so the indicators recover
@@ -267,21 +274,100 @@ public final class ClaudeUsageLimitsService {
     }
 
     /**
-     * Read the {@code claudeAiOauth} object from Claude's credentials file. The
+     * Read the {@code claudeAiOauth} object from Claude's credentials store. The
      * Claude Agent SDK keeps the access token refreshed here, so reading it
      * around agent activity yields a valid token without a separate refresh flow.
+     *
+     * <p>Two backends are consulted, file first. On Linux/Windows the CLI writes
+     * {@code ~/.claude/.credentials.json}; on macOS it stores the same JSON blob
+     * in the login Keychain (generic password, service
+     * {@link #MACOS_KEYCHAIN_SERVICE}) and typically writes no file at all.
+     * Without the Keychain fallback a valid macOS Pro/Max login reads as
+     * {@code no_oauth} and the header indicators never appear.
      */
-    private static JsonObject readOAuthCredentials() throws Exception {
+    private static JsonObject readOAuthCredentials() {
         Path path = resolveCredentialsPath();
-        if (path == null || !Files.exists(path)) {
+        boolean fileExists = path != null && Files.exists(path);
+        if (fileExists) {
+            try {
+                JsonObject oauth = parseClaudeAiOauth(Files.readString(path, StandardCharsets.UTF_8));
+                if (oauth != null) {
+                    return oauth;
+                }
+            } catch (Exception e) {
+                LOG.warn("[ClaudeUsageLimits] Failed to read credentials file " + path + ": " + e.getMessage());
+            }
+        }
+
+        // macOS keeps the token in the login Keychain, not in the file.
+        if (PlatformUtils.isMac()) {
+            JsonObject oauth = readOAuthFromKeychain();
+            if (oauth != null) {
+                return oauth;
+            }
+        }
+
+        // Diagnostic: only logs for accounts that resolve to no_oauth (the broken
+        // case), never the token. Reveals which home/path was searched so a
+        // WSL/native or CLAUDE_CONFIG_DIR mismatch can be told apart from a
+        // genuine API-key login.
+        LOG.info("[ClaudeUsageLimits] No claudeAiOauth token found (reporting no_oauth): credentialsPath="
+                + path + ", fileExists=" + fileExists + ", keychainChecked=" + PlatformUtils.isMac());
+        return null;
+    }
+
+    /** Extract the {@code claudeAiOauth} object from a raw credentials JSON blob, or {@code null}. */
+    private static JsonObject parseClaudeAiOauth(String raw) {
+        if (raw == null || raw.isBlank()) {
             return null;
         }
-        String raw = Files.readString(path, StandardCharsets.UTF_8);
-        JsonObject root = JsonParser.parseString(raw).getAsJsonObject();
-        if (root.has("claudeAiOauth") && root.get("claudeAiOauth").isJsonObject()) {
-            return root.getAsJsonObject("claudeAiOauth");
+        try {
+            JsonObject root = JsonParser.parseString(raw).getAsJsonObject();
+            if (root.has("claudeAiOauth") && root.get("claudeAiOauth").isJsonObject()) {
+                return root.getAsJsonObject("claudeAiOauth");
+            }
+        } catch (Exception e) {
+            LOG.debug("[ClaudeUsageLimits] Failed to parse credentials JSON: " + e.getMessage());
         }
         return null;
+    }
+
+    /**
+     * Read the credentials blob from the macOS login Keychain, where the Claude
+     * CLI stores the OAuth token on macOS instead of a file. Runs
+     * {@code security find-generic-password -s "Claude Code-credentials" -w},
+     * which prints the stored JSON to stdout. Returns the {@code claudeAiOauth}
+     * object, or {@code null} when the item is absent or unreadable. Read-only;
+     * never logs the token value.
+     */
+    private static JsonObject readOAuthFromKeychain() {
+        Process process = null;
+        try {
+            process = new ProcessBuilder(
+                    "security", "find-generic-password", "-s", MACOS_KEYCHAIN_SERVICE, "-w").start();
+            String output;
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                output = reader.lines().collect(Collectors.joining("\n"));
+            }
+            if (!process.waitFor(5, TimeUnit.SECONDS)) {
+                process.destroyForcibly();
+                LOG.warn("[ClaudeUsageLimits] Keychain lookup timed out");
+                return null;
+            }
+            if (process.exitValue() != 0) {
+                // Non-zero exit means the item is absent (44) or access was denied.
+                return null;
+            }
+            return parseClaudeAiOauth(output.trim());
+        } catch (Exception e) {
+            LOG.warn("[ClaudeUsageLimits] Keychain lookup failed: " + e.getMessage());
+            return null;
+        } finally {
+            if (process != null && process.isAlive()) {
+                process.destroyForcibly();
+            }
+        }
     }
 
     private static Path resolveCredentialsPath() {
