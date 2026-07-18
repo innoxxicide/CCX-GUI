@@ -1,13 +1,14 @@
 <idea-plugin>
     <id>com.github.ccx-gui</id>
     <name>CCX GUI (Claude or Codex)</name>
-    <vendor>MossX</vendor>
+    <vendor>innoxxicide</vendor>
 
     <!-- Resource bundle for i18n -->
     <resource-bundle>messages.ClaudeCodeGuiBundle</resource-bundle>
 
     <description><![CDATA[
-        <p>In Claude we trust</p>
+        <p><strong>In Claude we trust</strong></p>
+        <p>A fork of the original <a href="https://github.com/zhukunpenglinyutong/jetbrains-cc-gui">CC GUI</a> plugin, forked at v0.4.7.</p>
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>

@@ -1,3 +1,41 @@
+##### **2026年7月18日（v0.0.1）**
+
+English:
+
+🚀 Fork
+- **CCX GUI (Claude or Codex) is a fork of CC GUI at v0.4.7** — original repository: https://github.com/zhukunpenglinyutong/jetbrains-cc-gui. Versioning restarts at v0.0.1 (by @innoxxicide)
+- Rename the product to **CCX GUI**, with its own plugin id, Java package (`com.github.ccxgui`) and a distinct namespace for every registration id, so the fork can coexist with the original plugin in one IDE
+- Recolor the brand mark from terracotta to green
+
+✨ Features
+- Add **Claude session + weekly limit battery indicators**: live utilization gauges for the 5-hour and weekly OAuth rate-limit windows
+- Add **auto-resume after the usage limit resets**: when a turn dies on the 5-hour or weekly OAuth limit, the plugin classifies the block from a fresh usage fetch, schedules a wake for the reset time, verifies the limit actually lifted, and re-sends a configurable resume prompt. Off by default (Providers > Claude); wakes that grow stale across an IDE restart fall back to a manual "limit reset — continue?" banner
+- Add a **toggle to disable the permission/question dialog timeout**, so permission prompts and AskUserQuestion dialogs can wait for an answer indefinitely
+
+🐛 Fixes
+- Fix **usage-limit indicators freezing permanently** when a fetch leaked its in-flight lock: the lock is now reclaimed after a guard window
+- Fix the **context gauge over-counting**: subagent messages are excluded from the context calculation
+- Fix **credentials home resolution on Windows**: the usage service now resolves `~/.claude` via PlatformUtils
+- Fix **background-task wake-ups rendering as a hung reload**: they now stream live instead of waiting for the foreground stream to end
+
+中文：
+
+🚀 分叉
+- **CCX GUI (Claude or Codex) 是 CC GUI 在 v0.4.7 基础上的分叉**——原始仓库：https://github.com/zhukunpenglinyutong/jetbrains-cc-gui 。版本号从 v0.0.1 重新开始（by @innoxxicide）
+- 产品更名为 **CCX GUI**，使用独立的插件 id、Java 包名（`com.github.ccxgui`）以及全部注册 id 的独立命名空间，因此本分叉可与原插件在同一 IDE 中共存
+- 品牌图标由陶土色改为绿色
+
+✨ 新功能
+- 新增 **Claude 会话 + 每周限额电量指示器**：实时展示 5 小时与每周 OAuth 限额窗口的用量
+- 新增 **限额重置后自动续跑**：当轮次因 5 小时或每周 OAuth 限额中断时，插件通过新抓取的用量数据识别限额、按重置时间安排唤醒、确认限额确实解除后自动发送可配置的续跑提示词。默认关闭（Providers > Claude）；IDE 重启后过期的唤醒会退化为手动「限额已重置——继续？」横幅
+- 新增 **权限/提问对话框超时开关**：允许权限确认与 AskUserQuestion 对话框无限期等待回答
+
+🐛 修复
+- 修复 **抓取锁泄漏导致用量指示器永久冻结**：in-flight 锁超过保护窗口后会被回收
+- 修复 **上下文仪表统计偏高**：子代理消息不再计入上下文
+- 修复 **Windows 上凭证目录解析**：用量服务改经 PlatformUtils 解析 `~/.claude`
+- 修复 **后台任务唤醒表现为卡死的 reload**：现在实时流式渲染，不再等待前台流结束
+
 ##### **2026年7月9日（v0.4.7）**
 
 English:
