@@ -101,6 +101,7 @@ public class ChatWindowDelegate {
         void setSlashCommandsFetched(boolean fetched);
         void setFetchedSlashCommandsCount(int count);
         void persistTabSessionState();
+        void manualResumeAutoResume();
     }
 
     private final DelegateHost host;
@@ -299,6 +300,7 @@ public class ChatWindowDelegate {
             @Override public void onRefreshSlashCommands() {
                 host.getSessionLifecycleManager().fetchSlashCommandsOnStartup();
             }
+            @Override public void onManualAutoResume() { host.manualResumeAutoResume(); }
         }));
 
         PermissionHandler permissionHandler = new PermissionHandler(handlerContext);

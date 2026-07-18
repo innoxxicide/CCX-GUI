@@ -62,6 +62,12 @@ public class SettingsHandler extends BaseMessageHandler {
         "set_auto_open_file_enabled",
         "get_permission_dialog_timeout",
         "set_permission_dialog_timeout",
+        "get_auto_close_dialog_on_timeout",
+        "set_auto_close_dialog_on_timeout",
+        "get_claude_auto_resume_enabled",
+        "set_claude_auto_resume_enabled",
+        "get_claude_auto_resume_prompt",
+        "set_claude_auto_resume_prompt",
         "get_commit_generation_enabled",
         "set_commit_generation_enabled",
         "get_status_bar_widget_enabled",
@@ -234,6 +240,18 @@ public class SettingsHandler extends BaseMessageHandler {
                 return true;
             case "set_auto_close_dialog_on_timeout":
                 projectConfigHandler.handleSetAutoCloseDialogOnTimeout(content);
+                return true;
+            case "get_claude_auto_resume_enabled":
+                projectConfigHandler.handleGetClaudeAutoResumeEnabled();
+                return true;
+            case "set_claude_auto_resume_enabled":
+                projectConfigHandler.handleSetClaudeAutoResumeEnabled(content);
+                return true;
+            case "get_claude_auto_resume_prompt":
+                projectConfigHandler.handleGetClaudeAutoResumePrompt();
+                return true;
+            case "set_claude_auto_resume_prompt":
+                projectConfigHandler.handleSetClaudeAutoResumePrompt(content);
                 return true;
             case "get_commit_generation_enabled":
                 projectConfigHandler.handleGetCommitGenerationEnabled();

@@ -316,6 +316,43 @@ public class ProjectConfigHandler {
         }
     }
 
+    public void handleGetClaudeAutoResumeEnabled() {
+        respondWithJson("window.updateClaudeAutoResumeEnabled",
+            () -> jsonOf("claudeAutoResumeOnLimitEnabled", settingsService.getClaudeAutoResumeEnabled()),
+            jsonOf("claudeAutoResumeOnLimitEnabled", CodemossSettingsService.DEFAULT_CLAUDE_AUTO_RESUME_ENABLED),
+            "Failed to get Claude auto-resume enabled");
+    }
+
+    public void handleSetClaudeAutoResumeEnabled(String content) {
+        handleBooleanToggle(content, "claudeAutoResumeOnLimitEnabled",
+            CodemossSettingsService.DEFAULT_CLAUDE_AUTO_RESUME_ENABLED, "Claude auto-resume enabled",
+            settingsService::setClaudeAutoResumeEnabled,
+            "window.updateClaudeAutoResumeEnabled",
+            "Failed to save Claude auto-resume setting");
+    }
+
+    public void handleGetClaudeAutoResumePrompt() {
+        respondWithJson("window.updateClaudeAutoResumePrompt",
+            () -> jsonOf("claudeAutoResumePrompt", settingsService.getClaudeAutoResumePrompt()),
+            jsonOf("claudeAutoResumePrompt", CodemossSettingsService.DEFAULT_CLAUDE_AUTO_RESUME_PROMPT),
+            "Failed to get Claude auto-resume prompt");
+    }
+
+    public void handleSetClaudeAutoResumePrompt(String content) {
+        try {
+            JsonObject json = gson.fromJson(content, JsonObject.class);
+            String prompt = readString(json, "claudeAutoResumePrompt", CodemossSettingsService.DEFAULT_CLAUDE_AUTO_RESUME_PROMPT);
+            settingsService.setClaudeAutoResumePrompt(prompt);
+            String effective = settingsService.getClaudeAutoResumePrompt();
+            LOG.info("[ProjectConfigHandler] Set Claude auto-resume prompt, length: " + effective.length());
+            pushJson("window.updateClaudeAutoResumePrompt", jsonOf("claudeAutoResumePrompt", effective));
+        } catch (Exception e) {
+            LOG.error("[ProjectConfigHandler] Failed to set Claude auto-resume prompt; errorClass="
+                    + e.getClass().getSimpleName(), e);
+            showError("Failed to save Claude auto-resume prompt. See IDE log for details.");
+        }
+    }
+
     public void handleGetSendShortcut() {
         try {
             String sendShortcut = PropertiesComponent.getInstance().getValue(SEND_SHORTCUT_PROPERTY_KEY, "enter");

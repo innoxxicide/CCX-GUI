@@ -85,6 +85,12 @@
     "openSourceBannerStar": "Star",
     "openSourceBannerStarToast": "Repo link copied to clipboard — paste it in your browser to visit ⭐",
     "openSourceBannerStarAria": "Copy repository link and star on GitHub",
+    "autoResume": {
+      "manualPrompt": "Usage limit reset — continue where you left off?",
+      "continue": "Continue",
+      "armed": "Auto-resume armed — will continue when your usage limit resets.",
+      "armedAt": "Auto-resume armed — will continue around {{time}}."
+    },
     "goInstallSdk": "Go to Install",
     "commandNotImplemented": "`{{command}}` feature is not yet implemented.",
     "clearCommandDescription": "Clear conversation history and start a new session",
@@ -345,6 +351,14 @@
     "providerTab": {
       "claude": "Claude Code",
       "codex": "Codex"
+    },
+    "claudeAutoResume": {
+      "title": "Auto-resume after usage limit",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "hint": "When a Claude session stops because it hit your 5-hour or weekly usage limit, automatically send a message to continue the moment the limit resets. Only affects OAuth (Pro/Max) logins.",
+      "promptLabel": "Resume message",
+      "promptHint": "Sent to the agent automatically when the limit resets. Leave empty to use the default."
     },
     "pluginModels": {
       "title": "Custom Models",

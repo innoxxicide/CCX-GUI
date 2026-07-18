@@ -376,6 +376,24 @@ interface Window {
   updateAutoCloseDialogOnTimeout?: (json: string) => void;
 
   /**
+   * Update the Claude "auto-resume after usage-limit reset" master toggle.
+   * Payload: {"claudeAutoResumeOnLimitEnabled": boolean}
+   */
+  updateClaudeAutoResumeEnabled?: (json: string) => void;
+
+  /**
+   * Update the Claude auto-resume wake-up prompt text.
+   * Payload: {"claudeAutoResumePrompt": string}
+   */
+  updateClaudeAutoResumePrompt?: (json: string) => void;
+
+  /**
+   * Push the Claude auto-resume armed/manual-resume status for the active tab.
+   * Payload: {armed: boolean, wakeAt: number, windows: string[], manualResumeNeeded: boolean}
+   */
+  updateClaudeAutoResumeStatus?: (json: string) => void;
+
+  /**
    * Update current Claude config
    */
   updateCurrentClaudeConfig?: (json: string) => void;

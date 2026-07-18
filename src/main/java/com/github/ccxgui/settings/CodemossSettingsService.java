@@ -597,6 +597,29 @@ public class CodemossSettingsService {
         PermissionDialogTimeoutSettings.setAutoCloseDialogOnTimeout(this, enabled);
     }
 
+    // ==================== Claude Auto-Resume Config Management ====================
+
+    public static final boolean DEFAULT_CLAUDE_AUTO_RESUME_ENABLED =
+            ClaudeAutoResumeSettings.DEFAULT_CLAUDE_AUTO_RESUME_ENABLED;
+    public static final String DEFAULT_CLAUDE_AUTO_RESUME_PROMPT =
+            ClaudeAutoResumeSettings.DEFAULT_CLAUDE_AUTO_RESUME_PROMPT;
+
+    public boolean getClaudeAutoResumeEnabled() throws IOException {
+        return ClaudeAutoResumeSettings.getClaudeAutoResumeEnabled(this);
+    }
+
+    public void setClaudeAutoResumeEnabled(boolean enabled) throws IOException {
+        ClaudeAutoResumeSettings.setClaudeAutoResumeEnabled(this, enabled);
+    }
+
+    public String getClaudeAutoResumePrompt() throws IOException {
+        return ClaudeAutoResumeSettings.getClaudeAutoResumePrompt(this);
+    }
+
+    public void setClaudeAutoResumePrompt(String prompt) throws IOException {
+        ClaudeAutoResumeSettings.setClaudeAutoResumePrompt(this, prompt);
+    }
+
     // ==================== Streaming Config Management ====================
 
     /**

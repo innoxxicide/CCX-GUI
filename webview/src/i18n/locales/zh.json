@@ -85,6 +85,12 @@
     "openSourceBannerStar": "点个 Star",
     "openSourceBannerStarToast": "已复制仓库地址到剪切板，复制到浏览器即可访问 ⭐",
     "openSourceBannerStarAria": "复制仓库地址并前往 GitHub 点 Star",
+    "autoResume": {
+      "manualPrompt": "使用限制已重置 — 继续之前的工作？",
+      "continue": "继续",
+      "armed": "已启用自动继续 — 将在使用限制重置后继续。",
+      "armedAt": "已启用自动继续 — 将在约 {{time}} 继续。"
+    },
     "goInstallSdk": "前往安装",
     "commandNotImplemented": "`{{command}}` 功能暂未实现。",
     "clearCommandDescription": "清除对话历史并新建会话",
@@ -345,6 +351,14 @@
     "providerTab": {
       "claude": "Claude Code",
       "codex": "Codex"
+    },
+    "claudeAutoResume": {
+      "title": "用量上限后自动继续",
+      "enabled": "已启用",
+      "disabled": "已禁用",
+      "hint": "当 Claude 会话因达到 5 小时或每周用量上限而停止时，在上限重置的那一刻自动发送消息以继续工作。仅对 OAuth（Pro/Max）登录生效。",
+      "promptLabel": "继续消息",
+      "promptHint": "上限重置时自动发送给智能体。留空则使用默认内容。"
     },
     "pluginModels": {
       "title": "自定义模型",

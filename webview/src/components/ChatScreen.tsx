@@ -1,6 +1,7 @@
 import { type RefObject, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChatInputBox } from './ChatInputBox';
+import ClaudeAutoResumeBanner from './ClaudeAutoResumeBanner';
 import type {
   Attachment,
   ChatInputBoxHandle,
@@ -277,6 +278,7 @@ export const ChatScreen = ({
       </StatusPanelErrorBoundary>
 
       <div className="input-area" ref={inputAreaRef}>
+        <ClaudeAutoResumeBanner />
         <ChatInputBox
           ref={chatInputRef}
           isLoading={loading}

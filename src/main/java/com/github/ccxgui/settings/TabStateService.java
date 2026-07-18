@@ -185,6 +185,12 @@ public final class TabStateService implements PersistentStateComponent<TabStateS
         public String model;
         public String permissionMode;
         public String reasoningEffort;
+        /**
+         * Epoch millis of a pending Claude auto-resume wake, or {@code 0} when
+         * none is armed. Persisted so a scheduled resume survives IDE restart;
+         * replayed through {@code ClaudeAutoResumeController.restoreFromPersisted}.
+         */
+        public long claudeAutoResumeWakeAt;
 
         public TabSessionState copy() {
             TabSessionState copy = new TabSessionState();
@@ -194,6 +200,7 @@ public final class TabStateService implements PersistentStateComponent<TabStateS
             copy.model = this.model;
             copy.permissionMode = this.permissionMode;
             copy.reasoningEffort = this.reasoningEffort;
+            copy.claudeAutoResumeWakeAt = this.claudeAutoResumeWakeAt;
             return copy;
         }
     }

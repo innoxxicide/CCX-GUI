@@ -137,6 +137,17 @@ public class ClaudeSession {
 
         default void onUserMessageUuidPatched(String content, String uuid) {
         }
+
+        /**
+         * Called once when a Claude turn ends in an error. Single-shot per turn
+         * (fired from {@code ClaudeMessageHandler.onError} after its dedup guard),
+         * this drives the auto-resume-on-usage-limit detection: the listener
+         * fetches fresh usage data and decides whether a limit window is blocking.
+         * Distinct from {@link #onStateChange}, which can replay a stale error
+         * mid-stream. No-op by default so existing listeners are unaffected.
+         */
+        default void onTurnError(String error) {
+        }
     }
 
     public ClaudeSession(Project project, ClaudeSDKBridge claudeSDKBridge, CodexSDKBridge codexSDKBridge) {

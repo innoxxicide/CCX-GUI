@@ -4,6 +4,7 @@ import type { ProviderConfig, CodexProviderConfig } from '../../../types/provide
 import { STORAGE_KEYS } from '../../../types/provider';
 import ProviderManageSection from '../ProviderManageSection';
 import CodexProviderSection from '../CodexProviderSection';
+import ClaudeAutoResumeSetting from '../ClaudeAutoResumeSetting';
 import CustomModelDialog from '../CustomModelDialog';
 import { usePluginModels } from '../hooks/usePluginModels';
 import { useConfiguredClaudeModelPricing } from '../hooks/useConfiguredModelPricing';
@@ -144,6 +145,7 @@ const ProviderTabSection = ({
           addToast={addToast}
           showHeader={false}
         />
+        <ClaudeAutoResumeSetting />
       </div>
 
       <div id="panel-codex-providers" role="tabpanel" style={activeTab === 'codex' ? BLOCK_STYLE : NONE_STYLE}>

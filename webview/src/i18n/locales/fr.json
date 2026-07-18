@@ -85,6 +85,12 @@
     "openSourceBannerStar": "Star",
     "openSourceBannerStarToast": "Lien copié dans le presse-papiers — collez-le dans votre navigateur pour y accéder ⭐",
     "openSourceBannerStarAria": "Copier le lien et mettre une étoile sur GitHub",
+    "autoResume": {
+      "manualPrompt": "Limite d'utilisation réinitialisée — reprendre là où vous en étiez ?",
+      "continue": "Continuer",
+      "armed": "Reprise automatique activée — continuera dès la réinitialisation de la limite d'utilisation.",
+      "armedAt": "Reprise automatique activée — continuera vers {{time}}."
+    },
     "goInstallSdk": "Aller installer",
     "commandNotImplemented": "La fonctionnalité `{{command}}` n'est pas encore implémentée.",
     "clearCommandDescription": "Effacer l'historique et démarrer une nouvelle session",
@@ -292,6 +298,14 @@
     "providerTab": {
       "claude": "Claude Code",
       "codex": "Codex"
+    },
+    "claudeAutoResume": {
+      "title": "Reprise automatique après la limite d'utilisation",
+      "enabled": "Activé",
+      "disabled": "Désactivé",
+      "hint": "Lorsqu'une session Claude s'arrête parce qu'elle a atteint votre limite d'utilisation de 5 heures ou hebdomadaire, envoie automatiquement un message pour continuer dès que la limite est réinitialisée. Ne concerne que les connexions OAuth (Pro/Max).",
+      "promptLabel": "Message de reprise",
+      "promptHint": "Envoyé automatiquement à l'agent lorsque la limite est réinitialisée. Laissez vide pour utiliser la valeur par défaut."
     },
     "pluginModels": {
       "title": "Modèles personnalisés",

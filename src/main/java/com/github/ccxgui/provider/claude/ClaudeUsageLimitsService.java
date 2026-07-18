@@ -109,6 +109,55 @@ public final class ClaudeUsageLimitsService {
         return dispatchFetch(cached);
     }
 
+    /**
+     * Fetch the usage payload fresh for the limit-hit classifier, bypassing
+     * <em>both</em> the TTL and the in-flight coalescing that
+     * {@link #getOrFetch(boolean)} is subject to.
+     *
+     * <p>{@code getOrFetch(true)} only bypasses the TTL: when a push-triggered
+     * refresh is already in flight it hands back the pre-error cached snapshot,
+     * which is exactly the stale ("still 97%") reading we must not classify on.
+     * The limit-hit path is rare, so issuing one direct HTTP call — not gated by
+     * the shared lock — is an acceptable price for a reading guaranteed to be
+     * taken after the limit error occurred. The result is written back into the
+     * display cache opportunistically so the battery indicators refresh too.
+     *
+     * <p>Note this is not a substitute for confirming the block: the usage
+     * endpoint can lag rate-limit enforcement, so a window may still read just
+     * under 100% here. Callers should attribute by highest utilization rather
+     * than demand an exact 100%.
+     */
+    public static CompletableFuture<String> fetchFreshForLimitCheck() {
+        return CompletableFuture.supplyAsync(ClaudeUsageLimitsService::fetchDirect,
+                AppExecutorUtil.getAppExecutorService());
+    }
+
+    private static String fetchDirect() {
+        try {
+            JsonObject oauth = readOAuthCredentials();
+            String token = (oauth != null && oauth.has("accessToken") && !oauth.get("accessToken").isJsonNull())
+                    ? oauth.get("accessToken").getAsString()
+                    : null;
+            if (token == null || token.isBlank()) {
+                cachedAvailableJson = null;
+                String unavailable = buildUnavailable("no_oauth");
+                lastJson = unavailable;
+                lastFetchFailed = false;
+                lastFetchAt = System.currentTimeMillis();
+                return unavailable;
+            }
+            String result = fetchFromApi(token, oauth);
+            cachedAvailableJson = result;
+            lastJson = result;
+            lastFetchFailed = false;
+            lastFetchAt = System.currentTimeMillis();
+            return result;
+        } catch (Exception e) {
+            LOG.warn("[ClaudeUsageLimits] Fresh limit-check fetch failed: " + e.getMessage());
+            return cachedAvailableJson != null ? cachedAvailableJson : buildUnavailable("error");
+        }
+    }
+
     private static long currentTtlMs() {
         return lastFetchFailed ? ERROR_TTL_MS : TTL_MS;
     }

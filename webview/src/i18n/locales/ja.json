@@ -85,6 +85,12 @@
     "openSourceBannerStar": "Star",
     "openSourceBannerStarToast": "リポジトリのURLをクリップボードにコピーしました。ブラウザに貼り付けてアクセスできます ⭐",
     "openSourceBannerStarAria": "リポジトリのURLをコピーして GitHub でスター",
+    "autoResume": {
+      "manualPrompt": "使用制限がリセットされました — 続きから再開しますか？",
+      "continue": "続行",
+      "armed": "自動再開が有効です — 使用制限がリセットされ次第、続行します。",
+      "armedAt": "自動再開が有効です — 約 {{time}} に続行します。"
+    },
     "goInstallSdk": "インストールへ",
     "commandNotImplemented": "`{{command}}` 機能はまだ実装されていません。",
     "clearCommandDescription": "会話履歴をクリアして新しいセッションを開始",
@@ -292,6 +298,14 @@
     "providerTab": {
       "claude": "Claude Code",
       "codex": "Codex"
+    },
+    "claudeAutoResume": {
+      "title": "使用制限後に自動再開",
+      "enabled": "有効",
+      "disabled": "無効",
+      "hint": "Claude セッションが 5 時間または週間の使用制限に達して停止した場合、制限がリセットされた瞬間に自動的にメッセージを送信して作業を続行します。OAuth（Pro/Max）ログインにのみ適用されます。",
+      "promptLabel": "再開メッセージ",
+      "promptHint": "制限がリセットされるとエージェントに自動的に送信されます。空欄の場合はデフォルトが使用されます。"
     },
     "pluginModels": {
       "title": "カスタムモデル",

@@ -85,6 +85,12 @@
     "openSourceBannerStar": "Star",
     "openSourceBannerStarToast": "Link copiado para a área de transferência — cole no navegador para acessar ⭐",
     "openSourceBannerStarAria": "Copiar link e dar uma estrela no GitHub",
+    "autoResume": {
+      "manualPrompt": "Limite de uso reiniciado — continuar de onde parou?",
+      "continue": "Continuar",
+      "armed": "Retomada automática ativada — continuará quando o limite de uso for reiniciado.",
+      "armedAt": "Retomada automática ativada — continuará por volta das {{time}}."
+    },
     "goInstallSdk": "Ir para Instalação",
     "commandNotImplemented": "O recurso `{{command}}` ainda não foi implementado.",
     "clearCommandDescription": "Limpar histórico de conversa e iniciar uma nova sessão",
@@ -341,6 +347,14 @@
     "providerTab": {
       "claude": "Claude Code",
       "codex": "Codex"
+    },
+    "claudeAutoResume": {
+      "title": "Retomar automaticamente após o limite de uso",
+      "enabled": "Ativado",
+      "disabled": "Desativado",
+      "hint": "Quando uma sessão do Claude para por atingir o limite de uso de 5 horas ou semanal, envia automaticamente uma mensagem para continuar assim que o limite for redefinido. Afeta apenas logins OAuth (Pro/Max).",
+      "promptLabel": "Mensagem de retomada",
+      "promptHint": "Enviada automaticamente ao agente quando o limite é redefinido. Deixe em branco para usar o padrão."
     },
     "pluginModels": {
       "title": "Modelos Personalizados",

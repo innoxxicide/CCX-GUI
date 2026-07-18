@@ -195,6 +195,11 @@ public class ClaudeMessageHandler implements MessageCallback {
         callbackHandler.notifyMessageUpdate(state.getMessages());
         callbackHandler.notifyStateChange(state.isBusy(), state.isLoading(), state.getError());
 
+        // Single-shot per-turn error signal for auto-resume-on-usage-limit
+        // detection. Fired here (after the dedup guard above) rather than off
+        // notifyStateChange, which can replay a stale error mid-stream.
+        callbackHandler.notifyTurnError(error);
+
         // Show error in status bar
         ClaudeNotifier.showError(project, error);
     }

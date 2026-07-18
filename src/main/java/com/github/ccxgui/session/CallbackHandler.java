@@ -166,4 +166,14 @@ public class CallbackHandler {
             callback.onUserMessageUuidPatched(content, uuid);
         }
     }
+
+    /**
+     * Notify that a Claude turn ended in an error (single-shot, post-dedup).
+     * Drives the auto-resume-on-usage-limit detection.
+     */
+    public void notifyTurnError(String error) {
+        if (callback != null) {
+            callback.onTurnError(error);
+        }
+    }
 }

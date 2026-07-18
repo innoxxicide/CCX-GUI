@@ -6,6 +6,7 @@ import com.github.ccxgui.handler.history.HistoryHandler;
 import com.github.ccxgui.handler.core.MessageDispatcher;
 import com.github.ccxgui.handler.PermissionHandler;
 import com.github.ccxgui.permission.PermissionService;
+import com.github.ccxgui.provider.claude.ClaudeAutoResumeController;
 import com.github.ccxgui.provider.claude.ClaudeSDKBridge;
 import com.github.ccxgui.provider.codex.CodexSDKBridge;
 import com.github.ccxgui.provider.common.DaemonBridge;
@@ -101,6 +102,10 @@ public class ClaudeChatWindow {
     private final EditorContextTracker editorContextTracker;
     private final ChatWindowDelegate chatWindowDelegate;
     private SessionCallbackAdapter sessionCallbackAdapter;
+    // Claude-only auto-resume after a usage-limit reset. Inert unless the feature
+    // toggle is on and the bound session is Claude. One instance per window; its
+    // Host reads the live session field so it survives session re-binding.
+    private final ClaudeAutoResumeController autoResumeController;
 
     public ClaudeChatWindow(Project project) {
         this(project, false);
@@ -153,6 +158,7 @@ public class ClaudeChatWindow {
         );
 
         this.session = new ClaudeSession(project, claudeSDKBridge, codexSDKBridge);
+        this.autoResumeController = new ClaudeAutoResumeController(createAutoResumeHost(), settingsService);
 
         this.chatWindowDelegate = new ChatWindowDelegate(createDelegateHost());
         chatWindowDelegate.loadPermissionModeFromSettings();
@@ -411,6 +417,13 @@ public class ClaudeChatWindow {
         String restoredSessionId = isNonEmpty(savedState.sessionId) ? savedState.sessionId : null;
         String restoredCwd = isNonEmpty(savedState.cwd) ? savedState.cwd : session.getCwd();
         session.setSessionInfo(restoredSessionId, restoredCwd);
+
+        // Replay a persisted auto-resume wake before persisting below, so a still
+        // valid wake is re-armed rather than overwritten with 0. Provider is set
+        // above, so the controller's Claude/enabled gate reads correctly here.
+        if (autoResumeController != null) {
+            autoResumeController.restoreFromPersisted(savedState.claudeAutoResumeWakeAt);
+        }
         persistTabSessionState();
 
         LOG.info("[TabRestore] Restored tab session state: provider=" + savedState.provider
@@ -627,6 +640,12 @@ public class ClaudeChatWindow {
                 super.onSessionIdReceived(newSessionId);
                 sessionId = newSessionId;
                 persistTabSessionState();
+            }
+
+            @Override
+            public void onTurnError(String error) {
+                super.onTurnError(error);
+                autoResumeController.onTurnError(error);
             }
         };
         session.setCallback(sessionCallbackAdapter);
@@ -975,8 +994,84 @@ public class ClaudeChatWindow {
         snapshot.model = session.getModel();
         snapshot.permissionMode = session.getPermissionMode();
         snapshot.reasoningEffort = session.getReasoningEffort();
+        snapshot.claudeAutoResumeWakeAt = autoResumeController != null ? autoResumeController.getWakeAtMs() : 0L;
 
         TabStateService.getInstance(project).saveTabSessionState(tabIndex, snapshot);
+    }
+
+    /**
+     * Build the {@link ClaudeAutoResumeController.Host} bridging the controller to
+     * this window: live session access, disposal state, wake persistence, and the
+     * webview status push. Persistence rides {@link #persistTabSessionState()},
+     * which reads the controller's current wake time — so an arm/disarm here
+     * automatically saves (or clears) the persisted wake.
+     */
+    private ClaudeAutoResumeController.Host createAutoResumeHost() {
+        return new ClaudeAutoResumeController.Host() {
+            @Override
+            public String provider() {
+                ClaudeSession current = session;
+                return current != null ? current.getProvider() : null;
+            }
+
+            @Override
+            public boolean isActive() {
+                return !disposed;
+            }
+
+            @Override
+            public void onArmed(long wakeAtMs, java.util.Set<String> exhaustedWindows) {
+                persistTabSessionState();
+                pushAutoResumeStatus(true, wakeAtMs, exhaustedWindows, false);
+            }
+
+            @Override
+            public void resume(String prompt) {
+                ClaudeSession current = session;
+                if (current == null) {
+                    return;
+                }
+                // Cast disambiguates send(String, String agentPrompt) from the
+                // send(String, List<Attachment>) overload; null = default agent.
+                current.send(prompt, (String) null).exceptionally(ex -> {
+                    LOG.warn("[ClaudeAutoResume] Resume send failed: " + ex.getMessage());
+                    return null;
+                });
+            }
+
+            @Override
+            public void onManualResumeNeeded(long wakeAtMs) {
+                persistTabSessionState();
+                pushAutoResumeStatus(false, wakeAtMs, java.util.Collections.emptySet(), true);
+            }
+
+            @Override
+            public void onDisarmed() {
+                persistTabSessionState();
+                pushAutoResumeStatus(false, 0L, java.util.Collections.emptySet(), false);
+            }
+        };
+    }
+
+    /**
+     * Push the current auto-resume state to the webview as a JSON payload. The
+     * frontend banner consumes {@code window.updateClaudeAutoResumeStatus}; the
+     * call is a safe no-op until that handler exists.
+     */
+    private void pushAutoResumeStatus(boolean armed, long wakeAtMs,
+                                      java.util.Set<String> windows, boolean manualResumeNeeded) {
+        JsonObject payload = new JsonObject();
+        payload.addProperty("armed", armed);
+        payload.addProperty("wakeAt", wakeAtMs);
+        payload.addProperty("manualResumeNeeded", manualResumeNeeded);
+        JsonArray windowsJson = new JsonArray();
+        if (windows != null) {
+            for (String w : windows) {
+                windowsJson.add(w);
+            }
+        }
+        payload.add("windows", windowsJson);
+        callJavaScript("updateClaudeAutoResumeStatus", JsUtils.escapeJs(new Gson().toJson(payload)));
     }
 
     private boolean isNonEmpty(String value) {
@@ -1028,6 +1123,11 @@ public class ClaudeChatWindow {
         chatWindowDelegate.dispose();
         editorContextTracker.dispose();
         streamCoalescer.dispose();
+        if (autoResumeController != null) {
+            // Stops the scheduled wake only; persisted state is left intact so a
+            // wake survives IDE shutdown (tab close removes the tab state itself).
+            autoResumeController.dispose();
+        }
         if (sessionCallbackAdapter != null) {
             sessionCallbackAdapter.dispose();
         }
@@ -1323,6 +1423,13 @@ public class ClaudeChatWindow {
             @Override
             public void persistTabSessionState() {
                 ClaudeChatWindow.this.persistTabSessionState();
+            }
+
+            @Override
+            public void manualResumeAutoResume() {
+                if (autoResumeController != null) {
+                    autoResumeController.manualResume();
+                }
             }
         };
     }
