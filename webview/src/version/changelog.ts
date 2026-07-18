@@ -13,6 +13,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_DATA: ChangelogEntry[] = [
   {
+    version: '0.0.1-fix1',
+    date: '2026-07-18',
+    content: {
+      en: `🐛 Fixes
+- Fix the **Claude usage battery not appearing for API-key logins**: Anthropic's OAuth usage endpoint returns no data without a Pro/Max login, so rather than render nothing the header now shows a muted battery placeholder whose tooltip and click explain that the gauges need a subscription login
+- Fix **usage credentials being read from the wrong home when the runtime Node lives inside WSL**: the usage service now resolves \`~/.claude/.credentials.json\` through the same WSL-aware home resolver the rest of the plugin uses, so the battery indicators light up for WSL setups instead of silently reading the native Windows home`,
+      zh: ``,
+    },
+  },
+  {
     version: '0.0.1',
     date: '2026-07-18',
     content: {
