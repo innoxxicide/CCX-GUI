@@ -105,6 +105,14 @@ function splitBilingual(text) {
     };
   }
 
+  // English-only entry (fork-era format: no Chinese duplication)
+  if (enMatch) {
+    return {
+      en: cleanContent(text.substring(enMatch.index + enMatch[0].length)),
+      zh: '',
+    };
+  }
+
   // No bilingual markers - treat as Chinese content (older format)
   const cleaned = cleanContent(text);
   return { en: '', zh: cleaned };
