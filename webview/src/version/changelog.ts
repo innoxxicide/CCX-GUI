@@ -17,7 +17,11 @@ export const CHANGELOG_DATA: ChangelogEntry[] = [
     date: '2026-07-24',
     content: {
       en: `✨ Features
-- Add an **opt-in sound for the "agent is asking you a question" notification**: when an agent asks a question, the plugin can now play a separately selectable notification sound alongside the existing reminder toast. Configured in Basic configuration → Behavior right next to the notification toggle; off by default`,
+- Add an **opt-in sound for the "agent is asking you a question" notification**: when an agent asks a question, the plugin can now play a separately selectable notification sound alongside the existing reminder toast. Configured in Basic configuration → Behavior right next to the notification toggle; off by default
+
+⚡ Performance
+- **Cut the token cost of the IDE context sent with every Claude message**: the plugin no longer re-sends your project's workspace/module structure or the list of other open editor tabs on each turn, and the remaining context (active file + selection) plus the Windows path-format reminder were trimmed down. Static project structure belongs in \`CLAUDE.md\`, which Claude already loads, and the active file path alone shows which module you're in
+- **Stop busting the prompt cache when you navigate the IDE mid-conversation**: the per-turn editor context (active file and selection) now travels in the user message instead of the system prompt. Switching files or changing your selection no longer rebuilds the Claude session or re-sends the whole conversation history uncached — a significant saving in long chats`,
       zh: ``,
     },
   },
