@@ -18,13 +18,5 @@ export function getWindowsPathConstraint(options = {}) {
   const { extra = '' } = options;
   const extraText = extra ? ` ${extra}` : '';
 
-  let text = '\n\n## CRITICAL: File Path Format Requirement\n\n';
-  text += `**IMPORTANT**: There's a file modification bug in Claude Code. The workaround is: always use complete absolute Windows paths with drive letters and backslashes for ALL file operations.${extraText}\n\n`;
-  text += '**Examples**:\n';
-  text += '- \u2705 Correct: `C:\\Users\\username\\project\\src\\file.js`\n';
-  text += '- \u274C Wrong: `/c/Users/username/project/src/file.js`\n';
-  text += '- \u274C Wrong: `./src/file.js` (relative paths)\n\n';
-  text += '---\n\n';
-
-  return text;
+  return `\n\n**File paths (Windows)**: use absolute paths with a drive letter and backslashes (e.g. \`C:\\Users\\name\\project\\src\\file.js\`) for all file operations \u2014 never Unix-style (\`/c/...\`) or relative (\`./src/...\`) paths.${extraText}\n\n`;
 }
