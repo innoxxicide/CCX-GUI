@@ -18,7 +18,7 @@ import {
 } from '../../utils/model-utils.js';
 import { canUseTool } from '../../permission-handler.js';
 import { buildContentBlocks, loadAttachments } from './attachment-service.js';
-import { buildIDEContextPrompt } from '../system-prompts.js';
+import { buildStableSystemAppend, buildIDEContextMessage } from '../system-prompts.js';
 import { buildQuickFixPrompt } from '../quickfix-prompts.js';
 import { registerActiveQueryResult, removeSession } from './message-service.js';
 import { normalizePermissionMode } from './permission-mode.js';
@@ -105,13 +105,27 @@ function extractUserMessageText(userMessage) {
   return null;
 }
 
+// systemPrompt.append receives only the stable part (agent role + Windows rule).
+// QuickFix is a one-shot flow, so it keeps its full prompt here.
 function buildSystemPromptAppend(params) {
   const openedFiles = params.openedFiles || null;
   const agentPrompt = params.agentPrompt || null;
   if (openedFiles && openedFiles.isQuickFix) {
     return buildQuickFixPrompt(openedFiles, params.message || '');
   }
-  return buildIDEContextPrompt(openedFiles, agentPrompt);
+  return buildStableSystemAppend(agentPrompt);
+}
+
+// Volatile IDE context goes into the user message, not the system prompt, so
+// switching files/selection between turns neither invalidates the cached
+// system-prompt prefix nor changes the runtime signature (no runtime rebuild).
+// QuickFix already carries its context in systemPrompt.append, so it adds nothing here.
+function buildIdeContextSuffix(params) {
+  const openedFiles = params.openedFiles || null;
+  if (openedFiles && openedFiles.isQuickFix) {
+    return '';
+  }
+  return buildIDEContextMessage(openedFiles);
 }
 
 function resolveRequestModelState(modelId, settingsEnv) {
@@ -157,9 +171,21 @@ function buildQueryOptions(workingDirectory, sdkModelName, permissionMode, maxTh
 }
 
 async function buildUserMessage(params, withAttachments, requestedSessionId, resolvedModelId = null) {
+  const ideContextSuffix = buildIdeContextSuffix(params);
+
   if (withAttachments) {
     const attachments = await loadAttachments({ attachments: params.attachments || [] });
     const contentBlocks = await buildContentBlocks(attachments, params.message || '', resolvedModelId);
+    if (ideContextSuffix) {
+      // buildContentBlocks always ends with the user's text block; append the IDE
+      // context there so it lands after the user's actual message.
+      const last = contentBlocks[contentBlocks.length - 1];
+      if (last && last.type === 'text') {
+        last.text += ideContextSuffix;
+      } else {
+        contentBlocks.push({ type: 'text', text: ideContextSuffix });
+      }
+    }
     return {
       type: 'user',
       session_id: requestedSessionId || '',
@@ -173,7 +199,7 @@ async function buildUserMessage(params, withAttachments, requestedSessionId, res
     type: 'user',
     session_id: requestedSessionId || '',
     parent_tool_use_id: null,
-    message: { role: 'user', content: [{ type: 'text', text: userText }] }
+    message: { role: 'user', content: [{ type: 'text', text: userText + ideContextSuffix }] }
   };
 }
 
@@ -231,6 +257,8 @@ async function buildRequestContext(params, withAttachments, overrides = {}) {
     streamingEnabled,
     options,
     userMessage,
+    // Raw user text without the appended IDE context, for clean session titles.
+    rawUserText: (params.message || '').trim(),
     sdkModelName,
     modelId, // Original model ID from params, may contain [1m] suffix
     resolvedModelId,
@@ -362,7 +390,7 @@ async function executeTurn(runtime, requestContext, turnMeta) {
     // the flag set to avoid endless retries.
     if (!requestContext.requestedSessionId && finalSessionId && !runtime.titleGenerationAttempted) {
       runtime.titleGenerationAttempted = true;
-      const userMessageText = extractUserMessageText(requestContext.userMessage);
+      const userMessageText = requestContext.rawUserText || extractUserMessageText(requestContext.userMessage);
       if (userMessageText) {
         generateSessionTitle(userMessageText, finalSessionId, requestContext.options.cwd)
           .then((completed) => {

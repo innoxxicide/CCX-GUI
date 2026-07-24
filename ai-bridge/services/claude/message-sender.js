@@ -15,7 +15,7 @@ import { mapModelIdToSdkName, resolveModelFromSettings, setModelEnvironmentVaria
 import { AsyncStream } from '../../utils/async-stream.js';
 import { canUseTool } from '../../permission-handler.js';
 import { buildContentBlocks, loadAttachments } from './attachment-service.js';
-import { buildIDEContextPrompt } from '../system-prompts.js';
+import { buildStableSystemAppend, buildIDEContextMessage } from '../system-prompts.js';
 import { buildQuickFixPrompt } from '../quickfix-prompts.js';
 import { emitAccumulatedUsage, mergeUsage } from '../../utils/usage-utils.js';
 import {
@@ -140,11 +140,23 @@ async function loadSdkQueryFunction(logPrefix) {
 /**
  * Build the systemPrompt.append content from opened files and agent prompt.
  */
+// systemPrompt.append gets only the stable part (agent role + Windows rule).
+// QuickFix is a one-shot flow and keeps its full prompt here.
 function buildSystemPromptAppend(openedFiles, agentPrompt, message) {
   if (openedFiles && openedFiles.isQuickFix) {
     return buildQuickFixPrompt(openedFiles, message);
   }
-  return buildIDEContextPrompt(openedFiles, agentPrompt);
+  return buildStableSystemAppend(agentPrompt);
+}
+
+// Volatile IDE context is appended to the user message instead of the system
+// prompt (keeps the system prefix cacheable). QuickFix carries its context in
+// systemPrompt.append, so it contributes nothing here.
+function buildIdeContextSuffix(openedFiles) {
+  if (openedFiles && openedFiles.isQuickFix) {
+    return '';
+  }
+  return buildIDEContextMessage(openedFiles);
 }
 
 /**
@@ -490,8 +502,11 @@ export async function sendMessage(message, resumeSessionId = null, cwd = null, p
 
     const queryFn = await loadSdkQueryFunction('');
 
+    const ideContextSuffix = buildIdeContextSuffix(openedFiles);
+    const promptText = ideContextSuffix ? `${message ?? ''}${ideContextSuffix}` : message;
+
     await executeWithRetry({
-      createQueryResult: () => queryFn({ prompt: message, options }),
+      createQueryResult: () => queryFn({ prompt: promptText, options }),
       streamingEnabled,
       resumeSessionId,
       workingDirectory,
@@ -538,6 +553,15 @@ export async function sendMessageWithAttachments(message, resumeSessionId = null
     setModelEnvironmentVariables(resolvedAttachModel, model);
 
     const contentBlocks = await buildContentBlocks(attachments, message, resolvedAttachModel);
+    const ideContextSuffix = buildIdeContextSuffix(openedFiles);
+    if (ideContextSuffix) {
+      const last = contentBlocks[contentBlocks.length - 1];
+      if (last && last.type === 'text') {
+        last.text += ideContextSuffix;
+      } else {
+        contentBlocks.push({ type: 'text', text: ideContextSuffix });
+      }
+    }
     const userMessage = {
       type: 'user', session_id: '', parent_tool_use_id: null,
       message: { role: 'user', content: contentBlocks }

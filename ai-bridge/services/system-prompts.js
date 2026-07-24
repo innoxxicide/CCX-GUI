@@ -52,27 +52,35 @@ function sanitizePromptValue(value) {
  * @param {string} agentPrompt - Agent prompt (optional)
  * @returns {string} The constructed system prompt, or an empty string if there's no valid information
  */
-function buildIDEContextPrompt(openedFiles, agentPrompt = null) {
-  // Build the agent prompt section (if present)
+// Stable, per-conversation content for systemPrompt.append (agent role + the
+// Windows path rule). It changes rarely, so it stays cacheable and does not churn
+// the persistent runtime signature. Volatile IDE context (active file, selection,
+// open files, workspace structure) is NOT included here — it goes into the user
+// message via buildIDEContextMessage, so navigating the IDE between turns no longer
+// invalidates the cached system-prompt prefix nor forces a runtime rebuild.
+function buildStableSystemAppend(agentPrompt = null) {
   let prompt = '';
 
   if (agentPrompt && typeof agentPrompt === 'string' && agentPrompt.trim() !== '') {
-    console.log('[Agent] [OK] buildIDEContextPrompt: Adding agent prompt to system context');
+    console.log('[Agent] [OK] buildStableSystemAppend: Adding agent prompt to system context');
     console.log('[Agent] [OK] Agent prompt preview:', agentPrompt.length > 100 ? agentPrompt.substring(0, 100) + '...' : agentPrompt);
     prompt += '\n\n## Agent Role and Instructions\n\n';
     prompt += 'You are acting as a specialized agent with the following role and instructions:\n\n';
     prompt += agentPrompt.trim();
     prompt += '\n\n**IMPORTANT**: Follow the above role and instructions throughout this conversation.\n';
     prompt += '\n---\n';
-  } else {
-    console.log('[Agent] [SKIP] buildIDEContextPrompt: No agent prompt provided');
   }
 
   prompt += getWindowsPathConstraint({ extra: 'Apply this rule going forward, not just for this file.' });
 
+  return prompt;
+}
+
+// Volatile IDE context appended to the user message (not the system prompt).
+// Returns '' when there is nothing to add.
+function buildIDEContextMessage(openedFiles) {
   if (!openedFiles || typeof openedFiles !== 'object') {
-    // If there's only an agent prompt with no IDE context, still return the agent prompt
-    return prompt;
+    return '';
   }
 
   const { active, selection, others, isWorkspace, workspaceRoot, subprojects, modules, activeSubproject } = openedFiles;
@@ -82,20 +90,20 @@ function buildIDEContextPrompt(openedFiles, agentPrompt = null) {
   const hasWorkspace = !!isWorkspace;
   const hasModules = Array.isArray(modules) && modules.length > 1;
 
-  // If there's no valid information, return only the agent prompt (if any)
   if (!hasActive && !hasOthers && !hasWorkspace && !hasModules) {
-    return prompt;
+    return '';
   }
 
-  console.log('[SystemPrompts] Building IDE context prompt with active file:', active,
+  console.log('[SystemPrompts] Building IDE context with active file:', active,
               'selection:', hasSelection ? 'yes' : 'no',
               'other files:', others?.length || 0,
               'workspace:', hasWorkspace ? 'yes' : 'no',
               'modules:', modules?.length || 0);
 
   // The header and the "The user is working in an IDE." sentence start are
-  // load-bearing anchors: UserMessageSanitizer.java strips appended context from
-  // transcripts by matching these exact strings. Keep them byte-compatible.
+  // load-bearing anchors: UserMessageSanitizer.java strips this appended context
+  // from transcripts by matching these exact strings. Keep them byte-compatible.
+  let prompt = '';
   prompt += '\n\n## User\'s Current IDE Context\n\n';
   prompt += 'The user is working in an IDE. When a request is vague ("this", "here", "fix this"), resolve the subject in priority order: selected code > active file > other open files. Paths may carry `#LX-Y` / `#LX` line references.\n\n';
 
@@ -147,12 +155,19 @@ function buildIDEContextPrompt(openedFiles, agentPrompt = null) {
   return prompt;
 }
 
+// Backward-compatible composition of the stable append and the IDE context.
+// Prefer buildStableSystemAppend + buildIDEContextMessage directly so the two
+// can be routed to different destinations (system prompt vs user message).
+function buildIDEContextPrompt(openedFiles, agentPrompt = null) {
+  return buildStableSystemAppend(agentPrompt) + buildIDEContextMessage(openedFiles);
+}
+
 /**
  * Export all prompt building functions.
  */
 export {
   buildIDEContextPrompt,
+  buildStableSystemAppend,
+  buildIDEContextMessage,
   sanitizePromptValue,
-  // Additional prompt building functions can be added here in the future
-  // e.g.: buildErrorContextPrompt, buildDebugContextPrompt, etc.
 };
