@@ -1430,6 +1430,74 @@ public class CodemossSettingsService {
         LOG.info("[CodemossSettings] Set ask user question notification enabled: " + enabled);
     }
 
+    /**
+     * Get whether the AskUserQuestion notification sound is enabled.
+     * Stored under the nested {@code questionSoundNotification} object.
+     *
+     * @return whether the question sound is enabled, default is false (opt-in)
+     */
+    public boolean getQuestionSoundEnabled() throws IOException {
+        JsonObject config = readConfig();
+        if (config.has("questionSoundNotification") && config.get("questionSoundNotification").isJsonObject()) {
+            JsonObject sound = config.getAsJsonObject("questionSoundNotification");
+            if (sound.has("enabled") && !sound.get("enabled").isJsonNull()) {
+                return sound.get("enabled").getAsBoolean();
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Set whether the AskUserQuestion notification sound is enabled.
+     *
+     * @param enabled whether to enable
+     */
+    public void setQuestionSoundEnabled(boolean enabled) throws IOException {
+        JsonObject config = readConfig();
+        JsonObject sound = config.has("questionSoundNotification") && config.get("questionSoundNotification").isJsonObject()
+                ? config.getAsJsonObject("questionSoundNotification")
+                : new JsonObject();
+        sound.addProperty("enabled", enabled);
+        config.add("questionSoundNotification", sound);
+        writeConfig(config);
+        LOG.info("[CodemossSettings] Set question sound enabled: " + enabled);
+    }
+
+    /**
+     * Get the sound id used for AskUserQuestion notifications.
+     *
+     * @return the selected question sound id, default {@code "chime"}
+     */
+    public String getQuestionSelectedSound() throws IOException {
+        JsonObject config = readConfig();
+        if (config.has("questionSoundNotification") && config.get("questionSoundNotification").isJsonObject()) {
+            JsonObject sound = config.getAsJsonObject("questionSoundNotification");
+            if (sound.has("selectedSound") && !sound.get("selectedSound").isJsonNull()) {
+                String soundId = sound.get("selectedSound").getAsString();
+                if (soundId != null && !soundId.isEmpty()) {
+                    return soundId;
+                }
+            }
+        }
+        return "chime";
+    }
+
+    /**
+     * Set the sound id used for AskUserQuestion notifications.
+     *
+     * @param soundId the sound id (chime/default/bell/ding/success)
+     */
+    public void setQuestionSelectedSound(String soundId) throws IOException {
+        JsonObject config = readConfig();
+        JsonObject sound = config.has("questionSoundNotification") && config.get("questionSoundNotification").isJsonObject()
+                ? config.getAsJsonObject("questionSoundNotification")
+                : new JsonObject();
+        sound.addProperty("selectedSound", (soundId == null || soundId.isEmpty()) ? "chime" : soundId);
+        config.add("questionSoundNotification", sound);
+        writeConfig(config);
+        LOG.info("[CodemossSettings] Set question selected sound: " + soundId);
+    }
+
     // ==================== Error Notification Management ====================
 
     /**

@@ -213,6 +213,13 @@ const SettingsView = ({
     setErrorSelectedSound,
     handleErrorSelectedSoundChange,
     handleTestErrorSound,
+    questionSoundEnabled,
+    setQuestionSoundEnabled,
+    handleQuestionSoundEnabledChange,
+    questionSelectedSound,
+    setQuestionSelectedSound,
+    handleQuestionSelectedSoundChange,
+    handleTestQuestionSound,
     permissionDialogTimeoutSeconds,
     handlePermissionDialogTimeoutChange,
     autoCloseDialogOnTimeout,
@@ -375,6 +382,8 @@ const SettingsView = ({
     setErrorNotificationEnabled,
     setErrorSoundEnabled,
     setErrorSelectedSound,
+    setQuestionSoundEnabled,
+    setQuestionSelectedSound,
   });
 
   // Save provider (wrapper function with validation logic)
@@ -565,6 +574,11 @@ const SettingsView = ({
               errorSelectedSound={errorSelectedSound}
               onErrorSelectedSoundChange={handleErrorSelectedSoundChange}
               onTestErrorSound={handleTestErrorSound}
+              questionSoundEnabled={questionSoundEnabled}
+              onQuestionSoundEnabledChange={handleQuestionSoundEnabledChange}
+              questionSelectedSound={questionSelectedSound}
+              onQuestionSelectedSoundChange={handleQuestionSelectedSoundChange}
+              onTestQuestionSound={handleTestQuestionSound}
               permissionDialogTimeoutSeconds={permissionDialogTimeoutSeconds}
               onPermissionDialogTimeoutChange={handlePermissionDialogTimeoutChange}
               autoCloseDialogOnTimeout={autoCloseDialogOnTimeout}

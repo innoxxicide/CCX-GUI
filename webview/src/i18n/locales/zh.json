@@ -285,6 +285,13 @@
         "hint": "开启后，当智能体运行出错中断时播放提示音，提示音可与任务完成音分开选择。",
         "selectSound": "提示音"
       },
+      "questionSound": {
+        "label": "提问提示音",
+        "enabled": "已开启",
+        "disabled": "已关闭",
+        "hint": "开启后，当智能体向你提问时播放提示音，提示音可与任务完成音分开选择。",
+        "selectSound": "提示音"
+      },
       "sendShortcut": {
         "label": "发送快捷键",
         "enter": "Enter 发送",

@@ -119,6 +119,33 @@ public class SoundNotificationService {
     }
 
     /**
+     * Play the AskUserQuestion notification sound based on user settings.
+     * Uses its own opt-in toggle and sound selection, but shares the global
+     * "only when unfocused" preference with the completion sound.
+     */
+    public void playAskUserQuestionSound() {
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            try {
+                CodemossSettingsService settings = new CodemossSettingsService();
+
+                if (!settings.getQuestionSoundEnabled()) {
+                    LOG.debug("[SoundNotification] Question sound is disabled");
+                    return;
+                }
+
+                if (settings.getSoundOnlyWhenUnfocused() && ApplicationManager.getApplication().isActive()) {
+                    LOG.debug("[SoundNotification] IDE window is focused, skipping question sound");
+                    return;
+                }
+
+                playBySelection(settings.getQuestionSelectedSound(), null);
+            } catch (Exception e) {
+                LOG.warn("[SoundNotification] Failed to play question sound: " + e.getMessage(), e);
+            }
+        });
+    }
+
+    /**
      * Play sound by selection: built-in soundId or custom file path.
      */
     private void playBySelection(String soundId, String customPath) throws Exception {

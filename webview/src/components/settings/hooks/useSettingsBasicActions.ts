@@ -86,6 +86,8 @@ export interface UseSettingsBasicActionsReturn {
   errorNotificationEnabled: boolean;
   errorSoundEnabled: boolean;
   errorSelectedSound: string;
+  questionSoundEnabled: boolean;
+  questionSelectedSound: string;
   commitAiConfig: CommitAiConfig;
   promptEnhancerConfig: PromptEnhancerConfig;
 
@@ -123,6 +125,9 @@ export interface UseSettingsBasicActionsReturn {
   handleErrorSoundEnabledChange: (enabled: boolean) => void;
   handleErrorSelectedSoundChange: (soundId: string) => void;
   handleTestErrorSound: () => void;
+  handleQuestionSoundEnabledChange: (enabled: boolean) => void;
+  handleQuestionSelectedSoundChange: (soundId: string) => void;
+  handleTestQuestionSound: () => void;
   permissionDialogTimeoutSeconds: number;
   handlePermissionDialogTimeoutChange: (seconds: number) => void;
   autoCloseDialogOnTimeout: boolean;
@@ -180,6 +185,8 @@ export interface UseSettingsBasicActionsReturn {
   /** @internal */ setErrorNotificationEnabled: (enabled: boolean) => void;
   /** @internal */ setErrorSoundEnabled: (enabled: boolean) => void;
   /** @internal */ setErrorSelectedSound: (soundId: string) => void;
+  /** @internal */ setQuestionSoundEnabled: (enabled: boolean) => void;
+  /** @internal */ setQuestionSelectedSound: (soundId: string) => void;
   /** @internal */ setCommitAiConfig: (config: CommitAiConfig) => void;
   /** @internal */ setPromptEnhancerConfig: (config: PromptEnhancerConfig) => void;
 }
@@ -256,6 +263,10 @@ export function useSettingsBasicActions({
   const [errorNotificationEnabled, setErrorNotificationEnabled] = useState<boolean>(false);
   const [errorSoundEnabled, setErrorSoundEnabled] = useState<boolean>(false);
   const [errorSelectedSound, setErrorSelectedSound] = useState<string>('error');
+
+  // AskUserQuestion notification sound configuration (opt-in, default off)
+  const [questionSoundEnabled, setQuestionSoundEnabled] = useState<boolean>(false);
+  const [questionSelectedSound, setQuestionSelectedSound] = useState<string>('chime');
 
   // Diff expanded by default configuration (localStorage-only)
   const [diffExpandedByDefault, setDiffExpandedByDefault] = useState<boolean>(() => {
@@ -551,6 +562,26 @@ export function useSettingsBasicActions({
     sendToJava(`test_sound:${JSON.stringify(payload)}`);
   }, [errorSelectedSound]);
 
+  // AskUserQuestion sound toggle change handler
+  const handleQuestionSoundEnabledChange = useCallback((enabled: boolean) => {
+    setQuestionSoundEnabled(enabled);
+    const payload = { enabled };
+    sendToJava(`set_question_sound_enabled:${JSON.stringify(payload)}`);
+  }, []);
+
+  // AskUserQuestion sound selection change handler
+  const handleQuestionSelectedSoundChange = useCallback((soundId: string) => {
+    setQuestionSelectedSound(soundId);
+    const payload = { soundId };
+    sendToJava(`set_question_selected_sound:${JSON.stringify(payload)}`);
+  }, []);
+
+  // Test the AskUserQuestion sound (built-in sounds only, no custom path)
+  const handleTestQuestionSound = useCallback(() => {
+    const payload = { soundId: questionSelectedSound };
+    sendToJava(`test_sound:${JSON.stringify(payload)}`);
+  }, [questionSelectedSound]);
+
   // Permission dialog timeout change handler
   const handlePermissionDialogTimeoutChange = useCallback((seconds: number) => {
     const clamped = clampPermissionDialogTimeoutSeconds(seconds);
@@ -783,6 +814,13 @@ export function useSettingsBasicActions({
     setErrorSelectedSound,
     handleErrorSelectedSoundChange,
     handleTestErrorSound,
+    questionSoundEnabled,
+    setQuestionSoundEnabled,
+    handleQuestionSoundEnabledChange,
+    questionSelectedSound,
+    setQuestionSelectedSound,
+    handleQuestionSelectedSoundChange,
+    handleTestQuestionSound,
     permissionDialogTimeoutSeconds,
     handlePermissionDialogTimeoutChange,
     autoCloseDialogOnTimeout,

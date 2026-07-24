@@ -106,6 +106,12 @@ interface BasicConfigSectionProps {
   errorSelectedSound?: string;
   onErrorSelectedSoundChange?: (soundId: string) => void;
   onTestErrorSound?: () => void;
+  // AskUserQuestion notification sound configuration
+  questionSoundEnabled?: boolean;
+  onQuestionSoundEnabledChange?: (enabled: boolean) => void;
+  questionSelectedSound?: string;
+  onQuestionSelectedSoundChange?: (soundId: string) => void;
+  onTestQuestionSound?: () => void;
   // Permission dialog timeout configuration
   permissionDialogTimeoutSeconds?: number;
   onPermissionDialogTimeoutChange?: (seconds: number) => void;
@@ -202,6 +208,11 @@ const BasicConfigSection = (props: BasicConfigSectionProps) => {
           errorSelectedSound={props.errorSelectedSound}
           onErrorSelectedSoundChange={props.onErrorSelectedSoundChange}
           onTestErrorSound={props.onTestErrorSound}
+          questionSoundEnabled={props.questionSoundEnabled}
+          onQuestionSoundEnabledChange={props.onQuestionSoundEnabledChange}
+          questionSelectedSound={props.questionSelectedSound}
+          onQuestionSelectedSoundChange={props.onQuestionSelectedSoundChange}
+          onTestQuestionSound={props.onTestQuestionSound}
           permissionDialogTimeoutSeconds={props.permissionDialogTimeoutSeconds}
           onPermissionDialogTimeoutChange={props.onPermissionDialogTimeoutChange}
           autoCloseDialogOnTimeout={props.autoCloseDialogOnTimeout}

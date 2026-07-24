@@ -269,6 +269,13 @@
         "hint": "開啟後，當智能體執行出錯中斷時播放提示音，提示音可與任務完成音分開選擇。",
         "selectSound": "提示音"
       },
+      "questionSound": {
+        "label": "提問提示音",
+        "enabled": "已開啟",
+        "disabled": "已關閉",
+        "hint": "開啟後，當智能體向你提問時播放提示音，提示音可與任務完成音分開選擇。",
+        "selectSound": "提示音"
+      },
       "sendShortcut": {
         "label": "發送快捷鍵",
         "enter": "Enter 發送",

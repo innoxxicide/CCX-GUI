@@ -62,6 +62,8 @@ export interface SettingsWindowCallbacksDeps {
   setCustomSoundPath?: (path: string) => void;
   setErrorSoundEnabled?: (enabled: boolean) => void;
   setErrorSelectedSound?: (soundId: string) => void;
+  setQuestionSoundEnabled?: (enabled: boolean) => void;
+  setQuestionSelectedSound?: (soundId: string) => void;
 
   // Hook functions
   updateProviders: (providers: ProviderConfig[]) => void;
@@ -412,6 +414,12 @@ export function useSettingsWindowCallbacks(deps: SettingsWindowCallbacksDeps) {
         }
         if (data.errorSelectedSound !== undefined) {
           d().setErrorSelectedSound?.(data.errorSelectedSound);
+        }
+        if (data.questionSoundEnabled !== undefined) {
+          d().setQuestionSoundEnabled?.(data.questionSoundEnabled);
+        }
+        if (data.questionSelectedSound !== undefined) {
+          d().setQuestionSelectedSound?.(data.questionSelectedSound);
         }
       } catch (error) {
         console.error('[SettingsView] Failed to parse sound notification config:', error);

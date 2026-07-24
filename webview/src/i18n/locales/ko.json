@@ -269,6 +269,13 @@
         "hint": "활성화하면 에이전트 실행이 오류로 실패할 때 알림음을 재생합니다. 알림음은 완료음과 별도로 선택합니다.",
         "selectSound": "알림음"
       },
+      "questionSound": {
+        "label": "에이전트 질문 알림음",
+        "enabled": "활성화",
+        "disabled": "비활성화",
+        "hint": "활성화하면 에이전트가 질문할 때 알림음을 재생합니다. 알림음은 완료음과 별도로 선택합니다.",
+        "selectSound": "알림음"
+      },
       "sendShortcut": {
         "label": "전송 단축키",
         "enter": "Enter로 전송",

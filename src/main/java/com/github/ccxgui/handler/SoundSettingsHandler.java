@@ -36,6 +36,8 @@ public class SoundSettingsHandler {
             String customPath = settingsService.getCustomSoundPath();
             boolean errorSoundEnabled = settingsService.getErrorSoundEnabled();
             String errorSelectedSound = settingsService.getErrorSelectedSound();
+            boolean questionSoundEnabled = settingsService.getQuestionSoundEnabled();
+            String questionSelectedSound = settingsService.getQuestionSelectedSound();
 
             ApplicationManager.getApplication().invokeLater(() -> {
                 JsonObject response = new JsonObject();
@@ -45,6 +47,8 @@ public class SoundSettingsHandler {
                 response.addProperty("customSoundPath", customPath != null ? customPath : "");
                 response.addProperty("errorSoundEnabled", errorSoundEnabled);
                 response.addProperty("errorSelectedSound", errorSelectedSound);
+                response.addProperty("questionSoundEnabled", questionSoundEnabled);
+                response.addProperty("questionSelectedSound", questionSelectedSound);
                 context.callJavaScript("window.updateSoundNotificationConfig", context.escapeJs(gson.toJson(response)));
             });
         } catch (Exception e) {
@@ -57,6 +61,8 @@ public class SoundSettingsHandler {
                 response.addProperty("customSoundPath", "");
                 response.addProperty("errorSoundEnabled", false);
                 response.addProperty("errorSelectedSound", "error");
+                response.addProperty("questionSoundEnabled", false);
+                response.addProperty("questionSelectedSound", "chime");
                 context.callJavaScript("window.updateSoundNotificationConfig", context.escapeJs(gson.toJson(response)));
             });
         }
@@ -199,6 +205,44 @@ public class SoundSettingsHandler {
     }
 
     /**
+     * Set AskUserQuestion-notification sound enabled state.
+     */
+    public void handleSetQuestionSoundEnabled(String content) {
+        try {
+            JsonObject json = gson.fromJson(content, JsonObject.class);
+            boolean enabled = json != null && json.has("enabled") && json.get("enabled").getAsBoolean();
+
+            settingsService.setQuestionSoundEnabled(enabled);
+
+            LOG.info("[SoundSettingsHandler] Set question sound enabled: " + enabled);
+
+            dispatchSoundConfigUpdate();
+        } catch (Exception e) {
+            LOG.error("[SoundSettingsHandler] Failed to set question sound enabled: " + e.getMessage(), e);
+            ApplicationManager.getApplication().invokeLater(() -> {
+                context.callJavaScript("window.showError", context.escapeJs("Failed to save question sound config: " + e.getMessage()));
+            });
+        }
+    }
+
+    /**
+     * Set the sound ID used for AskUserQuestion notifications.
+     */
+    public void handleSetQuestionSelectedSound(String content) {
+        try {
+            JsonObject json = gson.fromJson(content, JsonObject.class);
+            String soundId = json != null && json.has("soundId") && !json.get("soundId").isJsonNull()
+                ? json.get("soundId").getAsString() : "chime";
+
+            settingsService.setQuestionSelectedSound(soundId);
+
+            dispatchSoundConfigUpdate();
+        } catch (Exception e) {
+            LOG.error("[SoundSettingsHandler] Failed to set question selected sound: " + e.getMessage(), e);
+        }
+    }
+
+    /**
      * Test play a sound by soundId + optional custom path.
      */
     public void handleTestSound(String content) {
@@ -290,6 +334,8 @@ public class SoundSettingsHandler {
         String customPath;
         boolean errorSoundEnabled;
         String errorSelectedSound;
+        boolean questionSoundEnabled;
+        String questionSelectedSound;
 
         try {
             enabled = settingsService.getSoundNotificationEnabled();
@@ -298,6 +344,8 @@ public class SoundSettingsHandler {
             customPath = settingsService.getCustomSoundPath();
             errorSoundEnabled = settingsService.getErrorSoundEnabled();
             errorSelectedSound = settingsService.getErrorSelectedSound();
+            questionSoundEnabled = settingsService.getQuestionSoundEnabled();
+            questionSelectedSound = settingsService.getQuestionSelectedSound();
         } catch (Exception e) {
             enabled = false;
             onlyWhenUnfocused = false;
@@ -305,6 +353,8 @@ public class SoundSettingsHandler {
             customPath = null;
             errorSoundEnabled = false;
             errorSelectedSound = "error";
+            questionSoundEnabled = false;
+            questionSelectedSound = "chime";
         }
 
         final boolean finalEnabled = enabled;
@@ -313,6 +363,8 @@ public class SoundSettingsHandler {
         final String finalCustomPath = customPath != null ? customPath : "";
         final boolean finalErrorSoundEnabled = errorSoundEnabled;
         final String finalErrorSelectedSound = errorSelectedSound;
+        final boolean finalQuestionSoundEnabled = questionSoundEnabled;
+        final String finalQuestionSelectedSound = questionSelectedSound;
 
         ApplicationManager.getApplication().invokeLater(() -> {
             JsonObject response = new JsonObject();
@@ -322,6 +374,8 @@ public class SoundSettingsHandler {
             response.addProperty("customSoundPath", finalCustomPath);
             response.addProperty("errorSoundEnabled", finalErrorSoundEnabled);
             response.addProperty("errorSelectedSound", finalErrorSelectedSound);
+            response.addProperty("questionSoundEnabled", finalQuestionSoundEnabled);
+            response.addProperty("questionSelectedSound", finalQuestionSelectedSound);
             context.callJavaScript("window.updateSoundNotificationConfig", context.escapeJs(gson.toJson(response)));
         });
     }

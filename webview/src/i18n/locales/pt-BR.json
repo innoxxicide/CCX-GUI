@@ -281,6 +281,13 @@
         "hint": "Quando ativado, reproduz um som quando o agente falha com um erro. O som é escolhido separadamente do som de conclusão.",
         "selectSound": "Som de notificação"
       },
+      "questionSound": {
+        "label": "Som de Pergunta do Agente",
+        "enabled": "Ativado",
+        "disabled": "Desativado",
+        "hint": "Quando ativado, reproduz um som quando o agente faz uma pergunta. O som é escolhido separadamente do som de conclusão.",
+        "selectSound": "Som de notificação"
+      },
       "sendShortcut": {
         "label": "Atalho de Envio",
         "enter": "Enter para Enviar",

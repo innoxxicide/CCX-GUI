@@ -13,6 +13,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_DATA: ChangelogEntry[] = [
   {
+    version: '0.0.2',
+    date: '2026-07-24',
+    content: {
+      en: `✨ Features
+- Add an **opt-in sound for the "agent is asking you a question" notification**: when an agent asks a question, the plugin can now play a separately selectable notification sound alongside the existing reminder toast. Configured in Basic configuration → Behavior right next to the notification toggle; off by default`,
+      zh: ``,
+    },
+  },
+  {
     version: '0.0.1-fix2',
     date: '2026-07-18',
     content: {

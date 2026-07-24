@@ -269,6 +269,13 @@
         "hint": "Cuando está activado, reproduce un sonido cuando el agente falla con un error. El sonido se elige por separado del sonido de finalización.",
         "selectSound": "Sonido de notificación"
       },
+      "questionSound": {
+        "label": "Sonido de pregunta del agente",
+        "enabled": "Activado",
+        "disabled": "Desactivado",
+        "hint": "Cuando está activado, reproduce un sonido cuando el agente te hace una pregunta. El sonido se elige por separado del sonido de finalización.",
+        "selectSound": "Sonido de notificación"
+      },
       "sendShortcut": {
         "label": "Atajo de envío",
         "enter": "Enter para enviar",

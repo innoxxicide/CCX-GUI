@@ -112,6 +112,11 @@ export interface BehaviorTabProps {
   onTaskCompletionNotificationEnabledChange?: (enabled: boolean) => void;
   askUserQuestionNotificationEnabled?: boolean;
   onAskUserQuestionNotificationEnabledChange?: (enabled: boolean) => void;
+  questionSoundEnabled?: boolean;
+  onQuestionSoundEnabledChange?: (enabled: boolean) => void;
+  questionSelectedSound?: string;
+  onQuestionSelectedSoundChange?: (soundId: string) => void;
+  onTestQuestionSound?: () => void;
   errorNotificationEnabled?: boolean;
   onErrorNotificationEnabledChange?: (enabled: boolean) => void;
   errorSoundEnabled?: boolean;
@@ -157,6 +162,11 @@ const BehaviorTab = ({
   onTaskCompletionNotificationEnabledChange = () => {},
   askUserQuestionNotificationEnabled = false,
   onAskUserQuestionNotificationEnabledChange = () => {},
+  questionSoundEnabled = false,
+  onQuestionSoundEnabledChange = () => {},
+  questionSelectedSound = 'chime',
+  onQuestionSelectedSoundChange = () => {},
+  onTestQuestionSound = () => {},
   errorNotificationEnabled = false,
   onErrorNotificationEnabledChange = () => {},
   errorSoundEnabled = false,
@@ -185,6 +195,15 @@ const BehaviorTab = ({
     { value: 'error', label: t('settings.basic.soundNotification.soundError') },
     { value: 'default', label: t('settings.basic.soundNotification.soundDefault') },
     { value: 'chime', label: t('settings.basic.soundNotification.soundChime') },
+    { value: 'bell', label: t('settings.basic.soundNotification.soundBell') },
+    { value: 'ding', label: t('settings.basic.soundNotification.soundDing') },
+    { value: 'success', label: t('settings.basic.soundNotification.soundSuccess') },
+  ], [t]);
+
+  // Built-in sounds only (no custom file) — the question sound has its own selection.
+  const questionSoundOptions = useMemo(() => [
+    { value: 'chime', label: t('settings.basic.soundNotification.soundChime') },
+    { value: 'default', label: t('settings.basic.soundNotification.soundDefault') },
     { value: 'bell', label: t('settings.basic.soundNotification.soundBell') },
     { value: 'ding', label: t('settings.basic.soundNotification.soundDing') },
     { value: 'success', label: t('settings.basic.soundNotification.soundSuccess') },
@@ -470,6 +489,48 @@ const BehaviorTab = ({
           <span className="codicon codicon-info" />
           <span>{t('settings.basic.askUserQuestionNotification.hint')}</span>
         </small>
+      </div>
+
+      {/* AskUserQuestion notification sound */}
+      <div className={styles.streamingSection}>
+        <div className={styles.fieldHeader}>
+          <span className="codicon codicon-unmute" />
+          <span className={styles.fieldLabel}>{t('settings.basic.questionSound.label')}</span>
+        </div>
+        <label className={styles.toggleWrapper}>
+          <input
+            type="checkbox"
+            className={styles.toggleInput}
+            checked={questionSoundEnabled}
+            onChange={(e) => onQuestionSoundEnabledChange(e.target.checked)}
+          />
+          <span className={styles.toggleSlider} />
+          <span className={styles.toggleLabel}>
+            {questionSoundEnabled
+              ? t('settings.basic.questionSound.enabled')
+              : t('settings.basic.questionSound.disabled')}
+          </span>
+        </label>
+        <small className={styles.formHint}>
+          <span className="codicon codicon-info" />
+          <span>{t('settings.basic.questionSound.hint')}</span>
+        </small>
+
+        {questionSoundEnabled && (
+          <div className={styles.customSoundSection}>
+            <div className={styles.fieldHeader}>
+              <span className="codicon codicon-library" />
+              <span className={styles.fieldLabel}>{t('settings.basic.questionSound.selectSound')}</span>
+            </div>
+            <SoundSelectUpward
+              value={questionSelectedSound}
+              onChange={onQuestionSelectedSoundChange}
+              options={questionSoundOptions}
+              onTestSound={onTestQuestionSound}
+              testSoundLabel={t('settings.basic.soundNotification.testSound')}
+            />
+          </div>
+        )}
       </div>
 
       {/* Task completion notification toggle */}

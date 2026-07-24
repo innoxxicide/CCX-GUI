@@ -285,6 +285,13 @@
         "hint": "When enabled, plays a sound when an agent run fails with an error. The sound is chosen separately from the completion sound.",
         "selectSound": "Notification Sound"
       },
+      "questionSound": {
+        "label": "Agent Question Sound",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "hint": "When enabled, plays a sound when the agent asks you a question. The sound is chosen separately from the completion sound.",
+        "selectSound": "Notification Sound"
+      },
       "sendShortcut": {
         "label": "Send Shortcut",
         "enter": "Enter to Send",

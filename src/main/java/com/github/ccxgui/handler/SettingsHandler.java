@@ -355,6 +355,12 @@ public class SettingsHandler extends BaseMessageHandler {
             case "set_error_selected_sound":
                 soundSettingsHandler.handleSetErrorSelectedSound(content);
                 return true;
+            case "set_question_sound_enabled":
+                soundSettingsHandler.handleSetQuestionSoundEnabled(content);
+                return true;
+            case "set_question_selected_sound":
+                soundSettingsHandler.handleSetQuestionSelectedSound(content);
+                return true;
             case "test_sound":
                 soundSettingsHandler.handleTestSound(content);
                 return true;

@@ -6,6 +6,7 @@ import com.github.ccxgui.handler.core.HandlerContext;
 import com.github.ccxgui.permission.PermissionRequest;
 import com.github.ccxgui.permission.PermissionService;
 import com.github.ccxgui.settings.CodemossSettingsService;
+import com.github.ccxgui.util.SoundNotificationService;
 import com.github.ccxgui.util.SystemNotificationService;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
@@ -441,6 +442,7 @@ public class PermissionHandler extends BaseMessageHandler {
         try {
             SystemNotificationService.getInstance()
                 .showAskUserQuestionReminderToast(context.getProject());
+            SoundNotificationService.getInstance().playAskUserQuestionSound();
         } catch (Exception e) {
             LOG.warn("[ASK_USER_QUESTION][SHOW_DIALOG] Failed to show reminder toast: " + e.getMessage());
         }

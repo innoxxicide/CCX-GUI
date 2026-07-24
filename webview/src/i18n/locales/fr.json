@@ -269,6 +269,13 @@
         "hint": "Lorsque activé, joue un son lorsque l'agent échoue avec une erreur. Le son se choisit séparément du son de fin de tâche.",
         "selectSound": "Son de notification"
       },
+      "questionSound": {
+        "label": "Son de question de l'agent",
+        "enabled": "Activé",
+        "disabled": "Désactivé",
+        "hint": "Lorsque activé, joue un son lorsque l'agent vous pose une question. Le son se choisit séparément du son de fin de tâche.",
+        "selectSound": "Son de notification"
+      },
       "sendShortcut": {
         "label": "Raccourci d'envoi",
         "enter": "Entrée pour envoyer",
