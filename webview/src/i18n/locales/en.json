@@ -534,6 +534,12 @@
           "justNow": "just now"
         }
       },
+      "conciseMode": {
+        "label": "Concise mode",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "hint": "When enabled, the plugin sends the agent only your message — no IDE context or extra instructions — just like a plain terminal session. Off by default."
+      },
       "aiTitleGeneration": {
         "label": "AI session title generation",
         "enabled": "Enabled",

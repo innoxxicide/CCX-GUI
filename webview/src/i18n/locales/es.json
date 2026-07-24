@@ -462,6 +462,12 @@
           "justNow": "ahora mismo"
         }
       },
+      "conciseMode": {
+        "label": "Modo conciso",
+        "enabled": "Activado",
+        "disabled": "Desactivado",
+        "hint": "Cuando está activado, el complemento envía al agente solo tu mensaje, sin contexto del IDE ni instrucciones adicionales, igual que en una terminal normal. Desactivado de forma predeterminada."
+      },
       "aiTitleGeneration": {
         "label": "Generación automática de título de sesión por IA",
         "enabled": "Activado",

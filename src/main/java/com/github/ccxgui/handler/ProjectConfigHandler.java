@@ -734,6 +734,20 @@ public class ProjectConfigHandler {
             "Failed to save AI title generation config");
     }
 
+    public void handleGetConciseModeEnabled() {
+        respondWithJson("window.updateConciseModeEnabled",
+            () -> jsonOf("conciseModeEnabled", settingsService.getConciseModeEnabled()),
+            jsonOf("conciseModeEnabled", false),
+            "Failed to get concise mode enabled");
+    }
+
+    public void handleSetConciseModeEnabled(String content) {
+        handleBooleanToggle(content, "conciseModeEnabled", false, "Concise mode enabled",
+            settingsService::setConciseModeEnabled,
+            "window.updateConciseModeEnabled",
+            "Failed to save concise mode config");
+    }
+
     public void handleGetStatusBarWidgetEnabled() {
         respondWithJson("window.updateStatusBarWidgetEnabled",
             () -> jsonOf("statusBarWidgetEnabled", settingsService.getStatusBarWidgetEnabled()),

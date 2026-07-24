@@ -491,6 +491,12 @@
           "justNow": "방금 전"
         }
       },
+      "conciseMode": {
+        "label": "간결 모드",
+        "enabled": "사용",
+        "disabled": "사용 안 함",
+        "hint": "활성화하면 IDE 컨텍스트나 추가 지침 없이 사용자의 메시지만 에이전트에게 전송하여 일반 터미널과 동일하게 동작합니다. 기본값은 사용 안 함입니다."
+      },
       "aiTitleGeneration": {
         "label": "AI 세션 제목 자동 생성",
         "enabled": "사용",

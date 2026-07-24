@@ -462,6 +462,12 @@
           "justNow": "à l'instant"
         }
       },
+      "conciseMode": {
+        "label": "Mode concis",
+        "enabled": "Activé",
+        "disabled": "Désactivé",
+        "hint": "Lorsqu'activé, le plugin n'envoie à l'agent que votre message — sans contexte de l'IDE ni instructions supplémentaires — exactement comme dans un terminal classique. Désactivé par défaut."
+      },
       "aiTitleGeneration": {
         "label": "Génération automatique du titre de session par IA",
         "enabled": "Activé",

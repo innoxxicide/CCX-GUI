@@ -19,6 +19,7 @@ import {
 import { canUseTool } from '../../permission-handler.js';
 import { buildContentBlocks, loadAttachments } from './attachment-service.js';
 import { buildStableSystemAppend, buildIDEContextMessage } from '../system-prompts.js';
+import { isConciseModeEnabled } from '../../config/codemoss-config.js';
 import { buildQuickFixPrompt } from '../quickfix-prompts.js';
 import { registerActiveQueryResult, removeSession } from './message-service.js';
 import { normalizePermissionMode } from './permission-mode.js';
@@ -170,8 +171,8 @@ function buildQueryOptions(workingDirectory, sdkModelName, permissionMode, maxTh
   };
 }
 
-async function buildUserMessage(params, withAttachments, requestedSessionId, resolvedModelId = null) {
-  const ideContextSuffix = buildIdeContextSuffix(params);
+async function buildUserMessage(params, withAttachments, requestedSessionId, resolvedModelId = null, conciseMode = false) {
+  const ideContextSuffix = conciseMode ? '' : buildIdeContextSuffix(params);
 
   if (withAttachments) {
     const attachments = await loadAttachments({ attachments: params.attachments || [] });
@@ -234,7 +235,10 @@ async function buildRequestContext(params, withAttachments, overrides = {}) {
   const streamingEnabled = resolveStreamingEnabled(params, settings);
   const reasoningEffort = resolveReasoningEffort(params);
   const maxThinkingTokens = resolveThinkingTokens(params, settings);
-  const systemPromptAppend = buildSystemPromptAppend(params);
+  // Concise mode: send the agent only the user's own message — no systemPrompt
+  // append and no IDE-context suffix — so it matches a plain terminal session.
+  const conciseMode = isConciseModeEnabled();
+  const systemPromptAppend = conciseMode ? '' : buildSystemPromptAppend(params);
 
   const mcpServers = await loadMcpServersConfigAsRecord(workingDirectory);
 
@@ -244,7 +248,7 @@ async function buildRequestContext(params, withAttachments, overrides = {}) {
     mcpServers, modelId
   );
 
-  const userMessage = await buildUserMessage(params, withAttachments, requestedSessionId, resolvedModelId);
+  const userMessage = await buildUserMessage(params, withAttachments, requestedSessionId, resolvedModelId, conciseMode);
 
   const runtimeSignature = buildRuntimeSignature(options, systemPromptAppend, streamingEnabled, runtimeSessionEpoch, modelId);
   console.log('[LIFECYCLE] buildRequestContext sessionId=' + (requestedSessionId || '(new)')

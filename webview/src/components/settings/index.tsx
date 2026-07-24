@@ -194,6 +194,9 @@ const SettingsView = ({
     aiTitleGenerationEnabled,
     setAiTitleGenerationEnabled,
     handleAiTitleGenerationEnabledChange,
+    conciseModeEnabled,
+    setConciseModeEnabled,
+    handleConciseModeEnabledChange,
     statusBarWidgetEnabled,
     setStatusBarWidgetEnabled,
     handleStatusBarWidgetEnabledChange,
@@ -376,6 +379,7 @@ const SettingsView = ({
     setCustomSoundPath,
     setCommitGenerationEnabled,
     setAiTitleGenerationEnabled,
+    setConciseModeEnabled,
     setStatusBarWidgetEnabled,
     setTaskCompletionNotificationEnabled,
     setAskUserQuestionNotificationEnabled,
@@ -544,6 +548,8 @@ const SettingsView = ({
               }}
               aiTitleGenerationEnabled={aiTitleGenerationEnabled}
               onAiTitleGenerationEnabledChange={handleAiTitleGenerationEnabledChange}
+              conciseModeEnabled={conciseModeEnabled}
+              onConciseModeEnabledChange={handleConciseModeEnabledChange}
               newSessionConfirmEnabled={!skipNewSessionConfirm}
               onNewSessionConfirmEnabledChange={(enabled) => {
                 // Optimistic local update so the toggle reflects instantly even if

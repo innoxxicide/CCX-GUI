@@ -467,6 +467,12 @@
           "minutesAgo": "{{count}}分鐘前"
         }
       },
+      "conciseMode": {
+        "label": "簡潔模式",
+        "enabled": "已開啟",
+        "disabled": "已關閉",
+        "hint": "開啟後，只會將你的訊息傳送給智能體，不附帶 IDE 上下文或額外指令，與一般終端機完全一致。預設關閉。"
+      },
       "aiTitleGeneration": {
         "label": "AI 會話標題自動生成",
         "enabled": "已開啟",

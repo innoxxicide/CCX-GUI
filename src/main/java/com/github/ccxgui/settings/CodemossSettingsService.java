@@ -1678,6 +1678,35 @@ public class CodemossSettingsService {
         LOG.info("[CodemossSettings] Set AI title generation enabled: " + enabled);
     }
 
+    /**
+     * Get whether concise mode is enabled. When on, the plugin sends the agent
+     * nothing beyond the user's own message (no injected IDE context or system
+     * prompt append), matching a plain terminal session.
+     *
+     * @return whether concise mode is enabled, default is false
+     */
+    public boolean getConciseModeEnabled() throws IOException {
+        JsonObject config = readConfig();
+
+        if (config.has("conciseModeEnabled") && !config.get("conciseModeEnabled").isJsonNull()) {
+            return config.get("conciseModeEnabled").getAsBoolean();
+        }
+
+        return false;
+    }
+
+    /**
+     * Set whether concise mode is enabled.
+     *
+     * @param enabled whether to enable
+     */
+    public void setConciseModeEnabled(boolean enabled) throws IOException {
+        JsonObject config = readConfig();
+        config.addProperty("conciseModeEnabled", enabled);
+        writeConfig(config);
+        LOG.info("[CodemossSettings] Set concise mode enabled: " + enabled);
+    }
+
     // ==================== Prompt Enhancer Config Management ====================
 
     /**

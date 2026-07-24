@@ -467,6 +467,12 @@
           "minutesAgo": "{{count}}分前"
         }
       },
+      "conciseMode": {
+        "label": "簡潔モード",
+        "enabled": "有効",
+        "disabled": "無効",
+        "hint": "有効にすると、IDE のコンテキストや追加の指示を付けず、ユーザーのメッセージのみをエージェントに送信し、通常のターミナルと同じ動作になります。デフォルトは無効です。"
+      },
       "aiTitleGeneration": {
         "label": "AI セッションタイトル自動生成",
         "enabled": "有効",

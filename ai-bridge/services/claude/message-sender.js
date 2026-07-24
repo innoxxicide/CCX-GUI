@@ -16,6 +16,7 @@ import { AsyncStream } from '../../utils/async-stream.js';
 import { canUseTool } from '../../permission-handler.js';
 import { buildContentBlocks, loadAttachments } from './attachment-service.js';
 import { buildStableSystemAppend, buildIDEContextMessage } from '../system-prompts.js';
+import { isConciseModeEnabled } from '../../config/codemoss-config.js';
 import { buildQuickFixPrompt } from '../quickfix-prompts.js';
 import { emitAccumulatedUsage, mergeUsage } from '../../utils/usage-utils.js';
 import {
@@ -479,7 +480,8 @@ export async function sendMessage(message, resumeSessionId = null, cwd = null, p
     console.log('[DEBUG] Model:', model, '->', sdkModelName, '(API:', resolvedModel + ')');
     setModelEnvironmentVariables(resolvedModel, model);
 
-    const systemPromptAppend = buildSystemPromptAppend(openedFiles, agentPrompt, message);
+    const conciseMode = isConciseModeEnabled();
+    const systemPromptAppend = conciseMode ? '' : buildSystemPromptAppend(openedFiles, agentPrompt, message);
 
     const effectivePermissionMode = (!permissionMode || permissionMode === '') ? 'default' : permissionMode;
     const normalizedReasoningEffort = normalizeReasoningEffort(reasoningEffort);
@@ -502,7 +504,7 @@ export async function sendMessage(message, resumeSessionId = null, cwd = null, p
 
     const queryFn = await loadSdkQueryFunction('');
 
-    const ideContextSuffix = buildIdeContextSuffix(openedFiles);
+    const ideContextSuffix = conciseMode ? '' : buildIdeContextSuffix(openedFiles);
     const promptText = ideContextSuffix ? `${message ?? ''}${ideContextSuffix}` : message;
 
     await executeWithRetry({
@@ -544,7 +546,8 @@ export async function sendMessageWithAttachments(message, resumeSessionId = null
     const openedFiles = stdinData?.openedFiles || null;
     const agentPrompt = stdinData?.agentPrompt || null;
 
-    const systemPromptAppend = buildSystemPromptAppend(openedFiles, agentPrompt, message);
+    const conciseMode = isConciseModeEnabled();
+    const systemPromptAppend = conciseMode ? '' : buildSystemPromptAppend(openedFiles, agentPrompt, message);
 
     const sdkModelName = mapModelIdToSdkName(model);
     const settings = loadClaudeSettings();
@@ -553,7 +556,7 @@ export async function sendMessageWithAttachments(message, resumeSessionId = null
     setModelEnvironmentVariables(resolvedAttachModel, model);
 
     const contentBlocks = await buildContentBlocks(attachments, message, resolvedAttachModel);
-    const ideContextSuffix = buildIdeContextSuffix(openedFiles);
+    const ideContextSuffix = conciseMode ? '' : buildIdeContextSuffix(openedFiles);
     if (ideContextSuffix) {
       const last = contentBlocks[contentBlocks.length - 1];
       if (last && last.type === 'text') {

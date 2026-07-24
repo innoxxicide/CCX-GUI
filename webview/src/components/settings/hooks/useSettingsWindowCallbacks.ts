@@ -51,6 +51,7 @@ export interface SettingsWindowCallbacksDeps {
   // AI feature toggle setters
   setCommitGenerationEnabled?: (enabled: boolean) => void;
   setAiTitleGenerationEnabled?: (enabled: boolean) => void;
+  setConciseModeEnabled?: (enabled: boolean) => void;
   setStatusBarWidgetEnabled?: (enabled: boolean) => void;
   setTaskCompletionNotificationEnabled?: (enabled: boolean) => void;
   setAskUserQuestionNotificationEnabled?: (enabled: boolean) => void;
@@ -353,6 +354,16 @@ export function useSettingsWindowCallbacks(deps: SettingsWindowCallbacksDeps) {
       }
     };
 
+    // Concise mode config callback
+    window.updateConciseModeEnabled = (jsonStr: string) => {
+      try {
+        const data = JSON.parse(jsonStr);
+        d().setConciseModeEnabled?.(data.conciseModeEnabled ?? false);
+      } catch (error) {
+        console.error('[SettingsView] Failed to parse concise mode config:', error);
+      }
+    };
+
     // Status bar widget config callback
     window.updateStatusBarWidgetEnabled = (jsonStr: string) => {
       try {
@@ -564,6 +575,7 @@ export function useSettingsWindowCallbacks(deps: SettingsWindowCallbacksDeps) {
     sendToJava('get_sound_notification_config:');
     sendToJava('get_commit_generation_enabled:');
     sendToJava('get_ai_title_generation_enabled:');
+    sendToJava('get_concise_mode_enabled:');
     sendToJava('get_status_bar_widget_enabled:');
     sendToJava('get_task_completion_notification_enabled:');
     sendToJava('get_ask_user_question_notification_enabled:');
@@ -603,6 +615,7 @@ export function useSettingsWindowCallbacks(deps: SettingsWindowCallbacksDeps) {
       window.updateSoundNotificationConfig = undefined;
       window.updateCommitGenerationEnabled = undefined;
       window.updateAiTitleGenerationEnabled = undefined;
+      window.updateConciseModeEnabled = undefined;
       window.updateStatusBarWidgetEnabled = undefined;
       window.updateTaskCompletionNotificationEnabled = undefined;
       window.updateAskUserQuestionNotificationEnabled = undefined;

@@ -89,6 +89,8 @@ export interface BehaviorTabProps {
   onStatusBarWidgetEnabledChange?: (enabled: boolean) => void;
   aiTitleGenerationEnabled?: boolean;
   onAiTitleGenerationEnabledChange?: (enabled: boolean) => void;
+  conciseModeEnabled?: boolean;
+  onConciseModeEnabledChange?: (enabled: boolean) => void;
   /**
    * Whether the "create new session with existing messages" confirm dialog is
    * enabled (i.e. shown). Positive semantics: `true` = dialog shows, `false` =
@@ -145,6 +147,8 @@ const BehaviorTab = ({
   onStatusBarWidgetEnabledChange = () => {},
   aiTitleGenerationEnabled = true,
   onAiTitleGenerationEnabledChange = () => {},
+  conciseModeEnabled = false,
+  onConciseModeEnabledChange = () => {},
   newSessionConfirmEnabled = true,
   onNewSessionConfirmEnabledChange = () => {},
   soundNotificationEnabled = false,
@@ -432,6 +436,32 @@ const BehaviorTab = ({
         <small className={styles.formHint}>
           <span className="codicon codicon-info" />
           <span>{t('settings.other.aiTitleGeneration.hint')}</span>
+        </small>
+      </div>
+
+      {/* Concise mode toggle */}
+      <div className={styles.streamingSection}>
+        <div className={styles.fieldHeader}>
+          <span className="codicon codicon-symbol-string" />
+          <span className={styles.fieldLabel}>{t('settings.other.conciseMode.label')}</span>
+        </div>
+        <label className={styles.toggleWrapper}>
+          <input
+            type="checkbox"
+            className={styles.toggleInput}
+            checked={conciseModeEnabled}
+            onChange={(e) => onConciseModeEnabledChange(e.target.checked)}
+          />
+          <span className={styles.toggleSlider} />
+          <span className={styles.toggleLabel}>
+            {conciseModeEnabled
+              ? t('settings.other.conciseMode.enabled')
+              : t('settings.other.conciseMode.disabled')}
+          </span>
+        </label>
+        <small className={styles.formHint}>
+          <span className="codicon codicon-info" />
+          <span>{t('settings.other.conciseMode.hint')}</span>
         </small>
       </div>
 

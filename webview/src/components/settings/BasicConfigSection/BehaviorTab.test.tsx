@@ -27,6 +27,8 @@ function renderBehaviorTab(overrides: Partial<ComponentProps<typeof BehaviorTab>
     onCommitGenerationEnabledChange: vi.fn(),
     aiTitleGenerationEnabled: true,
     onAiTitleGenerationEnabledChange: vi.fn(),
+    conciseModeEnabled: false,
+    onConciseModeEnabledChange: vi.fn(),
     taskCompletionNotificationEnabled: false,
     onTaskCompletionNotificationEnabledChange: vi.fn(),
     askUserQuestionNotificationEnabled: false,

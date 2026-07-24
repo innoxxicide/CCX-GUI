@@ -351,6 +351,11 @@ interface Window {
   updateAiTitleGenerationEnabled?: (json: string) => void;
 
   /**
+   * Update concise mode enabled state
+   */
+  updateConciseModeEnabled?: (json: string) => void;
+
+  /**
    * Update status bar widget enabled state
    */
   updateStatusBarWidgetEnabled?: (json: string) => void;

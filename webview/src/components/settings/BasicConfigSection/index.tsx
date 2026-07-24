@@ -77,6 +77,9 @@ interface BasicConfigSectionProps {
   // AI title generation configuration
   aiTitleGenerationEnabled?: boolean;
   onAiTitleGenerationEnabledChange?: (enabled: boolean) => void;
+  // Concise mode configuration
+  conciseModeEnabled?: boolean;
+  onConciseModeEnabledChange?: (enabled: boolean) => void;
   // New-session confirm dialog (positive semantics: true = shown)
   newSessionConfirmEnabled?: boolean;
   onNewSessionConfirmEnabledChange?: (enabled: boolean) => void;
@@ -184,6 +187,8 @@ const BasicConfigSection = (props: BasicConfigSectionProps) => {
           onStatusBarWidgetEnabledChange={props.onStatusBarWidgetEnabledChange}
           aiTitleGenerationEnabled={props.aiTitleGenerationEnabled}
           onAiTitleGenerationEnabledChange={props.onAiTitleGenerationEnabledChange}
+          conciseModeEnabled={props.conciseModeEnabled}
+          onConciseModeEnabledChange={props.onConciseModeEnabledChange}
           newSessionConfirmEnabled={props.newSessionConfirmEnabled}
           onNewSessionConfirmEnabledChange={props.onNewSessionConfirmEnabledChange}
           soundNotificationEnabled={props.soundNotificationEnabled}
