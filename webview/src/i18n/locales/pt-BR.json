@@ -1632,9 +1632,13 @@
         "label": "Haiku 4.5",
         "description": "Haiku 4.5 · Mais rápido para respostas rápidas"
       },
+      "opus5": {
+        "label": "Opus 5",
+        "description": "Opus 5 · O mais recente e capaz"
+      },
       "opus48": {
         "label": "Opus 4.8",
-        "description": "Opus 4.8 · O mais recente e capaz"
+        "description": "Opus 4.8 · Modelo principal anterior"
       },
       "fable5": {
         "label": "Fable 5",

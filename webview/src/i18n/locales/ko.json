@@ -1577,9 +1577,13 @@
         "label": "Haiku 4.5",
         "description": "Haiku 4.5 · 빠른 응답에 최적"
       },
+      "opus5": {
+        "label": "Opus 5",
+        "description": "Opus 5 · 최신 및 가장 강력한 모델"
+      },
       "opus48": {
         "label": "Opus 4.8",
-        "description": "Opus 4.8 · 최신 및 가장 강력한 모델"
+        "description": "Opus 4.8 · 이전 플래그십 모델"
       },
       "fable5": {
         "label": "Fable 5",

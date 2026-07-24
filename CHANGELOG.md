@@ -3,6 +3,7 @@
 English:
 
 ✨ Features
+- Add **Claude Opus 5** as the new built-in flagship model: register `claude-opus-5` and its `claude-opus-5[1m]` variant with 200K / 1M context limits, reasoning-effort mapping (including xhigh and max), usage pricing, model mapping, and localized labels across all supported languages. Opus 4.8 is demoted to the previous flagship
 - Add an **opt-in sound for the "agent is asking you a question" notification**: when an agent asks a question, the plugin can now play a separately selectable notification sound alongside the existing reminder toast. Configured in Basic configuration → Behavior right next to the notification toggle; off by default
 - Add a **"Concise mode" toggle** (Basic configuration → Behavior; off by default): when enabled, the plugin sends the agent only your own message — no injected IDE context (active file, selection) and no extra system-prompt instructions — so a request matches exactly what a plain terminal session would send. Useful for minimizing token usage
 
