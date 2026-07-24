@@ -15,10 +15,13 @@ export interface ClaudeLimitsIndicatorsProps {
  * one tracks the 5-hour session window, the right one the 7-day (weekly)
  * window. Clicking anywhere on the block opens the usage-statistics modal.
  *
- * When the account has no OAuth (Pro/Max) login the usage endpoint returns no
- * data (`reason: 'no_oauth'` — API-key / relay users). Rather than render an
- * unexplained void, a muted battery outline is shown so it's clear the gauges
- * need a subscription login; clicking it opens the modal that spells that out.
+ * When there is no bucket data to draw a muted battery outline is shown instead
+ * of an unexplained void, so the block stays clickable and can explain itself.
+ * Two cases reach here: `reason: 'no_oauth'` (API-key / relay users, who need a
+ * Pro/Max login) and `reason: 'error'` (e.g. an expired token on a cold start,
+ * before the auto-refresh has renewed it) — the latter must stay clickable so
+ * opening the modal can force a refresh, otherwise the gauges would be stuck
+ * with no way to recover short of a terminal re-login.
  */
 export const ClaudeLimitsIndicators = memo(function ClaudeLimitsIndicators({
   limits,
@@ -32,26 +35,28 @@ export const ClaudeLimitsIndicators = memo(function ClaudeLimitsIndicators({
   const fiveHour = limits.available ? limits.usage?.five_hour : undefined;
   const sevenDay = limits.available ? limits.usage?.seven_day : undefined;
   if (!fiveHour && !sevenDay) {
-    if (limits.reason === 'no_oauth') {
-      const hint = t('usageLimits.noOauthHint', {
-        defaultValue: 'Usage limits need a Claude Pro/Max login — click for details',
-      });
-      return (
-        <button
-          type="button"
-          className="claude-limits-indicators claude-limits-indicators--hint"
-          onClick={onClick}
-          title={hint}
-          aria-label={hint}
-        >
-          <svg viewBox="0 0 28 14" width="28" height="14" aria-hidden="true" focusable="false">
-            <rect x="1" y="2" width="22" height="10" rx="2.5" fill="none" stroke="currentColor" strokeWidth="1.2" />
-            <rect x="24" y="5" width="2.5" height="4" rx="1" fill="currentColor" />
-          </svg>
-        </button>
-      );
-    }
-    return null;
+    const hint =
+      limits.reason === 'no_oauth'
+        ? t('usageLimits.noOauthHint', {
+            defaultValue: 'Usage limits need a Claude Pro/Max login — click for details',
+          })
+        : t('usageLimits.unavailableHint', {
+            defaultValue: "Couldn't load usage limits — click to retry",
+          });
+    return (
+      <button
+        type="button"
+        className="claude-limits-indicators claude-limits-indicators--hint"
+        onClick={onClick}
+        title={hint}
+        aria-label={hint}
+      >
+        <svg viewBox="0 0 28 14" width="28" height="14" aria-hidden="true" focusable="false">
+          <rect x="1" y="2" width="22" height="10" rx="2.5" fill="none" stroke="currentColor" strokeWidth="1.2" />
+          <rect x="24" y="5" width="2.5" height="4" rx="1" fill="currentColor" />
+        </svg>
+      </button>
+    );
   }
 
   const sessionTitle = fiveHour

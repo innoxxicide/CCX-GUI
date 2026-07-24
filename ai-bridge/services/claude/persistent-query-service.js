@@ -825,6 +825,39 @@ export async function getContextUsagePersistent(params = {}) {
   });
 }
 
+/**
+ * Force the SDK/CLI to exercise its authenticated path so an expired OAuth
+ * access token is refreshed by the official CLI — which owns refresh-token
+ * rotation and the atomic write-back to ~/.claude/.credentials.json. Calls
+ * accountInfo(), a control request with no agent turn and no token cost, on a
+ * runtime (reusing the prewarmed anonymous one, or creating it via the same
+ * path as preconnect). The Java usage-limits service only reads the credentials
+ * file; this is how it delegates the actual refresh instead of touching the
+ * OAuth token endpoint itself. Emits the account info as JSON for the bridge.
+ * @param {object} params - { cwd?: string }
+ */
+export async function refreshAuthPersistent(params = {}) {
+  const safeParams = params || {};
+  const requestContext = await buildRequestContext(safeParams, false);
+  const runtime = await acquireRuntime(requestContext, { registerActiveQueryResult, removeSession });
+
+  if (!runtime || runtime.closed) {
+    throw new Error('Failed to establish a runtime for auth refresh');
+  }
+  if (typeof runtime.query?.accountInfo !== 'function') {
+    throw new Error('accountInfo is not available on the current runtime');
+  }
+
+  try {
+    const account = await runtime.query.accountInfo();
+    console.log(JSON.stringify({ success: true, account }));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err || 'accountInfo call failed');
+    console.error('[LIFECYCLE] accountInfo SDK error:', message);
+    throw new Error(message);
+  }
+}
+
 export async function shutdownPersistentRuntimes() {
   const all = getAllRuntimes();
   for (const runtime of all) {

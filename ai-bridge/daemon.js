@@ -37,7 +37,8 @@ import {
   abortCurrentTurn,
   resetRuntimePersistent,
   getContextUsagePersistent,
-  setPermissionModePersistent
+  setPermissionModePersistent,
+  refreshAuthPersistent
 } from './services/claude/persistent-query-service.js';
 import { injectStartupEnvVars, isWebviewControlledEnvVar, isDangerousEnvVar } from './config/api-config.js';
 import { cleanupStaleTempImages } from './services/claude/attachment-service.js';
@@ -470,6 +471,8 @@ async function processRequest(request) {
       await resetRuntimePersistent(stdinData);
     } else if (provider === 'claude' && command === 'getContextUsage') {
       await getContextUsagePersistent(stdinData);
+    } else if (provider === 'claude' && command === 'refreshAuth') {
+      await refreshAuthPersistent(stdinData);
     } else {
       // Dispatch to the existing handlers for non-send commands.
       switch (provider) {

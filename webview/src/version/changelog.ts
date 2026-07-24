@@ -22,7 +22,11 @@ export const CHANGELOG_DATA: ChangelogEntry[] = [
 
 ⚡ Performance
 - **Cut the token cost of the IDE context sent with every Claude message**: the plugin no longer re-sends your project's workspace/module structure or the list of other open editor tabs on each turn, and the remaining context (active file + selection) plus the Windows path-format reminder were trimmed down. Static project structure belongs in \`CLAUDE.md\`, which Claude already loads, and the active file path alone shows which module you're in
-- **Stop busting the prompt cache when you navigate the IDE mid-conversation**: the per-turn editor context (active file and selection) now travels in the user message instead of the system prompt. Switching files or changing your selection no longer rebuilds the Claude session or re-sends the whole conversation history uncached — a significant saving in long chats`,
+- **Stop busting the prompt cache when you navigate the IDE mid-conversation**: the per-turn editor context (active file and selection) now travels in the user message instead of the system prompt. Switching files or changing your selection no longer rebuilds the Claude session or re-sends the whole conversation history uncached — a significant saving in long chats
+
+🐛 Fixes
+- **Stop the Claude usage battery from needing a periodic terminal re-login**: the header gauges read the account's OAuth token but never renewed it, so once the access token expired with no agent turn to refresh it, the usage endpoint returned 401 and the indicators went dark until you ran \`claude login\` again in a terminal. When the token is stale the plugin now delegates the renewal to the daemon's SDK — the official CLI owns refresh-token rotation and the write-back to the credentials store, so nothing new races the token or writes it — then fetches with the renewed token. The plugin still only ever reads the credentials store, never the OAuth token endpoint
+- Fix the **battery being unrecoverable when the plugin starts with an already-expired token**: an expired-token fetch returns no gauge data, and the header only drew a clickable placeholder for API-key logins, so an OAuth error state rendered nothing — leaving no way to trigger a refresh. The placeholder now also covers the error state (click to retry), and the initial refresh waits for the daemon to finish warming up so an expired token recovers on its own`,
       zh: ``,
     },
   },

@@ -2,7 +2,9 @@ package com.github.ccxgui.handler;
 
 import com.github.ccxgui.handler.core.BaseMessageHandler;
 import com.github.ccxgui.handler.core.HandlerContext;
+import com.github.ccxgui.provider.claude.ClaudeSDKBridge;
 import com.github.ccxgui.provider.claude.ClaudeUsageLimitsService;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
 
 /**
@@ -43,6 +45,29 @@ public class ClaudeLimitsHandler extends BaseMessageHandler {
             return;
         }
         boolean force = "force".equals(content);
+        ClaudeSDKBridge bridge = context.getClaudeSDKBridge();
+
+        // Idle pull path (initial load / manual refresh / opening the modal).
+        // Unlike the push path (ClaudeMessageHandler#handleUsage), which fires
+        // during agent activity when the SDK has just refreshed the OAuth token,
+        // here the access token may have expired with nothing to renew it. When
+        // it is stale, delegate the refresh to the daemon's SDK — the official
+        // CLI owns refresh-token rotation and the write-back to the credentials
+        // file — then fetch fresh with the renewed token. We never write
+        // credentials or call the OAuth token endpoint ourselves.
+        //
+        // The staleness check reads the credentials store, which can touch the
+        // macOS Keychain, so it runs off the caller thread.
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
+            if (bridge != null && ClaudeUsageLimitsService.isAccessTokenStale()) {
+                bridge.refreshAuthAsync().whenComplete((refreshed, ex) -> fetchAndPush(true));
+            } else {
+                fetchAndPush(force);
+            }
+        });
+    }
+
+    private void fetchAndPush(boolean force) {
         ClaudeUsageLimitsService.getOrFetch(force).thenAccept(json -> {
             if (json != null) {
                 context.callJavaScript("onClaudeLimitsUpdate", context.escapeJs(json));

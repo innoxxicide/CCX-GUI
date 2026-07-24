@@ -58,6 +58,12 @@ public final class ClaudeUsageLimitsService {
      * below so a genuinely slow fetch is never mistaken for a leak.
      */
     private static final long IN_FLIGHT_GUARD_MS = 30_000L;
+    /**
+     * How close to {@code expiresAt} the access token may be before
+     * {@link #isAccessTokenStale()} asks the caller to delegate a refresh, so we
+     * renew slightly ahead of expiry rather than after the endpoint 401s.
+     */
+    private static final long EXPIRY_SKEW_MS = 60_000L;
 
     private static final Gson GSON = new Gson();
     /**
@@ -137,6 +143,34 @@ public final class ClaudeUsageLimitsService {
     public static CompletableFuture<String> fetchFreshForLimitCheck() {
         return CompletableFuture.supplyAsync(ClaudeUsageLimitsService::fetchDirect,
                 AppExecutorUtil.getAppExecutorService());
+    }
+
+    /**
+     * Whether the on-disk OAuth access token is expired or within
+     * {@link #EXPIRY_SKEW_MS} of expiring — i.e. worth delegating a refresh
+     * before hitting the usage endpoint.
+     *
+     * <p>Returns {@code false} for API-key logins (no {@code claudeAiOauth}
+     * token) and when {@code expiresAt} is absent: there is nothing to refresh,
+     * so the caller should just fetch with whatever token exists. This only
+     * reads the credentials store; it never triggers or performs a refresh.
+     */
+    public static boolean isAccessTokenStale() {
+        try {
+            JsonObject oauth = readOAuthCredentials();
+            if (oauth == null || !oauth.has("expiresAt") || oauth.get("expiresAt").isJsonNull()) {
+                return false;
+            }
+            long expiresAt = oauth.get("expiresAt").getAsLong();
+            // Claude writes expiresAt in epoch millis; normalize a seconds value defensively.
+            if (expiresAt < 1_000_000_000_000L) {
+                expiresAt *= 1000L;
+            }
+            return System.currentTimeMillis() >= expiresAt - EXPIRY_SKEW_MS;
+        } catch (Exception e) {
+            LOG.debug("[ClaudeUsageLimits] Failed to evaluate token expiry: " + e.getMessage());
+            return false;
+        }
     }
 
     private static String fetchDirect() {

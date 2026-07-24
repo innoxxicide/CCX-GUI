@@ -593,6 +593,69 @@ public class ClaudeSDKBridge extends BaseSDKBridge {
     }
 
     /**
+     * Ask the daemon's SDK to exercise its authenticated path — the SDK's
+     * accountInfo() control request, which runs no agent turn and costs no
+     * tokens — so the official CLI refreshes an expired OAuth access token using
+     * the stored refresh token and rewrites ~/.claude/.credentials.json. The
+     * usage-limits service only ever reads that file; this is how it delegates
+     * the actual refresh instead of calling the OAuth token endpoint itself, so
+     * the CLI stays the single writer and owns refresh-token rotation.
+     *
+     * <p>Best-effort: when the daemon can't be started this is a graceful no-op
+     * returning {@code false}, and the caller proceeds with whatever token is on
+     * disk — never worse than not refreshing at all. Uses the spawning accessor
+     * so it works on a cold start too: the initial pull fires before the daemon
+     * has finished prewarming, and the non-spawning accessor would return no
+     * bridge and skip the refresh on exactly the scenario that needs it most.
+     * Safe to block here because callers invoke this off the EDT (a pooled
+     * thread on the usage pull path).
+     *
+     * @return future completing {@code true} when the refresh command succeeded.
+     */
+    public CompletableFuture<Boolean> refreshAuthAsync() {
+        DaemonBridge db = this.daemonCoordinator.getDaemonBridge();
+        if (db == null || !db.isAlive()) {
+            return CompletableFuture.completedFuture(false);
+        }
+
+        CompletableFuture<Boolean> resultFuture = new CompletableFuture<>();
+        DaemonBridge.DaemonOutputCallback callback = new DaemonBridge.DaemonOutputCallback() {
+            @Override
+            public void onLine(String line) { }
+            @Override
+            public void onStderr(String text) { }
+            @Override
+            public void onError(String error) {
+                if (!resultFuture.isDone()) {
+                    resultFuture.complete(false);
+                }
+            }
+            @Override
+            public void onComplete(boolean success) {
+                if (!resultFuture.isDone()) {
+                    resultFuture.complete(success);
+                }
+            }
+        };
+
+        try {
+            CompletableFuture<Boolean> commandFuture =
+                    db.sendCommand("claude.refreshAuth", new JsonObject(), callback);
+            commandFuture.exceptionally(ex -> {
+                if (!resultFuture.isDone()) {
+                    resultFuture.complete(false);
+                }
+                return false;
+            });
+        } catch (Exception e) {
+            LOG.warn("[ClaudeSDKBridge] refreshAuth failed: " + e.getMessage());
+            return CompletableFuture.completedFuture(false);
+        }
+
+        return resultFuture.orTimeout(30, TimeUnit.SECONDS).exceptionally(ex -> false);
+    }
+
+    /**
      * Hot-swap the permission mode of the live daemon runtime mid-conversation.
      *
      * Pushes the new mode to the SDK query and the reactive state the PreToolUse
