@@ -23,26 +23,33 @@ test('buildIDEContextMessage returns empty when there is no context', () => {
   assert.equal(buildIDEContextMessage({ others: [] }), '');
 });
 
-test('buildIDEContextMessage emits the sanitizer anchor and the actual data', () => {
+test('buildIDEContextMessage emits the sanitizer anchor and the active file + selection', () => {
   const msg = buildIDEContextMessage(sampleOpenedFiles);
   assert.ok(msg.includes(SANITIZER_ANCHOR), 'must keep the UserMessageSanitizer anchor byte-compatible');
   assert.ok(msg.includes('src/App.tsx'), 'includes active file');
   assert.ok(msg.includes('const x = 1;'), 'includes selected text');
-  assert.ok(msg.includes('src/index.ts'), 'includes other open files');
 });
 
-test('buildIDEContextMessage keeps workspace/module sanitizer sub-anchors', () => {
-  const workspaceMsg = buildIDEContextMessage({
+test('buildIDEContextMessage omits open-files list, workspace, and modules', () => {
+  // #5/#6/#7: these are near-static per project (belong in CLAUDE.md) or
+  // low-signal, and must not be re-injected on every turn.
+  const msg = buildIDEContextMessage({
+    active: 'src/App.tsx',
+    others: ['src/index.ts', 'src/util.ts'],
     isWorkspace: true,
     workspaceRoot: '/repo',
     subprojects: [{ name: 'api', path: '/repo/api', type: 'gradle' }],
-  });
-  assert.ok(workspaceMsg.includes('### Multi-Project Workspace Structure'));
-
-  const moduleMsg = buildIDEContextMessage({
     modules: [{ name: 'core' }, { name: 'ui' }],
   });
-  assert.ok(moduleMsg.includes('### Project Module Structure\n\nThis project contains multiple modules:'));
+  assert.ok(!msg.includes('src/index.ts'), 'no other-open-files list');
+  assert.ok(!msg.includes('Multi-Project Workspace Structure'), 'no workspace structure');
+  assert.ok(!msg.includes('Project Module Structure'), 'no module list');
+});
+
+test('buildIDEContextMessage returns empty when only non-active context is present', () => {
+  // Without an active file there is nothing high-signal left to inject.
+  assert.equal(buildIDEContextMessage({ others: ['a.ts'], isWorkspace: true }), '');
+  assert.equal(buildIDEContextMessage({ modules: [{ name: 'core' }, { name: 'ui' }] }), '');
 });
 
 test('buildStableSystemAppend never carries the volatile IDE marker', () => {

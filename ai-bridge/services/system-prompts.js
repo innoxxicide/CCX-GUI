@@ -83,73 +83,35 @@ function buildIDEContextMessage(openedFiles) {
     return '';
   }
 
-  const { active, selection, others, isWorkspace, workspaceRoot, subprojects, modules, activeSubproject } = openedFiles;
+  // Only the active file and its selection are injected per turn. The open-files
+  // list, workspace/subproject structure, and module list were deliberately
+  // dropped: they are near-static per project (belong in CLAUDE.md, loaded via
+  // settingSources) or low-signal, and were re-sent on every turn. The active
+  // file path already reveals which subproject/module the user is in.
+  const { active, selection } = openedFiles;
   const hasActive = active && active.trim() !== '';
   const hasSelection = selection && selection.selectedText;
-  const hasOthers = Array.isArray(others) && others.length > 0;
-  const hasWorkspace = !!isWorkspace;
-  const hasModules = Array.isArray(modules) && modules.length > 1;
 
-  if (!hasActive && !hasOthers && !hasWorkspace && !hasModules) {
+  if (!hasActive) {
     return '';
   }
 
   console.log('[SystemPrompts] Building IDE context with active file:', active,
-              'selection:', hasSelection ? 'yes' : 'no',
-              'other files:', others?.length || 0,
-              'workspace:', hasWorkspace ? 'yes' : 'no',
-              'modules:', modules?.length || 0);
+              'selection:', hasSelection ? 'yes' : 'no');
 
   // The header and the "The user is working in an IDE." sentence start are
   // load-bearing anchors: UserMessageSanitizer.java strips this appended context
   // from transcripts by matching these exact strings. Keep them byte-compatible.
   let prompt = '';
   prompt += '\n\n## User\'s Current IDE Context\n\n';
-  prompt += 'The user is working in an IDE. When a request is vague ("this", "here", "fix this"), resolve the subject in priority order: selected code > active file > other open files. Paths may carry `#LX-Y` / `#LX` line references.\n\n';
+  prompt += 'The user is working in an IDE. When a request is vague ("this", "here", "fix this"), it refers to the selected code, or the active file when nothing is selected. Paths may carry `#LX-Y` / `#LX` line references.\n\n';
+  prompt += `Active file: \`${sanitizePromptValue(active)}\`\n`;
 
-  if (hasWorkspace) {
-    prompt += '### Multi-Project Workspace Structure\n\n';
-    if (workspaceRoot) {
-      prompt += `Workspace root: \`${sanitizePromptValue(workspaceRoot)}\`\n`;
-    }
-    if (Array.isArray(subprojects) && subprojects.length > 0) {
-      prompt += 'Subprojects:\n';
-      for (const sp of subprojects) {
-        const name = sanitizePromptValue(sp.name || 'unknown');
-        const path = sanitizePromptValue(sp.path || '');
-        const type = sanitizePromptValue(sp.type || '');
-        const loaded = sp.loaded !== false;
-        prompt += `- \`${name}\`${type ? ` (${type})` : ''}${loaded ? '' : ' [not loaded]'}${path ? `: \`${path}\`` : ''}\n`;
-      }
-    }
-    if (activeSubproject) {
-      prompt += `Active file is in subproject \`${sanitizePromptValue(activeSubproject)}\`.\n`;
-    }
-    prompt += '\n';
-  } else if (hasModules) {
-    prompt += '### Project Module Structure\n\nThis project contains multiple modules:\n';
-    for (const mod of modules) {
-      prompt += `- \`${sanitizePromptValue(mod.name || 'unknown')}\`\n`;
-    }
-    prompt += '\n';
-  }
-
-  if (hasActive) {
-    prompt += `### Currently Active File\n\n**File**: \`${sanitizePromptValue(active)}\`\n\n`;
-    if (hasSelection) {
-      prompt += `Selected lines ${selection.startLine}-${selection.endLine} (primary subject):\n`;
-      prompt += '```\n';
-      prompt += selection.selectedText;
-      prompt += '\n```\n\n';
-    }
-  }
-
-  if (hasOthers) {
-    prompt += '### Other Open Files (secondary context)\n\n';
-    others.forEach(file => {
-      prompt += `- \`${sanitizePromptValue(file)}\`\n`;
-    });
-    prompt += '\n';
+  if (hasSelection) {
+    prompt += `\nSelected lines ${selection.startLine}-${selection.endLine} (primary subject):\n`;
+    prompt += '```\n';
+    prompt += selection.selectedText;
+    prompt += '\n```\n';
   }
 
   return prompt;
