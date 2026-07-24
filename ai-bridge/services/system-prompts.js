@@ -93,123 +93,56 @@ function buildIDEContextPrompt(openedFiles, agentPrompt = null) {
               'workspace:', hasWorkspace ? 'yes' : 'no',
               'modules:', modules?.length || 0);
 
+  // The header and the "The user is working in an IDE." sentence start are
+  // load-bearing anchors: UserMessageSanitizer.java strips appended context from
+  // transcripts by matching these exact strings. Keep them byte-compatible.
   prompt += '\n\n## User\'s Current IDE Context\n\n';
-  prompt += 'The user is working in an IDE. Below is their current workspace context, which provides critical information about what they are looking at and asking about:\n\n';
+  prompt += 'The user is working in an IDE. When a request is vague ("this", "here", "fix this"), resolve the subject in priority order: selected code > active file > other open files. Paths may carry `#LX-Y` / `#LX` line references.\n\n';
 
-  // Workspace/Multi-project context (highest priority for project structure understanding)
   if (hasWorkspace) {
     prompt += '### Multi-Project Workspace Structure\n\n';
-    prompt += 'You are working in a **multi-project workspace** environment. This is important for understanding project boundaries and dependencies:\n\n';
-
     if (workspaceRoot) {
-      prompt += `**Workspace Root**: \`${sanitizePromptValue(workspaceRoot)}\`\n\n`;
+      prompt += `Workspace root: \`${sanitizePromptValue(workspaceRoot)}\`\n`;
     }
-
     if (Array.isArray(subprojects) && subprojects.length > 0) {
-      prompt += '**Subprojects in this workspace**:\n';
+      prompt += 'Subprojects:\n';
       for (const sp of subprojects) {
         const name = sanitizePromptValue(sp.name || 'unknown');
         const path = sanitizePromptValue(sp.path || '');
         const type = sanitizePromptValue(sp.type || '');
-        const loaded = sp.loaded !== false; // Default to true if not specified
-
-        prompt += `- **${name}**`;
-        if (type) {
-          prompt += ` (${type})`;
-        }
-        if (!loaded) {
-          prompt += ' [not loaded]';
-        }
-        prompt += `: \`${path}\`\n`;
+        const loaded = sp.loaded !== false;
+        prompt += `- \`${name}\`${type ? ` (${type})` : ''}${loaded ? '' : ' [not loaded]'}${path ? `: \`${path}\`` : ''}\n`;
       }
-      prompt += '\n';
     }
-
     if (activeSubproject) {
-      prompt += `**Current Context**: The active file belongs to subproject **${sanitizePromptValue(activeSubproject)}**\n\n`;
+      prompt += `Active file is in subproject \`${sanitizePromptValue(activeSubproject)}\`.\n`;
     }
-
-    prompt += '**Workspace Guidelines**:\n';
-    prompt += '- Each subproject may have its own build configuration, dependencies, and module structure\n';
-    prompt += '- When editing files, consider which subproject they belong to\n';
-    prompt += '- Cross-subproject references should be handled carefully (different package structures, etc.)\n';
-    prompt += '- Build commands should target the appropriate subproject\n\n';
-    prompt += '---\n\n';
+    prompt += '\n';
   } else if (hasModules) {
-    // Single project with multiple modules
-    prompt += '### Project Module Structure\n\n';
-    prompt += 'This project contains multiple modules:\n';
+    prompt += '### Project Module Structure\n\nThis project contains multiple modules:\n';
     for (const mod of modules) {
-      const name = sanitizePromptValue(mod.name || 'unknown');
-      prompt += `- \`${name}\`\n`;
+      prompt += `- \`${sanitizePromptValue(mod.name || 'unknown')}\`\n`;
     }
-    prompt += '\n**Note**: When editing files, consider which module they belong to and the module-specific configuration.\n\n';
-    prompt += '---\n\n';
+    prompt += '\n';
   }
 
-  // Priority rules
-  prompt += '**Context Priority Rules**:\n';
-  prompt += '1. If code is selected -> That specific code is the PRIMARY SUBJECT of the question\n';
-  prompt += '2. If no code is selected -> The currently active file is the PRIMARY SUBJECT\n';
-  prompt += '3. Other open files -> Secondary context that MAY be relevant to the question\n';
-  if (hasWorkspace) {
-    prompt += '4. Workspace structure -> Helps understand project boundaries and dependencies\n';
-  }
-  prompt += '\n';
-
-  // File path format explanation
-  prompt += '**File Path Format**: Paths may include line references: `#LX-Y` (lines X to Y) or `#LX` (single line X)\n\n';
-  prompt += '---\n\n';
-
-  // Currently active file
   if (hasActive) {
-    prompt += '### Currently Active File (User is viewing/editing this file)\n\n';
-    prompt += `**File**: \`${sanitizePromptValue(active)}\`\n\n`;
-
+    prompt += `### Currently Active File\n\n**File**: \`${sanitizePromptValue(active)}\`\n\n`;
     if (hasSelection) {
-      // User has selected code
-      prompt += `**User has selected lines ${selection.startLine}-${selection.endLine}** in this file. This selected code is what the user is specifically asking about:\n\n`;
+      prompt += `Selected lines ${selection.startLine}-${selection.endLine} (primary subject):\n`;
       prompt += '```\n';
       prompt += selection.selectedText;
       prompt += '\n```\n\n';
-      prompt += '**CRITICAL**: The selected code above is the PRIMARY FOCUS of the user\'s question.\n';
-      prompt += '- When the user asks vague questions like "what\'s wrong with this", "explain this", "how to improve" -> They are referring to THIS SELECTED CODE\n';
-      prompt += '- Your answer should directly address this specific code section\n';
-      prompt += '- If you need to reference other parts of the file or other files, do so as supporting context, but keep the selected code as your main focus\n\n';
-    } else {
-      // No code selected
-      prompt += '**No code is currently selected.** The user is viewing this file, so their question likely relates to:\n';
-      prompt += '- The overall file content and structure\n';
-      prompt += '- A specific class, function, or component in this file (infer from the question)\n';
-      prompt += '- Code patterns or issues within this file\n\n';
-      prompt += 'When answering, assume the user\'s question is about THIS FILE unless they explicitly mention another file.\n\n';
     }
   }
 
-  // Other open files
   if (hasOthers) {
-    prompt += '### Other Open Files (Secondary context)\n\n';
-    prompt += 'The user also has these files open in their IDE. These files:\n';
-    prompt += '- MAY be related to the current question (e.g., dependencies, related modules, test files)\n';
-    prompt += '- Should be considered as supporting context, NOT the primary subject\n';
-    prompt += '- Can be referenced if they help answer the question about the active file/selected code\n\n';
+    prompt += '### Other Open Files (secondary context)\n\n';
     others.forEach(file => {
       prompt += `- \`${sanitizePromptValue(file)}\`\n`;
     });
-    prompt += '\n**Note**: Only reference these files if they are directly relevant to answering the user\'s question about the active file or selected code.\n\n';
+    prompt += '\n';
   }
-
-  // Usage guide
-  prompt += '---\n\n';
-  prompt += '**How to use this context**:\n';
-  prompt += '- If the user asks a vague question (e.g., "what does this do?", "is this correct?"), apply it to the PRIMARY FOCUS (selected code or active file)\n';
-  prompt += '- If the user mentions "this file", "this code", "here" -> They mean the active file or selected code\n';
-  prompt += '- If the user asks about relationships or dependencies -> Consider the other open files as potential references\n';
-  prompt += '- Always prioritize the selected code > active file > other files when determining what the user is asking about\n';
-  if (hasWorkspace) {
-    prompt += '- For build/run commands, target the appropriate subproject (ask if unclear)\n';
-  }
-  prompt += '\n';
 
   return prompt;
 }
