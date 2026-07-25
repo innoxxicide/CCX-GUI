@@ -1,3 +1,10 @@
+##### **2026年7月25日（v0.0.4）**
+
+English:
+
+🔧 Improvements
+- **Keep the header usage-limit indicators fresh while no agent is running.** The 5-hour and weekly battery gauges used to update only when an agent turn reported usage, so an idle or freshly opened tab could sit on numbers that were hours old. On top of that push, they now also refresh when a session tab opens (a new tab, an existing session loaded from history, or a tab restored at plugin start), when the IDE window regains focus, and once a minute for as long as the tab is open. IDE-window focus is detected on the plugin side rather than in the webview, because alt-tabbing back with the caret in the editor raises no browser focus event. Every trigger goes through the same account-global cache and in-flight lock, so any number of open tabs and projects still make at most one usage request per minute
+
 ##### **2026年7月25日（v0.0.3）**
 
 English:

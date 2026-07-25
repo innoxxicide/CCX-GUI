@@ -53,6 +53,17 @@ public final class ClaudeUsageLimitsService {
      */
     private static final long ERROR_TTL_MS = 10_000L;
     /**
+     * Slack subtracted from the TTL on the periodic-poll path.
+     *
+     * <p>The idle poller ticks at the same {@link #TTL_MS} cadence as this cache,
+     * so a few milliseconds of scheduling jitter would make roughly every other
+     * tick land just inside the window, be answered from cache, and halve the
+     * observed refresh rate to once per two minutes. Letting a poll treat a
+     * nearly-expired cache as stale keeps the indicators moving once a minute
+     * while still capping network calls at one per window across every tab.
+     */
+    private static final long POLL_TTL_SLACK_MS = 5_000L;
+    /**
      * Safety window after which a running fetch is assumed to have leaked its
      * lock and is forcibly reclaimed. Must exceed the connect + request timeouts
      * below so a genuinely slow fetch is never mistaken for a leak.
@@ -111,8 +122,46 @@ public final class ClaudeUsageLimitsService {
      * only when a concurrent fetch is already producing the result.
      */
     public static CompletableFuture<String> getOrFetch(boolean force) {
+        return resolve(force ? 0L : currentTtlMs());
+    }
+
+    /**
+     * Answer the idle poll path (the once-a-minute refresh that keeps the header
+     * indicators moving while no agent is running). Behaves like
+     * {@link #getOrFetch(boolean)} without force, except that a cache within
+     * {@link #POLL_TTL_SLACK_MS} of expiring counts as stale — see that constant
+     * for why a poll ticking at the TTL cadence would otherwise refresh at half
+     * the intended rate.
+     */
+    public static CompletableFuture<String> getOrFetchForPoll() {
+        return resolve(pollTtlMs());
+    }
+
+    /**
+     * Whether a {@link #getOrFetchForPoll()} call would actually hit the network
+     * rather than be answered from cache. Lets a poller skip work it only needs
+     * to do around a real fetch — chiefly the credentials read behind
+     * {@link #isAccessTokenStale()}, which every open tab would otherwise repeat
+     * every minute (and which shells out to the Keychain on macOS).
+     *
+     * <p>Advisory only: two pollers can both observe {@code true} and race, which
+     * costs an extra credentials read but never an extra network call — the
+     * in-flight lock still admits exactly one fetch.
+     */
+    public static boolean isRefreshDue() {
+        return lastJson == null || System.currentTimeMillis() - lastFetchAt >= pollTtlMs();
+    }
+
+    /**
+     * Serve the freshest payload allowed by {@code effectiveTtlMs}: cached while
+     * it is younger than that, otherwise a fresh fetch. A TTL of {@code 0} always
+     * fetches. Returns the cached value (possibly {@code null}) when another
+     * fetch already holds the in-flight lock and will publish the real result.
+     */
+    private static CompletableFuture<String> resolve(long effectiveTtlMs) {
         String cached = lastJson;
-        if (!force && cached != null && System.currentTimeMillis() - lastFetchAt < currentTtlMs()) {
+        if (effectiveTtlMs > 0 && cached != null
+                && System.currentTimeMillis() - lastFetchAt < effectiveTtlMs) {
             return CompletableFuture.completedFuture(cached);
         }
         if (!tryAcquireInFlight()) {
@@ -201,6 +250,10 @@ public final class ClaudeUsageLimitsService {
 
     private static long currentTtlMs() {
         return lastFetchFailed ? ERROR_TTL_MS : TTL_MS;
+    }
+
+    private static long pollTtlMs() {
+        return Math.max(0L, currentTtlMs() - POLL_TTL_SLACK_MS);
     }
 
     /**

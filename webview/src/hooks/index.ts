@@ -15,6 +15,7 @@ export { useMessageProcessing } from './useMessageProcessing';
 export { useMessageSender } from './useMessageSender';
 export { useFileChangesManagement } from './useFileChangesManagement';
 export { useModelProviderState } from './useModelProviderState';
+export { useClaudeLimitsRefresh } from './providers/useClaudeLimitsRefresh';
 export { useChatComputations } from './useChatComputations';
 export type { UseWindowCallbacksOptions, ContextInfo } from './useWindowCallbacks';
 export type { UseRewindHandlersOptions, UseRewindHandlersReturn } from './useRewindHandlers';
@@ -24,3 +25,4 @@ export type { ViewMode, UseModelProviderStateOptions } from './useModelProviderS
 export type { UseMessageProcessingOptions } from './useMessageProcessing';
 export type { UseMessageSenderOptions } from './useMessageSender';
 export type { UseFileChangesManagementOptions, FileChange } from './useFileChangesManagement';
+export type { UseClaudeLimitsRefreshOptions } from './providers/useClaudeLimitsRefresh';

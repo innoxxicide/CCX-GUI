@@ -109,6 +109,7 @@ public class ChatWindowDelegate {
     private ScheduledFuture<?> statusResetTask;
     private volatile String pendingQuickFixPrompt = null;
     private volatile MessageCallback pendingQuickFixCallback = null;
+    private volatile ClaudeLimitsHandler claudeLimitsHandler;
 
     public ChatWindowDelegate(DelegateHost host) {
         this.host = host;
@@ -260,7 +261,16 @@ public class ChatWindowDelegate {
         messageDispatcher.registerHandler(new SkillHandler(handlerContext));
         messageDispatcher.registerHandler(new FileHandler(handlerContext));
         messageDispatcher.registerHandler(new SettingsHandler(handlerContext));
-        messageDispatcher.registerHandler(new ClaudeLimitsHandler(handlerContext));
+        ClaudeLimitsHandler limitsHandler = new ClaudeLimitsHandler(handlerContext);
+        // Owns the idle refresh of the header battery indicators (once-a-minute
+        // poll + IDE-window activation), so it is held for the dispose path.
+        // Re-initializing would otherwise strand the previous timer/subscription.
+        if (this.claudeLimitsHandler != null) {
+            this.claudeLimitsHandler.dispose();
+        }
+        this.claudeLimitsHandler = limitsHandler;
+        limitsHandler.startAutoRefresh();
+        messageDispatcher.registerHandler(limitsHandler);
         messageDispatcher.registerHandler(new SessionHandler(handlerContext));
         messageDispatcher.registerHandler(new ContextHandler(handlerContext));
         messageDispatcher.registerHandler(new FileExportHandler(handlerContext));
@@ -542,6 +552,10 @@ public class ChatWindowDelegate {
             statusResetTask.cancel(false);
             statusResetTask = null;
             LOG.debug("[TabStatus] Cancelled pending status reset task");
+        }
+        if (claudeLimitsHandler != null) {
+            claudeLimitsHandler.dispose();
+            claudeLimitsHandler = null;
         }
     }
 }

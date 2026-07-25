@@ -18,6 +18,7 @@ import {
   useMessageSender,
   useModelProviderState,
   useChatComputations,
+  useClaudeLimitsRefresh,
 } from './hooks';
 import {
   NEW_SESSION_COMMANDS,
@@ -274,17 +275,15 @@ const App = () => {
   useHistoryLoader({ currentView, currentProvider });
 
   // ── Claude usage limits (5-hour + weekly battery indicators) ──
-  // Request an initial snapshot when Claude is active; ongoing updates are
-  // pushed by the backend on each agent [USAGE] tag. When switching to another
-  // provider, clear the data and close the modal — only Claude has these limits.
-  useEffect(() => {
-    if (currentProvider === 'claude') {
-      sendBridgeEvent('get_claude_limits');
-    } else {
-      setClaudeLimits(null);
-      setUsageStatsModalOpen(false);
-    }
-  }, [currentProvider, setClaudeLimits, setUsageStatsModalOpen]);
+  // Snapshot requests on provider/session changes and on regaining focus; the
+  // backend adds a once-a-minute poll, IDE-window activation, and a push on
+  // each agent [USAGE] tag.
+  useClaudeLimitsRefresh({
+    currentProvider,
+    currentSessionId,
+    setClaudeLimits,
+    setUsageStatsModalOpen,
+  });
 
   // ── Window callbacks (bridge communication) ──
   useWindowCallbacks({
