@@ -12,6 +12,9 @@
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
+    <!-- JCEF is a separate platform module in IntelliJ IDEA 2026.2+, but older
+         IDEs may provide JCEF from the platform without exposing this module. -->
+    <depends optional="true" config-file="jcef-features.xml">com.intellij.modules.jcef</depends>
     <!-- Optional: Terminal support for terminal output monitoring -->
     <depends optional="true" config-file="terminal-features.xml">org.jetbrains.plugins.terminal</depends>
     <!-- Optional: Java support for enhanced context collection in Java/Kotlin IDEs -->
@@ -95,7 +98,7 @@
         <!-- Save As Template Action -->
         <action id="CCXGUI.SaveAsTemplateAction"
                 class="com.github.ccxgui.action.SaveAsTemplateAction"
-                icon="AllIcons.Actions.Menu_saveall"/>
+                icon="/icons/ccx-gui-icon.svg"/>
 
         <!-- Create From Template Action -->
         <action id="CCXGUI.CreateFromTemplateAction"

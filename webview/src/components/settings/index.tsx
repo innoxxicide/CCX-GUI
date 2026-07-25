@@ -223,6 +223,8 @@ const SettingsView = ({
     setQuestionSelectedSound,
     handleQuestionSelectedSoundChange,
     handleTestQuestionSound,
+    detailedOutputEnabled,
+    handleDetailedOutputEnabledChange,
     permissionDialogTimeoutSeconds,
     handlePermissionDialogTimeoutChange,
     autoCloseDialogOnTimeout,
@@ -585,6 +587,8 @@ const SettingsView = ({
               questionSelectedSound={questionSelectedSound}
               onQuestionSelectedSoundChange={handleQuestionSelectedSoundChange}
               onTestQuestionSound={handleTestQuestionSound}
+              detailedOutputEnabled={detailedOutputEnabled}
+              onDetailedOutputEnabledChange={handleDetailedOutputEnabledChange}
               permissionDialogTimeoutSeconds={permissionDialogTimeoutSeconds}
               onPermissionDialogTimeoutChange={handlePermissionDialogTimeoutChange}
               autoCloseDialogOnTimeout={autoCloseDialogOnTimeout}

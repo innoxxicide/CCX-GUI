@@ -115,6 +115,9 @@ interface BasicConfigSectionProps {
   questionSelectedSound?: string;
   onQuestionSelectedSoundChange?: (soundId: string) => void;
   onTestQuestionSound?: () => void;
+  // Detailed output information configuration
+  detailedOutputEnabled?: boolean;
+  onDetailedOutputEnabledChange?: (enabled: boolean) => void;
   // Permission dialog timeout configuration
   permissionDialogTimeoutSeconds?: number;
   onPermissionDialogTimeoutChange?: (seconds: number) => void;
@@ -218,6 +221,8 @@ const BasicConfigSection = (props: BasicConfigSectionProps) => {
           questionSelectedSound={props.questionSelectedSound}
           onQuestionSelectedSoundChange={props.onQuestionSelectedSoundChange}
           onTestQuestionSound={props.onTestQuestionSound}
+          detailedOutputEnabled={props.detailedOutputEnabled}
+          onDetailedOutputEnabledChange={props.onDetailedOutputEnabledChange}
           permissionDialogTimeoutSeconds={props.permissionDialogTimeoutSeconds}
           onPermissionDialogTimeoutChange={props.onPermissionDialogTimeoutChange}
           autoCloseDialogOnTimeout={props.autoCloseDialogOnTimeout}

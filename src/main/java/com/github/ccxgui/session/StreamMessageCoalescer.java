@@ -344,15 +344,34 @@ public class StreamMessageCoalescer {
                     return;
                 }
 
+                final long pushSequence;
                 synchronized (lock) {
                     if (sequence != updateSequence) {
-                        // Message is stale — skip the webview push, but still
-                        // run the after-send callback (e.g. onStreamEnd cleanup)
-                        // so the frontend is not stuck in streaming state.
-                        if (afterSendOnEdt != null) {
-                            afterSendOnEdt.accept(sequence);
+                        // Stale snapshot: a newer one is pending or was just pushed,
+                        // so normally we skip this push. Force-push ONLY on the flush
+                        // path (afterSendOnEdt != null) - that is the onStreamEnd flush
+                        // carrying the turn's FINAL snapshot, and when a late enqueue
+                        // has advanced updateSequence past it, no newer snapshot will
+                        // compensate, so the turn's tail content would be lost for good.
+                        // The alarm path (afterSendOnEdt == null) holds a possibly
+                        // outdated snapshot; force-pushing it would advance the sequence
+                        // and let a stale frame overwrite the final one once its
+                        // (large-payload-delayed) invokeLater lands after the flush.
+                        // Advancing the sequence on force-push keeps the frontend's
+                        // minAcceptedUpdateSequence barrier accepting the frame.
+                        if (streamActive || afterSendOnEdt == null) {
+                            if (afterSendOnEdt != null) {
+                                afterSendOnEdt.accept(sequence);
+                            }
+                            return;
                         }
-                        return;
+                        pushSequence = ++updateSequence;
+                        LOG.info("[StreamMessageCoalescer] Force-pushing stale final snapshot after"
+                                + " stream end (stale sequence=" + sequence
+                                + ", pushed=" + pushSequence
+                                + ") to avoid losing the turn's final content");
+                    } else {
+                        pushSequence = sequence;
                     }
                 }
 
@@ -361,7 +380,7 @@ public class StreamMessageCoalescer {
                 // prevent afterSendOnEdt from running.  When afterSendOnEdt carries
                 // the onStreamEnd signal, failing to run it permanently freezes the UI.
                 try {
-                    callbackTarget.callJavaScript("updateMessages", escapedMessagesJson, String.valueOf(sequence));
+                    callbackTarget.callJavaScript("updateMessages", escapedMessagesJson, String.valueOf(pushSequence));
                     MessageJsonConverter.pushUsageUpdateFromMessages(
                             messages,
                             callbackTarget.getHandlerContext(),
@@ -374,7 +393,7 @@ public class StreamMessageCoalescer {
                 }
 
                 if (afterSendOnEdt != null) {
-                    afterSendOnEdt.accept(sequence);
+                    afterSendOnEdt.accept(pushSequence);
                 }
             });
         });

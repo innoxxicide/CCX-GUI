@@ -15,6 +15,12 @@ import {
   SKIP_NEW_SESSION_CONFIRM_EVENT,
   type SkipNewSessionConfirmChangedDetail,
 } from '../../../utils/skipNewSessionConfirm';
+import {
+  DETAILED_OUTPUT_ENABLED_EVENT,
+  getDetailedOutputEnabled,
+  setDetailedOutputEnabled,
+  type DetailedOutputEnabledChangedDetail,
+} from '../../../utils/detailedOutputPreference';
 
 const sendToJava = (message: string) => {
   if (window.sendToJava) {
@@ -89,6 +95,7 @@ export interface UseSettingsBasicActionsReturn {
   errorSelectedSound: string;
   questionSoundEnabled: boolean;
   questionSelectedSound: string;
+  detailedOutputEnabled: boolean;
   commitAiConfig: CommitAiConfig;
   promptEnhancerConfig: PromptEnhancerConfig;
 
@@ -130,6 +137,7 @@ export interface UseSettingsBasicActionsReturn {
   handleQuestionSoundEnabledChange: (enabled: boolean) => void;
   handleQuestionSelectedSoundChange: (soundId: string) => void;
   handleTestQuestionSound: () => void;
+  handleDetailedOutputEnabledChange: (enabled: boolean) => void;
   permissionDialogTimeoutSeconds: number;
   handlePermissionDialogTimeoutChange: (seconds: number) => void;
   autoCloseDialogOnTimeout: boolean;
@@ -320,6 +328,22 @@ export function useSettingsBasicActions({
 
   // AskUserQuestion reminder notification toggle (default: false, opt-in feature)
   const [askUserQuestionNotificationEnabled, setAskUserQuestionNotificationEnabled] = useState<boolean>(false);
+
+  // Detailed message footer output (localStorage-only, default: false to preserve original footer style)
+  const [detailedOutputEnabled, setDetailedOutputEnabledState] = useState<boolean>(() =>
+    getDetailedOutputEnabled()
+  );
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const custom = event as CustomEvent<DetailedOutputEnabledChangedDetail>;
+      if (custom.detail && typeof custom.detail.enabled === 'boolean') {
+        setDetailedOutputEnabledState(custom.detail.enabled);
+      }
+    };
+    window.addEventListener(DETAILED_OUTPUT_ENABLED_EVENT, handler);
+    return () => window.removeEventListener(DETAILED_OUTPUT_ENABLED_EVENT, handler);
+  }, []);
 
   // Permission dialog timeout — owned by App.tsx; we treat the prop as authoritative.
   // We intentionally do NOT keep a local copy: it would be dead state because the
@@ -595,6 +619,11 @@ export function useSettingsBasicActions({
     sendToJava(`test_sound:${JSON.stringify(payload)}`);
   }, [questionSelectedSound]);
 
+  const handleDetailedOutputEnabledChange = useCallback((enabled: boolean) => {
+    setDetailedOutputEnabledState(enabled);
+    setDetailedOutputEnabled(enabled);
+  }, []);
+
   // Permission dialog timeout change handler
   const handlePermissionDialogTimeoutChange = useCallback((seconds: number) => {
     const clamped = clampPermissionDialogTimeoutSeconds(seconds);
@@ -837,6 +866,8 @@ export function useSettingsBasicActions({
     setQuestionSelectedSound,
     handleQuestionSelectedSoundChange,
     handleTestQuestionSound,
+    detailedOutputEnabled,
+    handleDetailedOutputEnabledChange,
     permissionDialogTimeoutSeconds,
     handlePermissionDialogTimeoutChange,
     autoCloseDialogOnTimeout,

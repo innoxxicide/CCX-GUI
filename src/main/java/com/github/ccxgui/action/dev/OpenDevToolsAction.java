@@ -1,6 +1,7 @@
 package com.github.ccxgui.action.dev;
 
 import com.github.ccxgui.i18n.ClaudeCodeGuiBundle;
+import com.github.ccxgui.util.JBCefBrowserFactory;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -22,7 +23,6 @@ import com.intellij.openapi.util.registry.Registry;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.ui.content.Content;
-import com.intellij.ui.jcef.JBCefApp;
 import com.intellij.ui.jcef.JBCefBrowser;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -61,7 +61,7 @@ public class OpenDevToolsAction extends AnAction {
 
     @Override
     public void update(@NotNull AnActionEvent e) {
-        e.getPresentation().setEnabled(e.getProject() != null && JBCefApp.isSupported());
+        e.getPresentation().setEnabled(e.getProject() != null && JBCefBrowserFactory.isJcefSupported());
     }
 
     @Override

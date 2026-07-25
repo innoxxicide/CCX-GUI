@@ -13,6 +13,30 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_DATA: ChangelogEntry[] = [
   {
+    version: '0.0.3',
+    date: '2026-07-24',
+    content: {
+      en: `🔄 Upstream sync
+- **Merged upstream CC GUI through v0.4.8** (\`zhukunpenglinyutong/jetbrains-cc-gui\`), folding the v0.4.7-fix1, v0.4.7-fix2 and v0.4.8 releases into the fork. Fork identity, the Claude usage battery, agent error/question notification sounds, Concise mode and the Opus 5 model entry are all preserved
+
+✨ Features
+- Add the **GPT-5.6 Codex model family** (Sol / Terra / Luna) as built-in models with 1.05M context windows and usage pricing, and trim the built-in Codex dropdown to the current lineup — dropping the retired \`gpt-5.2-codex\`, \`gpt-5.1-codex-max\`, \`gpt-5.4-mini\`, \`gpt-5.3-codex\`, \`gpt-5.3-codex-spark\`, \`gpt-5.2\` and \`gpt-5.1-codex-mini\` entries
+- Add a **"Detailed output information" toggle** (Basic configuration → Behavior): message footers show the estimated turn cost when available and fold cache hits into the input-token summary. Token usage stays visible either way
+
+🔧 Improvements
+- **Claude and Codex costs now resolve through shared pricing tables** (\`provider/pricing/\`), so Usage Statistics and the per-turn message footer can no longer disagree. The fork's \`claude-opus-5\` entry is registered in the new table
+
+🐛 Fixes
+- Restore **IntelliJ 2026.2 plugin loading** by registering tool-window and editor actions on the platform-compatible extension points, and make the **JCEF dependency optional** so the plugin still loads on IDEs that ship without it
+- Fix **Codex resumed-session replay leaking historical tool calls**: JSONL replay now captures a pre-turn baseline and waits for the current turn's \`turn_context\`, so old commands and results are not re-emitted into the new turn
+- Fix **multi-tab and streaming transcript merge edge cases**: empty assistant placeholders are filled in place, final snapshots reach the right tab/session, and current-turn metadata is reconstructed more reliably after a reload
+- Fix **message rendering regressions** across collapsed text, normalized content blocks, Read/Bash/generic tool output, ANSI stripping, copied text and image-bearing tool results
+- Fix the **Codex quota popup being clipped** by the provider dropdown container
+- Fix **Keep All** using stale file-change state and resurrecting old changes after the current set was accepted`,
+      zh: ``,
+    },
+  },
+  {
     version: '0.0.2',
     date: '2026-07-24',
     content: {
@@ -70,6 +94,36 @@ export const CHANGELOG_DATA: ChangelogEntry[] = [
 - Fix the **context gauge over-counting**: subagent messages are excluded from the context calculation
 - Fix **credentials home resolution on Windows**: the usage service now resolves \`~/.claude\` via PlatformUtils
 - Fix **background-task wake-ups rendering as a hung reload**: they now stream live instead of waiting for the foreground stream to end`,
+      zh: ``,
+    },
+  },
+  {
+    version: '0.4.7-fix2',
+    date: '2026-07-19',
+    content: {
+      en: `✨ Features
+- Add a **Detailed output in message footer** setting: users can choose whether per-message footers show expanded metadata such as model, duration and working directory, while token/cost essentials stay easy to scan (by @EzioX1459)
+
+🐛 Fixes
+- Restore **IntelliJ 2026.2 plugin loading** by registering tool-window/editor actions with the platform-compatible extension points (by @zkpaiminmin)
+- Fix **Codex resumed-session replay leaking historical tool calls**: JSONL replay now captures a pre-turn baseline and waits for the current turn's \`turn_context\`, so old commands/results are not re-emitted as if they belonged to the new turn (by @MrHuapen)
+- Fix **multi-tab and streaming transcript merge edge cases**: empty assistant placeholders are filled in place, final snapshots are pushed to the right tab/session, and current-turn metadata is reconstructed more reliably after reloads (by @gadfly3173, @vitas13)
+- Fix **message rendering regressions** across collapsed text, normalized content blocks, Read/Bash/generic tool output, ANSI stripping, copied text, and image-bearing tool results (by @vitas13)
+- Fix **usage and cost display drift**: Claude/Codex costs now come from shared pricing tables, Codex cached-token aliases are accepted, cache hits and per-turn USD cost are preserved in frontend transport, and custom/unpriced models avoid bogus costs (by @EzioX1459, @zkpaiminmin)
+- Fix the **Codex quota popup being clipped** by the provider dropdown container (by @elexiang)
+- Fix **Keep All** using stale file-change state and resurrecting old changes after the user accepted the current set (by @hebulin)`,
+      zh: ``,
+    },
+  },
+  {
+    version: '0.4.7-fix1',
+    date: '2026-07-09',
+    content: {
+      en: `✨ Features
+- Add the **GPT-5.6 model family** (Sol / Terra / Luna) as built-in Codex models: 1.05M context windows, usage pricing for cost estimation, \`gpt-5.6\` prefix/alias matching resolving to Sol, and localized labels and descriptions across all 10 languages (by @zkpaiminmin)
+
+🔧 Improvements
+- Trim the built-in Codex model dropdown to the current lineup — GPT-5.6 Sol / Terra / Luna, GPT-5.5 and GPT-5.4 — removing the retired \`gpt-5.2-codex\`, \`gpt-5.1-codex-max\`, \`gpt-5.4-mini\`, \`gpt-5.3-codex\`, \`gpt-5.3-codex-spark\`, \`gpt-5.2\` and \`gpt-5.1-codex-mini\` entries (by @zkpaiminmin)`,
       zh: ``,
     },
   },
