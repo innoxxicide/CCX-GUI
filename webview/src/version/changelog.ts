@@ -14,7 +14,7 @@ export interface ChangelogEntry {
 export const CHANGELOG_DATA: ChangelogEntry[] = [
   {
     version: '0.0.3',
-    date: '2026-07-24',
+    date: '2026-07-25',
     content: {
       en: `🔄 Upstream sync
 - **Merged upstream CC GUI through v0.4.8** (\`zhukunpenglinyutong/jetbrains-cc-gui\`), folding the v0.4.7-fix1, v0.4.7-fix2 and v0.4.8 releases into the fork. Fork identity, the Claude usage battery, agent error/question notification sounds, Concise mode and the Opus 5 model entry are all preserved
