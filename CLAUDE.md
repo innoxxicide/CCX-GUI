@@ -4,7 +4,7 @@ Guidance for Claude Code when working in this repository. Its main job is **rout
 
 ## What this project is
 
-**CCX GUI (Claude or Codex)** — an IntelliJ IDEA plugin (currently v0.0.1) that gives Claude Code and OpenAI Codex a visual interface inside the IDE. It is a three-layer system, and almost every non-trivial change crosses at least two of the layers:
+**CCX GUI (Claude or Codex)** — an IntelliJ IDEA plugin (currently v0.0.3) that gives Claude Code and OpenAI Codex a visual interface inside the IDE. It is a three-layer system, and almost every non-trivial change crosses at least two of the layers:
 
 | Layer | Path | Stack |
 |---|---|---|
@@ -85,7 +85,7 @@ Read these for the insight, never for the code snippets or line numbers, which a
 
 ## `docs/plans/` — an archive with two live tails
 
-Everything here was written 2026-03-01…03-22 and nothing has been updated since, while the code kept shipping (upstream reached v0.4.7 before this fork restarted numbering at v0.0.1). Do not read these as current state. Three specifics:
+Everything here was written 2026-03-01…03-22 and nothing has been updated since, while the code kept shipping (upstream is at v0.4.8; this fork restarted numbering at v0.0.1). Do not read these as current state. Three specifics:
 
 - **`2026-03-01-local-provider-snapshot-*.md` — never built.** Zero matches for its APIs anywhere in the tree. Actively misleading if read as reality.
 - **`2026-03-07-project-level-prompts*.md` — shipped.** The code (`model/PromptScope.java`, `settings/{Abstract,Global,Project}PromptManager.java`, `PromptManagerFactory`) is the better reference now. `docs/testing/project-level-prompts-testing-checklist.md` is an unrun 80-case manual QA script — useful only as a regression pass if prompt scoping changes again.
@@ -113,8 +113,8 @@ There is **no numeric file-size limit anywhere in this repo — do not invent on
 
 ## Still-open work (verified against the tree)
 
-- `provider/common/DaemonBridge.java` is **820 lines** — the last unsplit first-wave target (`DaemonProcessLauncher` / `DaemonProtocolClient` / `PendingRequestRegistry` / `DaemonHeartbeatMonitor` were planned, none exist).
-- Package plan Phase 2 is half-done: `handler/{core,context,diff,file,history,provider}` exist, but `handler/{settings,skill,window,session}` were never created — ~28 handler classes still sit at `handler/` root.
+- `provider/common/DaemonBridge.java` is **841 lines** — the last unsplit first-wave target (`DaemonProcessLauncher` / `DaemonProtocolClient` / `PendingRequestRegistry` / `DaemonHeartbeatMonitor` were planned, none exist).
+- Package plan Phase 2 is half-done: `handler/{core,context,diff,file,history,importer,marketplace,provider}` exist, but `handler/{settings,skill,window,session}` were never created — 29 handler classes still sit at `handler/` root.
 - Phase 3 not started: `ThemeConfigService`, `FontConfigService`, `LanguageConfigService`, `SoundNotificationService`, `HtmlLoader`, `JBCefBrowserFactory` are all still in `util/`.
 - The root package holds only `ClaudeSDKToolWindow.java`; the plan wants it under `ui/toolwindow/`.
 
@@ -153,6 +153,8 @@ There are no project-level agents, hooks, or slash commands configured. Skills c
 
 - **Doc paths drift.** Java paths under `docs/` were swept when the package moved and every one of them resolves today, with two exceptions whose classes no longer exist at all: `SlashCommandCache` (`docs/skills/SLASH_COMMANDS.md`) and `settings/PromptManager.java` (the project-level-prompts plans) — both were replaced during the March refactors. Non-Java paths were not swept: rewind logic is in `message-rewind.js` (not `message-service.js`), and every `claude-bridge/` reference means `ai-bridge/`. Line-number anchors in docs are generally dead.
 - **Class FQNs are load-bearing for coexistence.** IntelliJ keys `@Service` light services by class *name*, across the whole container — two installed plugins sharing a class FQN resolve to each other's instances and throw ClassCastException. That is why the package is `ccxgui`, and why nothing here may move back under a name upstream also uses.
+- **Merging upstream is not a button.** This is a fork of `zhukunpenglinyutong/jetbrains-cc-gui` (add it as the `upstream` remote — it is not configured by default). Because of the package rename above, every Java file upstream *adds* arrives as `CONFLICT (file location)` and git drops it at the old `com/github/claudecodegui/` path with the old `package` line. GitHub's "Sync fork" cannot resolve that. After any merge, verify with `find src -type d -name claudecodegui` and `grep -rn claudecodegui src/`, and expect to re-point upstream's new tests at this fork's action ids, icon paths and constructor signatures.
+- **Model pricing has one home: `provider/pricing/`.** `ClaudePricingTable` / `CodexPricingTable` are the single source of truth shared by the Usage Statistics aggregators and the per-turn footer's `UsageCostCalculator` — they exist precisely because those two used to disagree. Adding a model means editing the table (both its price map *and* its prefix list); never reintroduce an inline pricing map in an aggregator.
 - **Windows is the primary dev environment here.** Prefer `docs/codex/docs/windows_sandbox_security.md` over the generic sandbox doc, and remember the stdin-over-argv rule from `docs/skills/cmdline-argument-escaping-bug.md`.
 - `docs/codex/CODEX-INTEGRATION-QUICKSTART.md` is a good orientation read, but its capability matrix is wrong: it claims Codex has no attachment support, while `ai-bridge/services/codex/message-service.js` builds `local_image` inputs today. Its `@openai/codex-sdk` version pin is a snapshot.
 - The vendored `docs/codex/README.md` is OpenAI's repo README; its non-`docs/` relative links are broken here because those paths were never vendored.
