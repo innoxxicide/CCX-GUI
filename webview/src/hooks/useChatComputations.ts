@@ -20,7 +20,8 @@ import { extractTodosFromToolUse, extractAccumulatedTasks } from '../utils/todoT
 import {
   finalizeSubagentsForSettledTurn,
   finalizeTodosForSettledTurn,
-  sliceLatestConversationTurn,
+  findConversationTurnStarts,
+  resolveStatusScopeStart,
 } from '../utils/turnScope';
 import { FILE_MODIFY_TOOL_NAMES, isToolName } from '../utils/toolConstants';
 import { useSubagents } from './useSubagents';
@@ -87,6 +88,30 @@ export function deriveTodosForTurn(
   }
 
   return extractAccumulatedTasks(turnMessages, getContentBlocks);
+}
+
+/**
+ * Todos rendered by the StatusPanel.
+ *
+ * When the scope is narrowed to the live turn and that turn has not written a
+ * plan of its own, the transcript's latest plan is carried over as long as it
+ * still has unfinished items. Without this, stopping a run and resuming it
+ * blanks the Tasks tab for the whole resumed turn: the resumed agent picks up
+ * the existing plan instead of rewriting it, so nothing in the new turn's slice
+ * carries todos. A fully completed plan is not carried - that is finished work
+ * belonging to an earlier request.
+ */
+export function deriveStatusPanelTodos(
+  scopedMessages: ClaudeMessage[],
+  allMessages: ClaudeMessage[],
+  getContentBlocks: (message: ClaudeMessage) => ClaudeContentBlock[],
+  streamingActive: boolean,
+  narrowed: boolean,
+): TodoItem[] {
+  const scopedTodos = deriveTodosForTurn(scopedMessages, getContentBlocks, streamingActive);
+  if (scopedTodos.length > 0 || !narrowed) return scopedTodos;
+  const carriedTodos = deriveTodosForTurn(allMessages, getContentBlocks, streamingActive);
+  return carriedTodos.some((todo) => todo.status !== 'completed') ? carriedTodos : [];
 }
 
 /**
@@ -166,7 +191,24 @@ export function useChatComputations({
     return fileChanges.filter((fc) => !fileChangeMgmt.processedFiles.includes(fc.filePath));
   }, [fileChanges, fileChangeMgmt.processedFiles]);
 
-  const latestTurnMessages = useMemo(() => sliceLatestConversationTurn(messages), [messages]);
+  const turnStarts = useMemo(() => findConversationTurnStarts(messages), [messages]);
+  const latestTurnStart = turnStarts.length > 0 ? turnStarts[turnStarts.length - 1] : -1;
+  const latestTurnMessages = useMemo(
+    () => (latestTurnStart >= 0 ? messages.slice(latestTurnStart) : []),
+    [messages, latestTurnStart],
+  );
+
+  // Subagents are always extracted from the WHOLE transcript so their
+  // messageIndex is a transcript index (the narrowing below is a filter, not a
+  // re-derivation) and so a still-running agent stays discoverable no matter
+  // which turn launched it.
+  const allSubagents = useSubagents({
+    messages,
+    getContentBlocks,
+    findToolResult,
+    getToolResultRaw,
+    subagentHistories,
+  });
 
   // While streaming, focus on the current turn's task progress; once settled
   // (history replay or idle), widen the scope to the whole conversation -
@@ -180,29 +222,41 @@ export function useChatComputations({
   // reload's message refresh lands at the frontend a moment before the
   // stream-end signal flips streamingActive back to false. Widening only adds
   // content (earlier turns' settled items) - it never drops the current turn's.
-  const statusScopeMessages = useMemo(() => {
-    if (!streamingActive) return messages;
-    return latestTurnMessages.length > 0 && sliceHasToolUse(latestTurnMessages, getContentBlocks)
-      ? latestTurnMessages
-      : messages;
-  }, [streamingActive, latestTurnMessages, messages, getContentBlocks]);
-
-  const latestTurnSubagents = useSubagents({
-    messages: statusScopeMessages,
-    getContentBlocks,
-    findToolResult,
-    getToolResultRaw,
-    subagentHistories,
-  });
-
-  const subagents = useMemo(
-    () => finalizeSubagentsForSettledTurn(latestTurnSubagents, streamingActive),
-    [latestTurnSubagents, streamingActive],
+  const narrowStatusScope = useMemo(
+    () => streamingActive
+      && latestTurnMessages.length > 0
+      && sliceHasToolUse(latestTurnMessages, getContentBlocks),
+    [streamingActive, latestTurnMessages, getContentBlocks],
   );
 
-  const globalTodos = useMemo(() => {
-    return deriveTodosForTurn(statusScopeMessages, getContentBlocks, streamingActive);
-  }, [statusScopeMessages, getContentBlocks, streamingActive]);
+  // 0 means "no narrowing" - the scope is the full transcript.
+  const statusScopeStart = useMemo(
+    () => (narrowStatusScope ? resolveStatusScopeStart(allSubagents, turnStarts, latestTurnStart) : 0),
+    [narrowStatusScope, allSubagents, turnStarts, latestTurnStart],
+  );
+
+  const statusScopeMessages = useMemo(
+    () => (statusScopeStart > 0 ? messages.slice(statusScopeStart) : messages),
+    [messages, statusScopeStart],
+  );
+
+  const subagents = useMemo(() => {
+    const scoped = statusScopeStart > 0
+      ? allSubagents.filter((subagent) => subagent.messageIndex >= statusScopeStart)
+      : allSubagents;
+    return finalizeSubagentsForSettledTurn(scoped, streamingActive);
+  }, [allSubagents, statusScopeStart, streamingActive]);
+
+  const globalTodos = useMemo(
+    () => deriveStatusPanelTodos(
+      statusScopeMessages,
+      messages,
+      getContentBlocks,
+      streamingActive,
+      statusScopeStart > 0,
+    ),
+    [statusScopeMessages, statusScopeStart, messages, getContentBlocks, streamingActive],
+  );
 
   const canRewindFromMessageIndex = useCallback(
     (userMessageIndex: number) => {

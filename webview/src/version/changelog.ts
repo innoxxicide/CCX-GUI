@@ -34,6 +34,7 @@ export const CHANGELOG_DATA: ChangelogEntry[] = [
 - Make the **pricing section of the custom-model dialog collapsible**
 
 🐛 Fixes
+- Fix the **Tasks and Subagents tabs going blank after a stopped run is resumed**: both lists narrow to the current turn while streaming, so the plan and the still-running background agents left behind in the interrupted turn fell out of scope. The scope now reaches back to the turn that owns a running subagent, and an unfinished plan carries into the resumed turn
 - Fix **streaming UI stability**: completed content blocks render as each block finishes, and the message list no longer twitches or loses expand state when tool calls ripple through mid-stream
 - Fix **context-usage display overflow**, **webview watchdog startup recovery**, and **ConfigSelect closing under a confirm dialog**
 - Fix **stale proxy env leaking into the Codex CLI**, **Codex weekly-only quota mapping**, **the last background-turn answer staying invisible**, and **"Environment Check Failed" after an in-place plugin update**
