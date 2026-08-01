@@ -645,10 +645,17 @@ export const preserveLatestMessagesOnShrink = (
   // Check if the preserved tail contains streaming/recent assistant messages
   const hasStreamingTail = preservedTail.some((msg) => msg.type === 'assistant' && (msg.isStreaming || !!msg.__turnId));
   const hasUserTail = preservedTail.some((msg) => msg.type === 'user');
+  // An error bubble is appended to the session state *after* the flush that ends the
+  // turn captured its snapshot, so a late frame carrying that pre-error snapshot lands
+  // shorter than the rendered list by exactly the error. Dropping it here is what made
+  // API failures render and then silently vanish, so treat an error tail as worth
+  // preserving for every provider — the backend re-sends it on the next snapshot, and
+  // the dedup below keeps that from doubling up.
+  const hasErrorTail = preservedTail.some((msg) => msg.type === 'error');
 
   // Codex: always preserve shrink tail (handles compaction/summarization)
-  // Other providers: only preserve if tail contains streaming/recent messages
-  if (provider !== 'codex' && !hasStreamingTail && !hasUserTail) {
+  // Other providers: only preserve if tail contains streaming/recent/error messages
+  if (provider !== 'codex' && !hasStreamingTail && !hasUserTail && !hasErrorTail) {
     return nextList;
   }
 
@@ -658,6 +665,7 @@ export const preserveLatestMessagesOnShrink = (
   const nextListUserTexts = new Set<string>();
   const nextListAssistantTurnIds = new Set<number>();
   const nextListAssistantTexts = new Set<string>();
+  const nextListErrorTexts = new Set<string>();
   // Assistant text is a weak identity — two distinct turns can share short text like "Done." or
   // "ok". Only treat a text match as a duplicate within a recency window at the END of nextList,
   // where a genuinely re-appended tail turn would live; otherwise an older turn with identical
@@ -676,6 +684,9 @@ export const preserveLatestMessagesOnShrink = (
         const text = getAssistantComparableContent(msg);
         if (text) nextListAssistantTexts.add(text);
       }
+    } else if (msg.type === 'error') {
+      const text = (msg.content ?? '').trim();
+      if (text) nextListErrorTexts.add(text);
     }
   }
 
@@ -706,6 +717,13 @@ export const preserveLatestMessagesOnShrink = (
         return false;
       }
       return true;
+    }
+    // An error the snapshot already carries must not be appended a second time —
+    // the shorter frame may simply have dropped an earlier message rather than the
+    // error itself.
+    if (msg.type === 'error') {
+      const text = (msg.content ?? '').trim();
+      return !text || !nextListErrorTexts.has(text);
     }
     // Preserve all other message types (tool results, notifications, …).
     return true;

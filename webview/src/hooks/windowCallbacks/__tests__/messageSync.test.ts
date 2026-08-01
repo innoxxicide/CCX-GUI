@@ -957,6 +957,39 @@ describe('preserveLatestMessagesOnShrink', () => {
     expect(result).toHaveLength(2);
     expect(result[1]).toBe(tailAssistant);
   });
+
+  it('preserves an error tail a late pre-error snapshot dropped', () => {
+    // A turn that fails appends the ERROR message to the session state and only
+    // then signals stream-end, so the flush that ends the turn carries a snapshot
+    // from before the error. When that older frame lands after the error frame it
+    // is shorter by exactly the error bubble — which must survive, or the API
+    // failure renders and then silently vanishes.
+    const user = makeUserMsg('question', { timestamp: '2024-01-01T00:00:00.000Z' });
+    const assistant = makeAssistantMsg('partial answer');
+    const errorMsg = makeMsg('error', 'API Error: 500 Internal Server Error');
+    const prev = [user, assistant, errorMsg];
+
+    const next = [user, assistant]; // pre-error snapshot
+
+    const result = preserveLatestMessagesOnShrink(prev, next, 'claude');
+    expect(result).toHaveLength(3);
+    expect(result[2]).toBe(errorMsg);
+  });
+
+  it('does NOT duplicate an error the shorter snapshot already carries', () => {
+    // The shorter frame dropped an earlier message, not the error — re-appending
+    // would render the same failure twice.
+    const assistant = makeAssistantMsg('partial answer');
+    const errorMsg = makeMsg('error', 'API Error: 500 Internal Server Error');
+    const prev = [makeUserMsg('question'), assistant, errorMsg];
+
+    const snapshotError = makeMsg('error', 'API Error: 500 Internal Server Error');
+    const next = [assistant, snapshotError];
+
+    const result = preserveLatestMessagesOnShrink(prev, next, 'claude');
+    expect(result).toHaveLength(2);
+    expect(result[1]).toBe(snapshotError);
+  });
 });
 
 // ---------------------------------------------------------------------------
