@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ToolInput, ToolResultBlock } from '../../types';
 import { useIsToolDenied } from '../../hooks/useIsToolDenied';
@@ -233,7 +233,7 @@ const PatchFileLink = ({ path }: PatchFileLinkProps) => {
   );
 };
 
-const GenericToolBlock = ({ name, input, result, toolId }: GenericToolBlockProps) => {
+const GenericToolBlock = memo(function GenericToolBlock({ name, input, result, toolId }: GenericToolBlockProps) {
   const { t } = useTranslation();
   const lowerName = (name ?? '').toLowerCase();
   const [expanded, setExpanded] = useState(false);
@@ -412,6 +412,6 @@ const GenericToolBlock = ({ name, input, result, toolId }: GenericToolBlockProps
       )}
     </div>
   );
-};
+});
 
 export default GenericToolBlock;

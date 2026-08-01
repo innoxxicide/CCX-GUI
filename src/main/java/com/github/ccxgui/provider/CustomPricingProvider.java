@@ -20,8 +20,7 @@ import java.util.Set;
  * Reads user-configured model pricing from {@code ~/.codemoss/config.json}
  * and exposes it to the usage aggregators.
  *
- * <p>The aggregators ({@link com.github.ccxgui.provider.claude.ClaudeUsageAggregator}
- * and {@link com.github.ccxgui.provider.codex.CodexUsageAggregator}) are created in many
+ * <p>The usage-cost consumers are created in many
  * places without dependency injection, so this provider is a process-wide singleton that reads
  * the config file lazily and caches the parsed result keyed by the file's last-modified time.
  * When the file changes (e.g. the frontend writes a new price), the cache is invalidated

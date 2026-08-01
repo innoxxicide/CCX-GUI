@@ -154,16 +154,6 @@ export function ChatHeader({
                 t={t}
               />
             )}
-            {onOpenSearch && (
-              <button
-                className="icon-button"
-                onClick={onOpenSearch}
-                data-tooltip={t('chat.search.openTooltip', { defaultValue: 'Search in conversation' })}
-                aria-label={t('chat.search.openTooltip', { defaultValue: 'Search in conversation' })}
-              >
-                <span className="codicon codicon-search" />
-              </button>
-            )}
             <button className="icon-button" onClick={onNewSession} data-tooltip={t('common.newSession')}>
               <span className="codicon codicon-plus" />
             </button>
@@ -174,6 +164,16 @@ export function ChatHeader({
             >
               <span className="codicon codicon-split-horizontal" />
             </button>
+            {onOpenSearch && (
+              <button
+                className="icon-button"
+                onClick={onOpenSearch}
+                data-tooltip={t('chat.search.openTooltip', { defaultValue: 'Search in conversation' })}
+                aria-label={t('chat.search.openTooltip', { defaultValue: 'Search in conversation' })}
+              >
+                <span className="codicon codicon-search" />
+              </button>
+            )}
             <button
               className="icon-button"
               onClick={onHistory}

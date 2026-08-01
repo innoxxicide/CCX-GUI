@@ -1,4 +1,12 @@
-* {
+/*
+ * TokenTracker 仪表盘豁免：vendored 仪表盘（.tt-dashboard 子树）的 Tailwind
+ * 样式位于 cascade layer 内，优先级低于未分层的全局规则。下面的全局重置
+ * 通过 :not(:where(...)) 排除该子树（:where 使选择器特异性保持为 0，
+ * 与应用内原有 * 规则完全一致），避免覆盖仪表盘的分层样式。
+ */
+@tt-exclude: ~"*:not(:where(.tt-dashboard, .tt-dashboard *))";
+
+@{tt-exclude} {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
@@ -50,27 +58,27 @@ html {
 }
 
 /* Global Scrollbar Styles - Force Override */
-*::-webkit-scrollbar {
+@{tt-exclude}::-webkit-scrollbar {
     width: 10px !important;
     height: 10px !important;
 }
 
-*::-webkit-scrollbar-track {
+@{tt-exclude}::-webkit-scrollbar-track {
     background: transparent !important;
 }
 
-*::-webkit-scrollbar-thumb {
+@{tt-exclude}::-webkit-scrollbar-thumb {
     background-color: var(--scrollbar-thumb) !important;
     border-radius: 5px !important;
     border: 2px solid transparent !important;
     background-clip: content-box !important;
 }
 
-*::-webkit-scrollbar-thumb:hover {
+@{tt-exclude}::-webkit-scrollbar-thumb:hover {
     background-color: var(--scrollbar-thumb-hover) !important;
 }
 
-*::-webkit-scrollbar-corner {
+@{tt-exclude}::-webkit-scrollbar-corner {
     background: transparent !important;
 }
 
@@ -78,8 +86,9 @@ html {
  * 注意：该通配选择器会直接命中每一个元素，从而截断 font-family 的继承链——
  * 任何“父容器设字体、子元素靠继承”的写法都会失效（子元素会拿到这里的 UI 字体）。
  * 因此代码/等宽区域必须把 font-family 直接声明在承载文本的元素自身上
- * （参考 .bash-command-block / .bash-output-text），不能依赖从父容器继承。 */
-* {
+ * （参考 .bash-command-block / .bash-output-text），不能依赖从父容器继承。
+ * TokenTracker 仪表盘子树豁免，使用其自带的 --oai-font-sans 字体栈。 */
+@{tt-exclude} {
     font-family: var(--cc-gui-ui-font-family, 'Inter', system-ui, sans-serif);
 }
 

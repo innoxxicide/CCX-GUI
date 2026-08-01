@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ToolInput, ToolResultBlock } from '../../types';
 import { useIsToolDenied } from '../../hooks/useIsToolDenied';
@@ -80,7 +80,7 @@ const IMAGE_HINT_STYLE: React.CSSProperties = {
   gap: '2px',
 };
 
-const ReadToolBlock = ({ input, result, toolId }: ReadToolBlockProps) => {
+const ReadToolBlock = memo(function ReadToolBlock({ input, result, toolId }: ReadToolBlockProps) {
   const [expanded, setExpanded] = useState(false);
   const { t } = useTranslation();
   const isDenied = useIsToolDenied(toolId);
@@ -208,6 +208,6 @@ const ReadToolBlock = ({ input, result, toolId }: ReadToolBlockProps) => {
       )}
     </div>
   );
-};
+});
 
 export default ReadToolBlock;

@@ -5,6 +5,9 @@ import com.github.ccxgui.provider.common.MessageCallback;
 import com.github.ccxgui.provider.common.SDKResult;
 import com.github.ccxgui.session.ClaudeSession.Message;
 import com.github.ccxgui.util.UsageCostCalculator;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.intellij.openapi.diagnostic.Logger;
 
 /**
@@ -507,13 +510,20 @@ public class CodexMessageHandler implements MessageCallback {
 
     private Message buildUserMessage(com.google.gson.JsonObject msg, String content) {
         boolean hasToolResult = containsToolResult(msg);
+        JsonArray imageBlocks = new JsonArray();
         if (!hasToolResult) {
+            imageBlocks = collectUserImageBlocks(msg, content);
             content = CodexMessageConverter.stripSystemTags(content);
-            if (content != null && !content.trim().isEmpty()) {
-                rewriteUserRawContent(msg, content);
+            if ((content != null && !content.trim().isEmpty()) || imageBlocks.size() > 0) {
+                rewriteUserRawContent(msg, content, imageBlocks);
             }
         }
         if (content == null || content.trim().isEmpty()) {
+            if (imageBlocks.size() > 0) {
+                Message result = new Message(Message.Type.USER, "");
+                result.raw = msg;
+                return result;
+            }
             if (hasToolResult) {
                 Message result = new Message(Message.Type.USER, "[tool_result]");
                 result.raw = msg;
@@ -661,18 +671,37 @@ public class CodexMessageHandler implements MessageCallback {
      * @param content visible content
      * @since 1.0.0
      */
-    private void rewriteUserRawContent(com.google.gson.JsonObject msg, String content) {
-        com.google.gson.JsonArray contentBlocks = new com.google.gson.JsonArray();
-        com.google.gson.JsonObject textBlock = new com.google.gson.JsonObject();
-        textBlock.addProperty("type", "text");
-        textBlock.addProperty("text", content);
-        contentBlocks.add(textBlock);
+    private void rewriteUserRawContent(com.google.gson.JsonObject msg, String content, JsonArray imageBlocks) {
+        JsonArray contentBlocks = CodexMessageConverter.userContentBlocks(imageBlocks, content);
 
         if (msg.has("message") && msg.get("message").isJsonObject()) {
             msg.getAsJsonObject("message").add("content", contentBlocks);
         } else {
             msg.add("content", contentBlocks);
         }
+    }
+
+    private JsonArray collectUserImageBlocks(com.google.gson.JsonObject msg, String originalContent) {
+        JsonArray imageBlocks = new JsonArray();
+        JsonElement contentElement = getMessageContentElement(msg);
+        if (contentElement != null && contentElement.isJsonArray()) {
+            JsonArray contentArray = contentElement.getAsJsonArray();
+            for (int i = 0; i < contentArray.size(); i++) {
+                JsonElement element = contentArray.get(i);
+                if (!element.isJsonObject()) {
+                    continue;
+                }
+                JsonObject block = element.getAsJsonObject();
+                if (block.has("type") && "image".equals(block.get("type").getAsString())) {
+                    imageBlocks.add(block.deepCopy());
+                }
+            }
+        }
+        JsonArray restoredImages = CodexMessageConverter.restoreCodexImagePlaceholderBlocks(originalContent);
+        for (JsonElement restoredImage : restoredImages) {
+            imageBlocks.add(restoredImage);
+        }
+        return imageBlocks;
     }
 
     /**

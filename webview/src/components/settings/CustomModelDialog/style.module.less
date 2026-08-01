@@ -101,17 +101,57 @@
   margin-bottom: 8px;
 }
 
-.pricingFieldset {
-  border: 1px solid var(--border-secondary);
+.pricingSection {
+  border: 1px dashed var(--border-secondary);
   border-radius: 4px;
-  padding: 10px;
   margin: 0 0 12px;
+  overflow: hidden;
 }
 
-.pricingLegend {
-  padding: 0 4px;
+.pricingToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px 10px;
   font-size: 12px;
+  color: var(--text-tertiary);
+  text-align: left;
+}
+
+.pricingToggle:hover {
   color: var(--text-secondary);
+}
+
+.pricingToggle:focus-visible {
+  outline: 1px solid var(--border-secondary);
+  outline-offset: -2px;
+  border-radius: 4px;
+}
+
+.pricingToggle .codicon {
+  font-size: 12px;
+}
+
+.pricingToggleLabel {
+  font-weight: 500;
+}
+
+.optionalBadge {
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: var(--text-tertiary);
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: var(--bg-tertiary);
+}
+
+.pricingContent {
+  padding: 0 10px 10px;
 }
 
 .pricingHint {

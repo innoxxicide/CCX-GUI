@@ -8,7 +8,13 @@ const PROVIDER_TO_SDK: Record<string, string> = {
   openai: 'codex-sdk',
 };
 
-type SdkStatus = Record<string, { installed?: boolean; status?: string }>;
+type SdkStatus = Record<string, {
+  installed?: boolean;
+  status?: string;
+  installedVersion?: string;
+  meetsMinimumVersion?: boolean;
+  minimumVersion?: string;
+}>;
 
 /**
  * Usage % / token counters and SDK install status. `isSdkInstalled(providerId)`

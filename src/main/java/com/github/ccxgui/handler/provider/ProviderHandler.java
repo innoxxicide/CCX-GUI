@@ -34,7 +34,10 @@ public class ProviderHandler extends BaseMessageHandler {
             "switch_codex_provider",
             "revoke_codex_local_config_authorization",
             "get_active_codex_provider",
-            "sort_codex_providers"
+            "sort_codex_providers",
+            "preview_codex_cc_switch_import",
+            "open_file_chooser_for_codex_cc_switch",
+            "save_imported_codex_providers"
     };
 
     private final ClaudeProviderOperations claudeOps;
@@ -46,7 +49,7 @@ public class ProviderHandler extends BaseMessageHandler {
         super(context);
         this.claudeOps = new ClaudeProviderOperations(context);
         this.codexOps = new CodexProviderOperations(context);
-        this.importExportSupport = new ProviderImportExportSupport(context, claudeOps);
+        this.importExportSupport = new ProviderImportExportSupport(context, claudeOps, codexOps);
         this.orderingService = new ProviderOrderingService(context, claudeOps, codexOps);
     }
 
@@ -125,6 +128,16 @@ public class ProviderHandler extends BaseMessageHandler {
                 return true;
             case "sort_codex_providers":
                 orderingService.handleSortCodexProviders(content);
+                return true;
+            // Codex cc-switch import operations
+            case "preview_codex_cc_switch_import":
+                importExportSupport.handlePreviewCodexCcSwitchImport();
+                return true;
+            case "open_file_chooser_for_codex_cc_switch":
+                importExportSupport.handleOpenFileChooserForCodexCcSwitch();
+                return true;
+            case "save_imported_codex_providers":
+                importExportSupport.handleSaveImportedCodexProviders(content);
                 return true;
             default:
                 return false;

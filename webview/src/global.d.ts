@@ -7,6 +7,9 @@ interface Window {
    */
   sendToJava?: (message: string) => void;
 
+  /** Re-rasterize the JCEF surface after its IntelliJ content tab is activated. */
+  onTabActivated?: () => void;
+
   /**
    * Get clipboard file path from Java
    */
@@ -21,6 +24,12 @@ interface Window {
    * Update messages from backend
    */
   updateMessages?: (json: string, sequence?: string | number) => void;
+  /** Replace a long conversation's tail without resending its unchanged prefix. */
+  updateMessageTail?: (
+    json: string,
+    baseIndex: string | number,
+    sequence?: string | number,
+  ) => void;
 
   /**
    * Patch a single message UUID without re-sending the full message list.
@@ -83,6 +92,28 @@ interface Window {
    * Add single history message (used for Codex session loading)
    */
   addHistoryMessage?: (message: any) => void;
+  beginCodexHistoryPage?: (json: string) => void;
+  appendCodexHistoryPageBatch?: (pageId: string, json: string) => void;
+  appendCodexHistoryPageChunk?: (
+    pageId: string,
+    chunk: string,
+    transferId: string,
+    isFinal: string | boolean,
+  ) => void;
+  completeCodexHistoryPage?: (json: string) => void;
+  codexHistoryPageError?: (json: string) => void;
+  codexHistoryPageRenderComplete?: () => void;
+  __codexHistoryPageInfo?: {
+    pageId: string;
+    sessionId: string;
+    mode: 'replace' | 'prepend';
+    fromTurn: number;
+    toTurn: number;
+    totalTurns: number;
+    hasMore: boolean;
+    loadedMessageCount: number;
+    cursorReset?: boolean;
+  };
 
   /**
    * History load complete callback - invoked when history messages finish loading.
@@ -94,6 +125,15 @@ interface Window {
    * Subagent sidechain history callback.
    */
   onSubagentHistoryLoaded?: (json: string) => void;
+
+  /**
+   * task_* SDK system event callback (async subagent lifecycle).
+   * Payload: { subtype: 'task_started'|'task_progress'|'task_notification',
+   *   task_id, tool_use_id, status?, summary?, usage?, output_file? }.
+   * task_notification carries the terminal status and result summary that the
+   * StatusPanel uses to mark a background (run_in_background) Agent subagent as completed.
+   */
+  onTaskEvent?: (eventJson: string) => void;
 
   /**
    * SDK-to-CLI session conversion result callback.
@@ -171,6 +211,16 @@ interface Window {
    * Show AskUserQuestion dialog
    */
   showAskUserQuestionDialog?: (json: string) => void;
+  updateCodexPets?: (json: string) => void;
+  updateCodexPetPreview?: (json: string) => void;
+  onCodexPetAssetsChanged?: () => void;
+  updateCodexPetConfig?: (json: string) => void;
+  updatePetdexCatalog?: (json: string) => void;
+  updatePetdexPreview?: (json: string) => void;
+  onCodexPetOperation?: (json: string) => void;
+  updateHatchPetStatus?: (json: string) => void;
+  updateHatchPetReference?: (json: string) => void;
+  onHatchPetCommandPrepared?: (json: string) => void;
 
   /**
    * Show PlanApproval dialog
@@ -260,6 +310,9 @@ interface Window {
    * Update MCP server tools list
    */
   updateMcpServerTools?: (json: string) => void;
+
+  /** Update Codex MCP server tools list. */
+  updateCodexMcpServerTools?: (json: string) => void;
 
   mcpServerToggled?: (json: string) => void;
 
@@ -474,14 +527,9 @@ interface Window {
   skillToggleResult?: (json: string) => void;
 
   /**
-   * Update usage statistics
+   * TokenTracker bridge response callback (correlated by requestId)
    */
-  updateUsageStatistics?: (json: string) => void;
-
-  /**
-   * Pending usage statistics before component mounts
-   */
-  __pendingUsageStatistics?: string;
+  onTokenTrackerResponse?: (json: string) => void;
 
   /**
    * Update slash commands list (from SDK)
@@ -836,6 +884,10 @@ interface Window {
   __pendingUpdateJson?: string | null;
   __pendingUpdateSequence?: number | null;
   __minAcceptedUpdateSequence?: number;
+  /** Number of paged history messages prepended ahead of the backend session snapshot. */
+  __prependedHistoryMessageCount?: number;
+  /** Backend index represented by the first non-prepended message; zero means its full prefix is present. */
+  __messageBaseIndex?: number;
   /** Cancel pending rAF-deferred updateMessages (set by messageCallbacks, called by onStreamEnd). */
   __cancelPendingUpdateMessages?: () => void;
 
@@ -1040,6 +1092,20 @@ interface Window {
    * parsed payload describing the providers detected during import preview.
    */
   import_preview_result?: (dataOrStr: string | { providers?: unknown }) => void;
+
+  /**
+   * Codex cc-switch import preview result callback. Mirrors import_preview_result
+   * but is Codex-scoped so the Codex panel (mounted alongside the Claude panel)
+   * owns its own import channel without colliding with the Claude flow.
+   */
+  codex_import_preview_result?: (dataOrStr: string | { providers?: unknown }) => void;
+
+  /**
+   * Codex cc-switch import notification callback (type, title, message),
+   * used for success/error/info toasts during Codex import. Codex-scoped to
+   * avoid double toasts from the shared backend_notification channel.
+   */
+  codex_cc_switch_notification?: (...args: unknown[]) => void;
 
   /**
    * Backend notification callback (variadic for backward compatibility).

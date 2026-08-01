@@ -8,7 +8,6 @@ import { ErrorDiagnosticCard } from './ErrorDiagnosticCard';
 import { matchErrorPattern } from '../../utils/errorMatcher';
 import {
   EditToolBlock,
-  EditToolGroupBlock,
   ReadToolBlock,
   ReadToolGroupBlock,
   BashToolBlock,
@@ -19,7 +18,7 @@ import {
 import { ContentBlockRenderer } from './ContentBlockRenderer';
 import { formatTime } from '../../utils/helpers';
 import { copyToClipboard } from '../../utils/copyUtils';
-import { READ_TOOL_NAMES, EDIT_TOOL_NAMES, BASH_TOOL_NAMES, SEARCH_TOOL_NAMES, AGENT_TOOL_NAMES, isToolName } from '../../utils/toolConstants';
+import { READ_TOOL_NAMES, EDIT_TOOL_NAMES, BASH_TOOL_NAMES, SEARCH_TOOL_NAMES, AGENT_TOOL_NAMES, isToolName, isNonRenderedToolUse } from '../../utils/toolConstants';
 
 export interface MessageItemProps {
   message: ClaudeMessage;
@@ -433,6 +432,19 @@ export const MessageItem = memo(function MessageItem({
 
   // Memoize blocks and grouped blocks to avoid recalculation on every render
   const blocks = useMemo(() => getContentBlocks(message), [message, getContentBlocks]);
+  // Tool calls that render nothing (TodoWrite, TaskCreate, ...) still live in
+  // `blocks`, so their arrival re-rendered the message and - worse - flipped
+  // the streaming thinking block's last-block status, which switched its
+  // MarkdownBlock between the streaming and full-pipeline renderers (they
+  // differ in height on single-newline content) and made the thinking block
+  // visibly collapse then re-expand. Filter them out of the rendered list so
+  // non-rendered tools never disturb the message list. `blocks` is kept whole
+  // for the empty-placeholder check below, since a message carrying only a
+  // non-rendered tool is not an empty streaming placeholder.
+  const renderedBlocks = useMemo(
+    () => blocks.filter((block) => !isNonRenderedToolUse(block, isMessageStreaming)),
+    [blocks, isMessageStreaming],
+  );
   const isEmptyStreamingPlaceholder =
     message.type === 'assistant' &&
     isMessageStreaming &&
@@ -455,7 +467,7 @@ export const MessageItem = memo(function MessageItem({
   useEffect(() => {
     if (!isMessageStreaming) return;
 
-    const thinkingIndices = blocks
+    const thinkingIndices = renderedBlocks
       .map((block, index) => (block.type === 'thinking' ? index : -1))
       .filter((index) => index !== -1);
 
@@ -481,9 +493,9 @@ export const MessageItem = memo(function MessageItem({
       });
       lastAutoExpandedIndexRef.current = lastThinkingIndex;
     }
-  }, [blocks, isMessageStreaming, manuallyExpandedThinking]);
+  }, [renderedBlocks, isMessageStreaming, manuallyExpandedThinking]);
 
-  const groupedBlocks = useMemo(() => groupBlocks(blocks), [blocks]);
+  const groupedBlocks = useMemo(() => groupBlocks(renderedBlocks), [renderedBlocks]);
 
   // Register user message DOM node for anchor navigation
   // Must be called before any early returns to satisfy React hooks rules
@@ -573,24 +585,17 @@ export const MessageItem = memo(function MessageItem({
             name: block.name,
             input: block.input,
             result: findToolResult(block.id, messageIndex),
+            toolId: block.id,
           };
         });
 
-        if (editItems.length === 1) {
-          return (
-            <div key={`${messageIndex}-editgroup-${grouped.startIndex}`} className="content-block">
-              <EditToolBlock
-                name={editItems[0].name}
-                input={editItems[0].input}
-                result={editItems[0].result}
-              />
-            </div>
-          );
-        }
-
+        // Always route through EditToolBlock so the instance stays stable as
+        // edits stream in (1 -> 2 -> ...). It renders the inline-diff view for
+        // a single item and delegates to the grouped list view for multiple,
+        // without unmounting on the transition.
         return (
           <div key={`${messageIndex}-editgroup-${grouped.startIndex}`} className="content-block">
-            <EditToolGroupBlock items={editItems} />
+            <EditToolBlock items={editItems} />
           </div>
         );
       }
@@ -647,7 +652,7 @@ export const MessageItem = memo(function MessageItem({
                 isThinkingExpanded={false}
                 isThinking={isThinking}
                 isLastMessage={isLast}
-                isLastBlock={grouped.startIndex === blocks.length - 1}
+                isLastBlock={grouped.startIndex === renderedBlocks.length - 1}
                 t={t}
                 onToggleThinking={() => {}}
                 findToolResult={findToolResult}
@@ -692,7 +697,7 @@ export const MessageItem = memo(function MessageItem({
             isThinkingExpanded={isThinkingExpanded(blockIndex)}
             isThinking={isThinking}
             isLastMessage={isLast}
-            isLastBlock={blockIndex === blocks.length - 1}
+            isLastBlock={blockIndex === renderedBlocks.length - 1}
             t={t}
             onToggleThinking={() => toggleThinking(blockIndex)}
             findToolResult={findToolResult}

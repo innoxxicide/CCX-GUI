@@ -13,6 +13,34 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_DATA: ChangelogEntry[] = [
   {
+    version: '0.0.5',
+    date: '2026-08-01',
+    content: {
+      en: `🔄 Upstream sync
+- **Merged upstream CC GUI v0.4.9** (\`zhukunpenglinyutong/jetbrains-cc-gui\`), together with the v0.4.8 branch tail. Fork identity and every fork-only feature — Claude usage battery, agent error/question notification sounds, Concise mode, permission-dialog timeout toggle, auto-resume after a usage-limit reset — are preserved
+
+✨ Features
+- Add a **built-in TokenTracker usage dashboard** replacing the in-house usage statistics: usage overview, cost trends, activity heatmap, and per-model / per-project breakdowns, backed by a local server gateway that auto-detects or installs \`tokentracker-cli\`. The old usage aggregators are removed with it — the header usage battery is a separate code path and is unaffected
+- Add **isolated MCP provider tabs**: separate Claude and Codex tabs, each with its own server list, tool set and cache keys, so the two providers no longer clobber each other's MCP tool state
+- Add **Codex provider import from cc-switch**, provider help dialogs, OpenAI official direct connection as the default Codex config, and an expanded preset list (Zhipu GLM, Kimi, DeepSeek, MiniMax, Xiaomi MiMo, Bailian, LongCat, OpenCode Go, OpenRouter)
+- Add **in-message math rendering** via KaTeX
+- Add **async subagent tracking**: \`task_*\` events that settle after a turn's result are forwarded to the frontend, so a background agent reflects completion and usage instead of staying stuck on "running"
+- Add the **\`/goal\` built-in slash command**, **nested Codex skill discovery**, and the **Codex pet overlay** (opt-in)
+- Add the **Fable 5 model tier** and raise the Claude SDK floor to **0.3.182+** so the \`fable\` alias is recognized
+
+🔧 Improvements
+- **Resolve provider brand icons by base URL first**, so an endpoint proxying another vendor's models shows that vendor's logo
+- Make the **pricing section of the custom-model dialog collapsible**
+
+🐛 Fixes
+- Fix **streaming UI stability**: completed content blocks render as each block finishes, and the message list no longer twitches or loses expand state when tool calls ripple through mid-stream
+- Fix **context-usage display overflow**, **webview watchdog startup recovery**, and **ConfigSelect closing under a confirm dialog**
+- Fix **stale proxy env leaking into the Codex CLI**, **Codex weekly-only quota mapping**, **the last background-turn answer staying invisible**, and **"Environment Check Failed" after an in-place plugin update**
+- Fix **npm resolution for mise/Volta Node installs on Windows**, **Android Studio JCEF detection**, **new tabs always reusing the "AI1" name**, and **retired saved models resetting to the list head**`,
+      zh: ``,
+    },
+  },
+  {
     version: '0.0.4',
     date: '2026-07-25',
     content: {

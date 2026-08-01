@@ -176,4 +176,14 @@ public class CallbackHandler {
             callback.onTurnError(error);
         }
     }
+
+    /**
+     * Notify of a Claude Code task_* SDK system event (task_started /
+     * task_progress / task_notification).
+     */
+    public void notifyTaskEvent(String eventJson) {
+        if (callback != null) {
+            callback.onTaskEvent(eventJson);
+        }
+    }
 }

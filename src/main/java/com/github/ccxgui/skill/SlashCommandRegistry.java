@@ -51,6 +51,7 @@ public final class SlashCommandRegistry {
     public static final List<SlashCommand> CLAUDE_BUILTIN = List.of(
             new SlashCommand("/compact", "Summarize conversation to free context", "builtin"),
             new SlashCommand("/context", "Visualize current context usage as a colored grid", "builtin"),
+            new SlashCommand("/goal", "Keep working across turns until the goal condition is met", "builtin"),
             new SlashCommand("/init", "Initialize a new CLAUDE.md file with codebase documentation", "builtin"),
             new SlashCommand("/plan", "Switch to plan mode", "builtin"),
             new SlashCommand("/resume", "Resume a previous conversation", "builtin"),

@@ -21,7 +21,7 @@ public class CodexSessionLiteReaderTest {
         Path tempDir = Files.createTempDirectory("codex-lite-test");
         try {
             Path tempFile = tempDir.resolve("thread_abc123def456.jsonl");
-            String content = "{\"type\":\"session_meta\",\"payload\":{\"id\":\"thread_abc123def456\",\"cwd\":\"/workspace/demo\",\"timestamp\":\"2026-03-10T10:00:00Z\"}}\n" +
+            String content = "{\"type\":\"session_meta\",\"payload\":{\"id\":\"thread_abc123def456\",\"cwd\":\"/workspace/demo\",\"timestamp\":\"2026-03-10T10:00:00Z\",\"source\":\"exec\"}}\n" +
                     "{\"type\":\"event_msg\",\"payload\":{\"type\":\"user_message\",\"message\":\"Hello Codex\"},\"timestamp\":\"2026-03-10T10:01:00Z\"}\n" +
                     "{\"type\":\"response_item\",\"payload\":{\"type\":\"message\"},\"timestamp\":\"2026-03-10T10:02:00Z\"}\n";
             Files.writeString(tempFile, content);
@@ -64,6 +64,22 @@ public class CodexSessionLiteReaderTest {
                 System.currentTimeMillis(), 1000,
                 "{\"type\":\"session_meta\",\"payload\":{\"id\":\"thread_abc123def456\"}}\n" +
                         "{\"type\":\"response_item\",\"payload\":{\"type\":\"message\"}}\n",
+                ""
+        );
+
+        assertNull(reader.parseSessionInfoFromLite(sessionId, lite));
+    }
+
+    @Test
+    public void parseSessionInfoFromLite_subagentReturnsNull() {
+        String sessionId = "thread_subagent123456";
+        SessionLiteReader.LiteSessionFile lite = new SessionLiteReader.LiteSessionFile(
+                System.currentTimeMillis(), 1000,
+                "{\"type\":\"session_meta\",\"payload\":{\"id\":\"thread_subagent123456\","
+                        + "\"cwd\":\"/workspace\",\"source\":{\"subagent\":{\"thread_spawn\":{"
+                        + "\"parent_thread_id\":\"thread_parent123456\",\"depth\":1}}}}}\n"
+                        + "{\"type\":\"event_msg\",\"payload\":{\"type\":\"user_message\","
+                        + "\"message\":\"Inherited parent context\"}}\n",
                 ""
         );
 

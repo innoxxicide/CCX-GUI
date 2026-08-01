@@ -28,10 +28,12 @@ public class ProviderImportExportSupport {
 
     private final HandlerContext context;
     private final ClaudeProviderOperations claudeOps;
+    private final CodexProviderOperations codexOps;
 
-    public ProviderImportExportSupport(HandlerContext context, ClaudeProviderOperations claudeOps) {
+    public ProviderImportExportSupport(HandlerContext context, ClaudeProviderOperations claudeOps, CodexProviderOperations codexOps) {
         this.context = context;
         this.claudeOps = claudeOps;
+        this.codexOps = codexOps;
     }
 
     /**
@@ -259,6 +261,219 @@ public class ProviderImportExportSupport {
             }
         }
         return false;
+    }
+
+    // =====================================================================================
+    // Codex provider import (mirrors the Claude flow above, but isolated with Codex-scoped
+    // callbacks: window.codex_import_preview_result and codex_cc_switch_notification).
+    // Both provider panels are mounted at once, so Codex must not reuse the Claude globals
+    // (window.import_preview_result / backend_notification).
+    // =====================================================================================
+
+    /**
+     * Preview Codex cc-switch import.
+     */
+    public void handlePreviewCodexCcSwitchImport() {
+        ApplicationManager.getApplication().invokeLater(() -> {
+            String userHome = NodeDetector.resolveHomeForFileOps();
+
+            File ccSwitchDir = new File(userHome, ".cc-switch");
+            File dbFile = new File(ccSwitchDir, "cc-switch.db");
+
+            LOG.info("[ProviderHandler] Codex import — user home: " + userHome);
+            LOG.info("[ProviderHandler] Codex import — database file path: " + dbFile.getAbsolutePath());
+            boolean dbExists = fileExists(dbFile);
+            LOG.info("[ProviderHandler] Codex import — database file exists: " + dbExists);
+
+            if (!dbExists) {
+                String errorMsg = com.github.ccxgui.i18n.ClaudeCodeGuiBundle.message("provider.codexCcswitch.notFound", dbFile.getAbsolutePath());
+                LOG.warn("[ProviderHandler] " + errorMsg);
+                sendCodexErrorToFrontend(com.github.ccxgui.i18n.ClaudeCodeGuiBundle.message("provider.codexCcswitch.notFoundTitle"), errorMsg);
+                return;
+            }
+
+            CompletableFuture.runAsync(() -> {
+                try {
+                    List<JsonObject> providers = context.getSettingsService().parseCodexProvidersFromCcSwitchDb(dbFile.getPath());
+
+                    if (providers.isEmpty()) {
+                        sendCodexInfoToFrontend(
+                                com.github.ccxgui.i18n.ClaudeCodeGuiBundle.message("provider.codexCcswitch.noDataTitle"),
+                                com.github.ccxgui.i18n.ClaudeCodeGuiBundle.message("provider.codexCcswitch.noData"));
+                        return;
+                    }
+
+                    JsonArray providersArray = new JsonArray();
+                    for (JsonObject p : providers) {
+                        providersArray.add(p);
+                    }
+
+                    JsonObject response = new JsonObject();
+                    response.add("providers", providersArray);
+
+                    String jsonStr = GSON.toJson(response);
+                    LOG.info("[ProviderHandler] Successfully read " + providers.size() + " Codex provider configs");
+                    context.callJavaScript("window.codex_import_preview_result", context.escapeJs(jsonStr));
+
+                } catch (Exception e) {
+                    String errorDetails = com.github.ccxgui.i18n.ClaudeCodeGuiBundle.message("provider.codexCcswitch.readFailed") + ": " + e.getMessage();
+                    LOG.error("[ProviderHandler] " + errorDetails, e);
+                    sendCodexErrorToFrontend(com.github.ccxgui.i18n.ClaudeCodeGuiBundle.message("provider.codexCcswitch.readFailedTitle"), errorDetails);
+                }
+            });
+        });
+    }
+
+    /**
+     * Open file chooser for a cc-switch database file (Codex providers).
+     */
+    public void handleOpenFileChooserForCodexCcSwitch() {
+        ApplicationManager.getApplication().invokeLater(() -> {
+            try {
+                FileChooserDescriptor descriptor = new FileChooserDescriptor(
+                        true,   // chooseFiles
+                        false,  // chooseFolders
+                        false,  // chooseJars
+                        false,  // chooseJarsAsFiles
+                        false,  // chooseJarContents
+                        false   // chooseMultiple
+                );
+
+                descriptor.setTitle(com.github.ccxgui.i18n.ClaudeCodeGuiBundle.message("provider.codexCcswitch.selectTitle"));
+                descriptor.setDescription(com.github.ccxgui.i18n.ClaudeCodeGuiBundle.message("provider.codexCcswitch.selectDesc"));
+                descriptor.withFileFilter(file -> {
+                    String name = file.getName().toLowerCase();
+                    return name.endsWith(".db");
+                });
+
+                // Set default path to .cc-switch under user home directory
+                String userHome = NodeDetector.resolveHomeForFileOps();
+                File defaultDir = new File(userHome, ".cc-switch");
+                VirtualFile defaultVirtualFile = null;
+                if (defaultDir.exists()) {
+                    defaultVirtualFile = com.intellij.openapi.vfs.LocalFileSystem.getInstance()
+                                                 .findFileByPath(defaultDir.getAbsolutePath().replace('\\', '/'));
+                }
+
+                VirtualFile[] selectedFiles = FileChooser.chooseFiles(
+                        descriptor,
+                        context.getProject(),
+                        defaultVirtualFile
+                );
+
+                if (selectedFiles.length == 0) {
+                    sendCodexInfoToFrontend(
+                            com.github.ccxgui.i18n.ClaudeCodeGuiBundle.message("provider.codexCcswitch.cancelledTitle"),
+                            com.github.ccxgui.i18n.ClaudeCodeGuiBundle.message("provider.codexCcswitch.cancelled"));
+                    return;
+                }
+
+                VirtualFile selectedFile = selectedFiles[0];
+                String dbPath = selectedFile.getPath();
+                File dbFile = new File(dbPath);
+
+                LOG.info("[ProviderHandler] Codex import — selected database file path: " + dbFile.getAbsolutePath());
+                if (!fileExists(dbFile)) {
+                    String errorMsg = com.github.ccxgui.i18n.ClaudeCodeGuiBundle.message("provider.codexCcswitch.notFound", dbFile.getAbsolutePath());
+                    sendCodexErrorToFrontend(com.github.ccxgui.i18n.ClaudeCodeGuiBundle.message("provider.codexCcswitch.notFoundTitle"), errorMsg);
+                    return;
+                }
+
+                if (!dbFile.canRead()) {
+                    String errorMsg = com.github.ccxgui.i18n.ClaudeCodeGuiBundle.message("error.cannotReadFile") + "\n" +
+                                              dbFile.getAbsolutePath() + "\n" +
+                                              com.github.ccxgui.i18n.ClaudeCodeGuiBundle.message("error.checkFilePermissions");
+                    sendCodexErrorToFrontend(com.github.ccxgui.i18n.ClaudeCodeGuiBundle.message("provider.codexCcswitch.permissionErrorTitle"), errorMsg);
+                    return;
+                }
+
+                // Read database asynchronously
+                CompletableFuture.runAsync(() -> {
+                    try {
+                        List<JsonObject> providers = context.getSettingsService().parseCodexProvidersFromCcSwitchDb(dbFile.getPath());
+
+                        if (providers.isEmpty()) {
+                            sendCodexInfoToFrontend(
+                                    com.github.ccxgui.i18n.ClaudeCodeGuiBundle.message("provider.codexCcswitch.noDataTitle"),
+                                    com.github.ccxgui.i18n.ClaudeCodeGuiBundle.message("provider.codexCcswitch.noData"));
+                            return;
+                        }
+
+                        JsonArray providersArray = new JsonArray();
+                        for (JsonObject p : providers) {
+                            providersArray.add(p);
+                        }
+
+                        JsonObject response = new JsonObject();
+                        response.add("providers", providersArray);
+
+                        String jsonStr = GSON.toJson(response);
+                        LOG.info("[ProviderHandler] Successfully read " + providers.size() + " Codex provider configs, sending to frontend");
+                        context.callJavaScript("window.codex_import_preview_result", context.escapeJs(jsonStr));
+
+                    } catch (Exception e) {
+                        String errorDetails = com.github.ccxgui.i18n.ClaudeCodeGuiBundle.message("provider.codexCcswitch.readFailed") + ": " + e.getMessage();
+                        LOG.error("[ProviderHandler] " + errorDetails, e);
+                        sendCodexErrorToFrontend(com.github.ccxgui.i18n.ClaudeCodeGuiBundle.message("provider.codexCcswitch.readFailedTitle"), errorDetails);
+                    }
+                });
+
+            } catch (Exception e) {
+                String errorDetails = com.github.ccxgui.i18n.ClaudeCodeGuiBundle.message("provider.codexCcswitch.fileChooserFailed") + ": " + e.getMessage();
+                LOG.error("[ProviderHandler] " + errorDetails, e);
+                sendCodexErrorToFrontend(com.github.ccxgui.i18n.ClaudeCodeGuiBundle.message("provider.codexCcswitch.fileChooserFailedTitle"), errorDetails);
+            }
+        });
+    }
+
+    /**
+     * Save imported Codex providers.
+     */
+    public void handleSaveImportedCodexProviders(String content) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                JsonObject request = GSON.fromJson(content, JsonObject.class);
+                JsonArray providersArray = request.getAsJsonArray("providers");
+
+                if (providersArray == null || providersArray.isEmpty()) {
+                    return;
+                }
+
+                List<JsonObject> providers = new ArrayList<>();
+                for (JsonElement e : providersArray) {
+                    if (e.isJsonObject()) {
+                        providers.add(e.getAsJsonObject());
+                    }
+                }
+
+                int count = context.getSettingsService().saveCodexProviders(providers);
+
+                ApplicationManager.getApplication().invokeLater(() -> {
+                    codexOps.handleGetCodexProviders(); // Refresh UI
+                    sendCodexInfoToFrontend(
+                            com.github.ccxgui.i18n.ClaudeCodeGuiBundle.message("provider.codexCcswitch.importSuccessTitle"),
+                            com.github.ccxgui.i18n.ClaudeCodeGuiBundle.message("provider.codexCcswitch.importSuccess", count));
+                });
+
+            } catch (Exception e) {
+                LOG.error("Failed to save imported Codex providers", e);
+                sendCodexErrorToFrontend(com.github.ccxgui.i18n.ClaudeCodeGuiBundle.message("provider.codexCcswitch.saveFailedTitle"), e.getMessage());
+            }
+        });
+    }
+
+    /**
+     * Send an info notification to the frontend via the Codex-scoped channel.
+     */
+    public void sendCodexInfoToFrontend(String title, String message) {
+        context.callJavaScript("codex_cc_switch_notification", "info", context.escapeJs(title), context.escapeJs(message));
+    }
+
+    /**
+     * Send an error notification to the frontend via the Codex-scoped channel.
+     */
+    public void sendCodexErrorToFrontend(String title, String message) {
+        context.callJavaScript("codex_cc_switch_notification", "error", context.escapeJs(title), context.escapeJs(message));
     }
 
     /**

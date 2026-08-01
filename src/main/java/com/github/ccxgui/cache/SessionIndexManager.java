@@ -30,12 +30,14 @@ public class SessionIndexManager {
     // total (sum 1..N-1 * base) within ~100ms to avoid blocking concurrent index reads/writes.
     private static final long INDEX_REPLACE_RETRY_DELAY_MS = 10L;
 
+    // v6 (2026-07): Codex subagent rollouts could be persisted as regular history sessions.
+    // Rebuild the indexes once so stale Codex entries do not survive the parser fix.
     // v5 (2026-06): entrypoint (added in v4) could be persisted as null by interim v4
     // builds that bumped the version before the extraction pipeline was fully wired.
     // Restore paths trust index entries while the file mtime is unchanged, so those
     // nulls would never self-heal. Bumping once more forces a clean rebuild that
     // populates entrypoint for every session.
-    private static final int INDEX_VERSION = 5;
+    private static final int INDEX_VERSION = 6;
 
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     private final Path codemossCacheDir;

@@ -8,6 +8,7 @@ import com.github.ccxgui.handler.ClaudeLimitsHandler;
 import com.github.ccxgui.handler.ClipboardHandler;
 import com.github.ccxgui.handler.ContextHandler;
 import com.github.ccxgui.handler.CodexMcpServerHandler;
+import com.github.ccxgui.handler.CodexPetHandler;
 import com.github.ccxgui.handler.DependencyHandler;
 import com.github.ccxgui.handler.DiffHandler;
 import com.github.ccxgui.handler.core.HandlerContext;
@@ -86,6 +87,8 @@ public class ChatWindowDelegate {
         String getOriginalTabName();
         void setOriginalTabName(String name);
         String getSessionId();
+        boolean isActiveContent();
+        void activateContent();
         HandlerContext getHandlerContext();
         void setHandlerContext(HandlerContext ctx);
         void setMessageDispatcher(MessageDispatcher d);
@@ -102,6 +105,16 @@ public class ChatWindowDelegate {
         void setFetchedSlashCommandsCount(int count);
         void persistTabSessionState();
         void manualResumeAutoResume();
+
+        /**
+         * Soft-reload the currently active session's transcript without interrupting
+         * any in-flight turn.
+         * <p>Invoked when the user re-opens the session that is already active —
+         * refreshes the transcript from the server instead of tearing the session
+         * down (interrupt + recreate). Safe to call while a turn is streaming: the
+         * reload is deferred to stream end.</p>
+         */
+        void reloadActiveSessionMessages();
     }
 
     private final DelegateHost host;
@@ -245,7 +258,22 @@ public class ChatWindowDelegate {
             }
         };
 
-        HandlerContext handlerContext = new HandlerContext(project, claudeSDKBridge, codexSDKBridge, settingsService, jsCallback);
+        HandlerContext handlerContext = new HandlerContext(
+                project,
+                claudeSDKBridge,
+                codexSDKBridge,
+                settingsService,
+                jsCallback,
+                host::isActiveContent,
+                () -> {
+                    String originalTabName = host.getOriginalTabName();
+                    if (originalTabName != null && !originalTabName.isBlank()) {
+                        return originalTabName;
+                    }
+                    Content content = host.getParentContent();
+                    return content == null ? null : content.getDisplayName();
+                });
+        handlerContext.setContentActivator(host::activateContent);
         handlerContext.setSession(host.getSession());
         host.setHandlerContext(handlerContext);
 
@@ -258,6 +286,7 @@ public class ChatWindowDelegate {
         messageDispatcher.registerHandler(new McpMarketplaceHandler(handlerContext));
         messageDispatcher.registerHandler(new McpServerImportHandler(handlerContext));
         messageDispatcher.registerHandler(new CodexMcpServerHandler(handlerContext, settingsService.getCodexMcpServerManager()));
+        messageDispatcher.registerHandler(new CodexPetHandler(handlerContext));
         messageDispatcher.registerHandler(new SkillHandler(handlerContext));
         messageDispatcher.registerHandler(new FileHandler(handlerContext));
         messageDispatcher.registerHandler(new SettingsHandler(handlerContext));
@@ -319,8 +348,22 @@ public class ChatWindowDelegate {
         messageDispatcher.registerHandler(permissionHandler);
 
         HistoryHandler historyHandler = new HistoryHandler(handlerContext);
-        historyHandler.setSessionLoadCallback((sessionId, projectPath, provider) ->
-            host.getSessionLifecycleManager().loadHistorySession(sessionId, projectPath, provider));
+        historyHandler.setSessionLoadCallback((sessionId, projectPath, provider) -> {
+            ClaudeSession current = host.getSession();
+            boolean sameSession = current != null
+                    && sessionId != null
+                    && sessionId.equals(current.getSessionId())
+                    && (provider == null || provider.trim().isEmpty()
+                                || provider.equals(current.getProvider()));
+            if (sameSession) {
+                // Re-opening the very session already active: soft-reload its transcript
+                // instead of interrupting the in-flight turn.
+                LOG.info("[HistoryHandler] Same-session resume, soft-reloading transcript: " + sessionId);
+                host.reloadActiveSessionMessages();
+            } else {
+                host.getSessionLifecycleManager().loadHistorySession(sessionId, projectPath, provider);
+            }
+        });
         host.setHistoryHandler(historyHandler);
         messageDispatcher.registerHandler(historyHandler);
 
@@ -336,7 +379,7 @@ public class ChatWindowDelegate {
             String mode = session != null ? session.getPermissionMode() : "default";
             com.github.ccxgui.notifications.ClaudeNotifier.setMode(project, mode);
 
-            String model = session != null ? session.getModel() : "claude-sonnet-4-6";
+            String model = session != null ? session.getModel() : "claude-sonnet-4-7";
             com.github.ccxgui.notifications.ClaudeNotifier.setModel(project, model);
 
             try {
@@ -477,6 +520,7 @@ public class ChatWindowDelegate {
     public void handleFrontendReady() {
         LOG.info("Received frontend_ready signal, frontend is now ready to receive data");
         host.setFrontendReady(true);
+        host.getWebviewWatchdog().markFrontendReady();
 
         host.callJavaScript(
             "window.updateLinkifyCapabilities",

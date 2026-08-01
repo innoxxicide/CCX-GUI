@@ -1,3 +1,33 @@
+##### **2026年8月1日（v0.0.5）**
+
+English:
+
+🔄 Upstream sync
+- **Merged upstream CC GUI v0.4.9** (`zhukunpenglinyutong/jetbrains-cc-gui`), together with the v0.4.8 branch tail. Fork identity (plugin id, `CCXG` tool window, `CCXGUI.` action namespace, green `ccx-gui-icon.svg`) and every fork-only feature — Claude usage battery, agent error/question notification sounds, Concise mode, permission-dialog timeout toggle, auto-resume after a usage-limit reset — are preserved
+
+✨ Features
+- Add a **built-in TokenTracker usage dashboard** replacing the in-house usage statistics: usage overview, cost trends, activity heatmap, and per-model / per-project breakdowns, backed by a local server gateway that auto-detects or installs `tokentracker-cli` and whitelist-proxies requests. The `ClaudeUsageAggregator` / `CodexUsageAggregator` backends are removed with it — the header usage battery is a separate code path and is unaffected
+- Add **isolated MCP provider tabs**: the MCP settings panel now has separate Claude and Codex tabs, each with its own server list, tool set and cache keys, so the two providers no longer clobber each other's MCP tool state
+- Add **Codex provider import from cc-switch**, provider "What's this?" help dialogs, OpenAI official direct connection as the default Codex config, and an expanded preset list (Zhipu GLM, Kimi, DeepSeek, MiniMax, Xiaomi MiMo, Bailian, LongCat, OpenCode Go, OpenRouter)
+- Add **in-message math rendering** via KaTeX, with bracket-style delimiters normalized and fenced/inline code left untouched
+- Add **async subagent tracking**: `task_*` SDK events that settle after a turn's result are now forwarded from the bridge to the frontend, so a background agent's entry reflects completion and usage instead of staying stuck on "running"
+- Add the **`/goal` built-in slash command**, **nested Codex skill discovery** (bounded by depth / visited count, skipping generated dirs), and the **Codex pet overlay** (opt-in; its settings tab ships disabled upstream)
+- Add the **Fable 5 model tier** and raise the Claude SDK floor to **0.3.182+** so the `fable` alias is recognized; selecting a Fable model on an older SDK shows a one-time warning with an "Update SDK" shortcut
+
+🔧 Improvements
+- **Resolve provider brand icons by base URL first** (baseUrl > modelId > providerId), so an endpoint proxying another vendor's models shows that vendor's logo
+- Make the **pricing section of the custom-model dialog collapsible**, collapsed by default unless editing a model that already has rates
+
+🐛 Fixes
+- Fix **streaming UI stability**: completed content blocks render as each block finishes rather than at end-of-turn, and the message list no longer twitches or loses expand state when tool calls ripple through mid-stream
+- Fix **context-usage display overflow** (values clamped to 0–100% for rendering), **webview watchdog startup recovery** (retries capped and gated on frontend readiness), and **ConfigSelect closing under a confirm dialog** so Confirm no longer behaves as Cancel
+- Fix **stale proxy env leaking into the Codex CLI**, **Codex weekly-only quota mapping**, **the last background-turn answer staying invisible**, and **"Environment Check Failed" after an in-place plugin update**
+- Fix **npm resolution for mise/Volta Node installs on Windows** (`npm.exe` fallback), **Android Studio JCEF detection**, **new tabs always reusing the "AI1" name**, and **retired saved models resetting to the list head** instead of migrating
+
+🔀 Merge notes
+- Upstream added its own `claude-opus-5` entry alongside the fork's. The duplicates were collapsed to one across the model list, the model-key maps and all ten locale files; the fork's Opus 5 wording is kept
+- The chat header keeps the fork's usage-limit indicators while adopting upstream's reordering of the search button
+
 ##### **2026年7月25日（v0.0.4）**
 
 English:

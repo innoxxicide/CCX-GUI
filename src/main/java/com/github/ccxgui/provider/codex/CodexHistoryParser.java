@@ -59,6 +59,9 @@ class CodexHistoryParser {
                     messages.add(msg);
 
                     if ("session_meta".equals(msg.type) && msg.payload != null) {
+                        if (CodexSessionMetadata.isSubagent(msg.payload)) {
+                            return null;
+                        }
                         // Use session_meta.id as the canonical session ID.
                         // This matches the thread_id the Codex SDK returns via [THREAD_ID],
                         // ensuring custom titles saved under this ID are found when loading history.

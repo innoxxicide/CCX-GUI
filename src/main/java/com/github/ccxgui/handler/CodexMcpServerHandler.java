@@ -22,6 +22,7 @@ import java.util.concurrent.CompletableFuture;
 public class CodexMcpServerHandler extends BaseMessageHandler {
 
     private static final Logger LOG = Logger.getInstance(CodexMcpServerHandler.class);
+    static final String CODEX_MCP_TOOLS_CALLBACK = "window.updateCodexMcpServerTools";
 
     private static final String[] SUPPORTED_TYPES = {
         "get_codex_mcp_servers",
@@ -190,14 +191,17 @@ public class CodexMcpServerHandler extends BaseMessageHandler {
                 return;
             }
 
-            JsonObject serverConfig = targetServer.getAsJsonObject("server");
+            String sessionCwd = context.getSession() != null ? context.getSession().getCwd() : null;
+            String projectBasePath = context.getProject() != null ? context.getProject().getBasePath() : null;
+            JsonObject serverConfig = prepareServerConfig(
+                    targetServer.getAsJsonObject("server"), sessionCwd, projectBasePath);
             LOG.info("[CodexMcpServerHandler] Getting tools for Codex MCP server: " + serverId);
 
             context.getCodexSDKBridge().getMcpServerTools(serverId, serverConfig)
                 .thenAccept(result -> {
                     String resultJson = gson.toJson(result);
                     ApplicationManager.getApplication().invokeLater(() ->
-                        callJavaScript("window.updateMcpServerTools", escapeJs(resultJson))
+                        callJavaScript(CODEX_MCP_TOOLS_CALLBACK, escapeJs(resultJson))
                     );
                 })
                 .exceptionally(e -> {
@@ -219,8 +223,22 @@ public class CodexMcpServerHandler extends BaseMessageHandler {
         errorResult.add("tools", new com.google.gson.JsonArray());
         String json = gson.toJson(errorResult);
         ApplicationManager.getApplication().invokeLater(() ->
-            callJavaScript("window.updateMcpServerTools", escapeJs(json))
+            callJavaScript(CODEX_MCP_TOOLS_CALLBACK, escapeJs(json))
         );
+    }
+
+    static JsonObject prepareServerConfig(
+            JsonObject originalConfig, String sessionCwd, String projectBasePath) {
+        JsonObject serverConfig = originalConfig.deepCopy();
+        if (!serverConfig.has("cwd")) {
+            String cwd = sessionCwd != null && !sessionCwd.trim().isEmpty()
+                    ? sessionCwd
+                    : projectBasePath;
+            if (cwd != null && !cwd.trim().isEmpty()) {
+                serverConfig.addProperty("cwd", cwd);
+            }
+        }
+        return serverConfig;
     }
 
     private boolean isCodexLocalConfigAuthorized() {

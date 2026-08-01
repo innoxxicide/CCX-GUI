@@ -82,4 +82,25 @@ describe('deriveTodosForTurn', () => {
     const latestTurn = sliceLatestConversationTurn(messages);
     expect(deriveTodosForTurn(latestTurn, getContentBlocks, true)).toEqual([]);
   });
+
+  it('keeps earlier todos when the full transcript is scoped (settled history replay)', () => {
+    // Non-streaming scope feeds the WHOLE transcript to deriveTodosForTurn, so an
+    // earlier turn's plan survives even when the last turn has no task tool —
+    // exactly what a resumed history session needs to render its task list.
+    const messages = [
+      user('previous request'),
+      assistant([toolUse('old-plan', 'update_plan', {
+        plan: [
+          { step: 'Kept step', status: 'completed' },
+          { step: 'In-flight step', status: 'in_progress' },
+        ],
+      })]),
+      user('Only answer OK'),
+    ];
+
+    expect(deriveTodosForTurn(messages, getContentBlocks, false)).toEqual([
+      { content: 'Kept step', status: 'completed' },
+      { content: 'In-flight step', status: 'completed' },
+    ]);
+  });
 });

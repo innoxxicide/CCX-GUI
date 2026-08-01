@@ -25,7 +25,9 @@ public class PricingTableTest {
     @Test
     public void claudeNormalizesCaseAndProviderPrefix() {
         // Upper-case and a provider route prefix both normalize to claude-opus-4-8 (opus 4.5 tier).
+        assertEquals(5.0, ClaudePricingTable.resolve("anthropic/CLAUDE-OPUS-5").inputCostPer1M(), 1e-9);
         assertEquals(5.0, ClaudePricingTable.resolve("anthropic/CLAUDE-OPUS-4-8").inputCostPer1M(), 1e-9);
+        assertEquals(3.0, ClaudePricingTable.resolve("anthropic/CLAUDE-SONNET-4-7").inputCostPer1M(), 1e-9);
     }
 
     @Test

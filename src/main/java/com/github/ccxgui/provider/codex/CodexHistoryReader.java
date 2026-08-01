@@ -12,6 +12,7 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 /**
@@ -25,7 +26,6 @@ public class CodexHistoryReader {
     private final Gson gson;
     private final CodexHistoryParser parser;
     private final CodexHistoryIndexService indexService;
-    private final CodexUsageAggregator usageAggregator;
     private final CodexHistorySessionService sessionService;
 
     private static Path defaultSessionsDir() {
@@ -40,7 +40,6 @@ public class CodexHistoryReader {
         this.gson = gson;
         this.parser = new CodexHistoryParser(gson);
         this.indexService = new CodexHistoryIndexService(sessionsDir, parser);
-        this.usageAggregator = new CodexUsageAggregator(sessionsDir, parser, gson);
         this.sessionService = new CodexHistorySessionService(sessionsDir, gson);
     }
 
@@ -55,91 +54,6 @@ public class CodexHistoryReader {
         public long firstTimestamp;
         public String cwd;
         public long fileSize;
-    }
-
-    /**
-     * Usage data structure (compatible with Claude format).
-     */
-    public static class UsageData {
-        public long inputTokens;
-        public long outputTokens;
-        public long cacheWriteTokens;
-        public long cacheReadTokens;
-        public long totalTokens;
-    }
-
-    /**
-     * Session summary for statistics.
-     */
-    public static class SessionSummary {
-        public String sessionId;
-        public long timestamp;
-        public String model;
-        public UsageData usage;
-        public double cost;
-        public String summary;
-    }
-
-    /**
-     * Daily usage statistics.
-     */
-    public static class DailyUsage {
-        public String date;
-        public int sessions;
-        public UsageData usage;
-        public double cost;
-        public List<String> modelsUsed;
-    }
-
-    /**
-     * Model usage statistics.
-     */
-    public static class ModelUsage {
-        public String model;
-        public double totalCost;
-        public long totalTokens;
-        public long inputTokens;
-        public long outputTokens;
-        public long cacheCreationTokens;
-        public long cacheReadTokens;
-        public int sessionCount;
-    }
-
-    /**
-     * Weekly comparison data.
-     */
-    public static class WeeklyComparison {
-        public WeekData currentWeek;
-        public WeekData lastWeek;
-        public Trends trends;
-
-        public static class WeekData {
-            public int sessions;
-            public double cost;
-            public long tokens;
-        }
-
-        public static class Trends {
-            public double sessions;
-            public double cost;
-            public double tokens;
-        }
-    }
-
-    /**
-     * Project statistics.
-     */
-    public static class ProjectStatistics {
-        public String projectPath;
-        public String projectName;
-        public int totalSessions;
-        public UsageData totalUsage;
-        public double estimatedCost;
-        public List<SessionSummary> sessions;
-        public List<DailyUsage> dailyUsage;
-        public WeeklyComparison weeklyComparison;
-        public List<ModelUsage> byModel;
-        public long lastUpdated;
     }
 
     /**
@@ -266,15 +180,16 @@ public class CodexHistoryReader {
     }
 
     /**
-     * Get project statistics for usage tracking.
-     * Note: Codex sessions don't store project path, so we return all sessions.
+     * Stream one session without materializing the complete JSONL file in memory.
      *
-     * @param projectPath project path (Codex ignores this and returns all sessions)
-     * @param cutoffTime  earliest timestamp (ms) to include; 0 means no cutoff (all time)
+     * @return number of parsed top-level Codex records
      */
-    public ProjectStatistics getProjectStatistics(String projectPath, long cutoffTime) {
+    public int forEachSessionMessage(String sessionId, Consumer<JsonObject> consumer) throws IOException {
         logSessionAccessWithoutLocalConfigAuthorization();
-        return usageAggregator.getProjectStatistics(projectPath, cutoffTime);
+        return sessionService.forEachSessionMessage(sessionId, message -> {
+            JsonObject raw = gson.toJsonTree(message).getAsJsonObject();
+            consumer.accept(raw);
+        });
     }
 
     /**

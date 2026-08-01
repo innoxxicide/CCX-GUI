@@ -2,7 +2,6 @@ package com.github.ccxgui.provider.codex;
 
 import com.github.ccxgui.provider.CustomPricingProvider;
 import com.github.ccxgui.provider.codex.CodexHistoryReader.CodexMessage;
-import com.github.ccxgui.provider.codex.CodexHistoryReader.ProjectStatistics;
 import com.github.ccxgui.provider.codex.CodexHistoryReader.SessionInfo;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -21,6 +20,7 @@ import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class CodexHistoryReaderRefactorTest {
@@ -79,6 +79,29 @@ public class CodexHistoryReaderRefactorTest {
     }
 
     @Test
+    public void parserSkipsSubagentSession() throws IOException {
+        Path sessionsDir = Files.createTempDirectory("codex-history-subagent-parser");
+        try {
+            Path sessionFile = writeSessionFile(
+                    sessionsDir,
+                    "session-subagent",
+                    line("2026-03-10T10:00:00Z", "session_meta",
+                            "{\"cwd\":\"/workspace/demo\",\"source\":{\"subagent\":{\"thread_spawn\":{"
+                                    + "\"parent_thread_id\":\"session-parent\",\"depth\":1}}}}"),
+                    line("2026-03-10T10:01:00Z", "event_msg",
+                            "{\"type\":\"user_message\",\"message\":\"Inherited parent context\"}"),
+                    line("2026-03-10T10:02:00Z", "response_item", "{\"type\":\"message\"}")
+            );
+
+            CodexHistoryParser parser = new CodexHistoryParser(new Gson());
+
+            assertNull(parser.parseSessionFile(sessionFile));
+        } finally {
+            deleteDirectory(sessionsDir);
+        }
+    }
+
+    @Test
     public void sessionServiceTransformsFileViewingShellCommandToRead() throws IOException {
         Path sessionsDir = Files.createTempDirectory("codex-history-messages");
         try {
@@ -97,6 +120,30 @@ public class CodexHistoryReaderRefactorTest {
             assertEquals(2, messages.size());
             assertEquals("read", messages.get(0).payload.get("name").getAsString());
             assertEquals("shell_command", messages.get(1).payload.get("name").getAsString());
+        } finally {
+            deleteDirectory(sessionsDir);
+        }
+    }
+
+    @Test
+    public void sessionServiceReadsConcatenatedJsonObjectsFromOnePhysicalLine() throws IOException {
+        Path sessionsDir = Files.createTempDirectory("codex-history-concatenated");
+        try {
+            String first = line("2026-03-10T10:00:00Z", "event_msg",
+                    "{\"type\":\"user_message\",\"message\":\"first\"}");
+            String second = line("2026-03-10T10:01:00Z", "response_item",
+                    "{\"type\":\"message\",\"role\":\"assistant\",\"content\":[]}");
+            writeSessionFile(sessionsDir, "session-concatenated", first + second);
+
+            CodexHistorySessionService service = new CodexHistorySessionService(sessionsDir, gson);
+            Type listType = new TypeToken<List<CodexMessage>>() {}.getType();
+
+            List<CodexMessage> messages = gson.fromJson(
+                    service.getSessionMessagesAsJson("session-concatenated"), listType);
+
+            assertEquals(2, messages.size());
+            assertEquals("event_msg", messages.get(0).type);
+            assertEquals("response_item", messages.get(1).type);
         } finally {
             deleteDirectory(sessionsDir);
         }
@@ -140,74 +187,6 @@ public class CodexHistoryReaderRefactorTest {
     }
 
     @Test
-    public void usageAggregatorBuildsStatisticsFromSessionSummaries() throws IOException {
-        Path sessionsDir = Files.createTempDirectory("codex-history-usage");
-        try {
-            writeSessionFile(
-                    sessionsDir.resolve("2026/03/10"),
-                    "session-3",
-                    line("2026-03-10T10:00:00Z", "turn_context", "{\"model\":\"gpt-5.1\"}"),
-                    line("2026-03-10T10:01:00Z", "event_msg", "{\"type\":\"user_message\",\"message\":\"Summarize test results\"}"),
-                    line("2026-03-10T10:02:00Z", "event_msg", "{\"type\":\"token_count\",\"info\":{\"total_token_usage\":{\"input_tokens\":1000,\"output_tokens\":250,\"cached_input_tokens\":50}}}")
-            );
-            writeSessionFile(
-                    sessionsDir.resolve("2026/03/16"),
-                    "session-4",
-                    line("2026-03-16T09:00:00Z", "turn_context", "{\"model\":\"gpt-5.1\"}"),
-                    line("2026-03-16T09:01:00Z", "event_msg", "{\"type\":\"user_message\",\"message\":\"Explain the latest refactor\"}"),
-                    line("2026-03-16T09:02:00Z", "event_msg", "{\"type\":\"token_count\",\"info\":{\"total_token_usage\":{\"input_tokens\":2000,\"output_tokens\":500,\"cached_input_tokens\":100}}}")
-            );
-
-            CodexUsageAggregator aggregator = new CodexUsageAggregator(sessionsDir, new CodexHistoryParser(new Gson()), new Gson());
-
-            ProjectStatistics stats = aggregator.getProjectStatistics("all", 0);
-
-            assertEquals("All Projects", stats.projectName);
-            assertEquals(2, stats.totalSessions);
-            assertEquals(3000, stats.totalUsage.inputTokens);
-            assertEquals(750, stats.totalUsage.outputTokens);
-            assertEquals(150, stats.totalUsage.cacheReadTokens);
-            assertEquals(3750, stats.totalUsage.totalTokens);
-            assertEquals(2, stats.sessions.size());
-            assertEquals(2, stats.byModel.get(0).sessionCount);
-            assertFalse(stats.dailyUsage.isEmpty());
-            assertEquals(0.01108125, stats.estimatedCost, 0.0000001);
-        } finally {
-            deleteDirectory(sessionsDir);
-        }
-    }
-
-    @Test
-    public void usageAggregatorUsesModelSpecificPricingForNewerModels() throws IOException {
-        Path sessionsDir = Files.createTempDirectory("codex-history-pricing");
-        try {
-            writeSessionFile(
-                    sessionsDir.resolve("2026/03/10"),
-                    "session-8",
-                    line("2026-03-10T10:00:00Z", "turn_context", "{\"model\":\"gpt-5.4\"}"),
-                    line("2026-03-10T10:01:00Z", "event_msg", "{\"type\":\"user_message\",\"message\":\"Summarize test results\"}"),
-                    line("2026-03-10T10:02:00Z", "event_msg",
-                            "{\"type\":\"token_count\",\"info\":{\"total_token_usage\":"
-                                    + "{\"input_tokens\":3500,\"output_tokens\":250,"
-                                    + "\"cached_input_tokens\":1500,\"total_tokens\":3750}}}")
-            );
-
-            CodexUsageAggregator aggregator = new CodexUsageAggregator(sessionsDir, new CodexHistoryParser(new Gson()), new Gson());
-
-            ProjectStatistics stats = aggregator.getProjectStatistics("all", 0);
-
-            assertEquals(1, stats.totalSessions);
-            assertEquals(3500, stats.totalUsage.inputTokens);
-            assertEquals(250, stats.totalUsage.outputTokens);
-            assertEquals(1500, stats.totalUsage.cacheReadTokens);
-            assertEquals(3750, stats.totalUsage.totalTokens);
-            assertEquals(0.009125, stats.estimatedCost, 0.0000001);
-        } finally {
-            deleteDirectory(sessionsDir);
-        }
-    }
-
-    @Test
     public void historyReaderReadsSessionsEvenWhenLocalConfigAuthorizationIsFalse() throws IOException {
         Path sessionsDir = Files.createTempDirectory("codex-history-reader");
         try {
@@ -247,29 +226,6 @@ public class CodexHistoryReaderRefactorTest {
 
             assertEquals(1, messages.size());
             assertEquals("read", messages.get(0).payload.get("name").getAsString());
-        } finally {
-            deleteDirectory(sessionsDir);
-        }
-    }
-
-    @Test
-    public void historyReaderBuildsUsageStatisticsEvenWhenLocalConfigAuthorizationIsFalse() throws IOException {
-        Path sessionsDir = Files.createTempDirectory("codex-history-reader-stats");
-        try {
-            writeSessionFile(
-                    sessionsDir.resolve("2026/03/10"),
-                    "session-7",
-                    line("2026-03-10T10:00:00Z", "turn_context", "{\"model\":\"gpt-5.1\"}"),
-                    line("2026-03-10T10:01:00Z", "event_msg", "{\"type\":\"user_message\",\"message\":\"Summarize test results\"}"),
-                    line("2026-03-10T10:02:00Z", "event_msg", "{\"type\":\"token_count\",\"info\":{\"total_token_usage\":{\"input_tokens\":1000,\"output_tokens\":250,\"cached_input_tokens\":50}}}")
-            );
-
-            CodexHistoryReader reader = createReaderWithLocalConfigAuthorization(sessionsDir, false);
-            ProjectStatistics stats = reader.getProjectStatistics("all", 0);
-
-            assertEquals(1, stats.totalSessions);
-            assertEquals(1250, stats.totalUsage.inputTokens + stats.totalUsage.outputTokens);
-            assertFalse(stats.sessions.isEmpty());
         } finally {
             deleteDirectory(sessionsDir);
         }

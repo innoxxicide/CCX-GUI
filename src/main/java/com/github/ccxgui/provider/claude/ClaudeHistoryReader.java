@@ -53,14 +53,12 @@ public class ClaudeHistoryReader {
     // Sub-services
     private final ClaudeHistoryParser parser;
     private final ClaudeHistoryIndexService indexService;
-    private final ClaudeUsageAggregator usageAggregator;
     private final ClaudeHistorySearchService searchService;
 
     public ClaudeHistoryReader() {
         Path projectsDir = projectsDir();
         this.parser = new ClaudeHistoryParser();
         this.indexService = new ClaudeHistoryIndexService(projectsDir, parser);
-        this.usageAggregator = new ClaudeUsageAggregator(projectsDir, parser);
         this.searchService = new ClaudeHistorySearchService(projectsDir, this, indexService);
     }
 
@@ -93,7 +91,9 @@ public class ClaudeHistoryReader {
 
         public ProjectInfo(String path) {
             this.path = path;
-            this.name = path != null ? Paths.get(path).getFileName().toString() : "Root";
+            // getFileName() returns null for filesystem roots ("/", "C:\", UNC share roots)
+            Path fileName = path != null ? Paths.get(path).getFileName() : null;
+            this.name = fileName != null ? fileName.toString() : "";
             if (this.name.isEmpty()) {
                 this.name = "Root";
             }
@@ -130,76 +130,6 @@ public class ClaudeHistoryReader {
             public int cache_creation_input_tokens;
             public int cache_read_input_tokens;
         }
-    }
-
-    /**
-     * Token usage data structure.
-     */
-    public static class UsageData {
-        public long inputTokens;
-        public long outputTokens;
-        public long cacheWriteTokens;
-        public long cacheReadTokens;
-        public long totalTokens;
-    }
-
-    public static class SessionSummary {
-        public String sessionId;
-        public long timestamp;
-        public String model;
-        public UsageData usage;
-        public double cost;
-        public String summary;
-    }
-
-    public static class DailyUsage {
-        public String date;
-        public int sessions;
-        public UsageData usage;
-        public double cost;
-        public List<String> modelsUsed;
-    }
-
-    public static class ModelUsage {
-        public String model;
-        public double totalCost;
-        public long totalTokens;
-        public long inputTokens;
-        public long outputTokens;
-        public long cacheCreationTokens;
-        public long cacheReadTokens;
-        public int sessionCount;
-    }
-
-    public static class WeeklyComparison {
-        public WeekData currentWeek;
-        public WeekData lastWeek;
-        public Trends trends;
-
-        public static class WeekData {
-            public int sessions;
-            public double cost;
-            public long tokens;
-        }
-
-        public static class Trends {
-            public double sessions;
-            public double cost;
-            public double tokens;
-        }
-    }
-
-    public static class ProjectStatistics {
-        public String projectPath;
-        public String projectName;
-        public int totalSessions;
-        public UsageData totalUsage;
-        public double estimatedCost;
-        public List<SessionSummary> sessions;
-        public List<DailyUsage> dailyUsage;
-        public WeeklyComparison weeklyComparison;
-        public List<ModelUsage> byModel;
-        public long lastUpdated;
     }
 
     /**
@@ -340,10 +270,6 @@ public class ClaudeHistoryReader {
 
     public String getAllDataAsJson() {
         return searchService.getAllDataAsJson();
-    }
-
-    public ProjectStatistics getProjectStatistics(String projectPath, long cutoffTime) {
-        return usageAggregator.getProjectStatistics(projectPath, cutoffTime);
     }
 
     public String handleApiRequest(String endpoint, Map<String, String> params) {

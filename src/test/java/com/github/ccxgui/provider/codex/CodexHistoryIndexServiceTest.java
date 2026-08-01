@@ -138,6 +138,22 @@ public class CodexHistoryIndexServiceTest {
         assertNotNull(byId.get("thread_new0987654321"));
     }
 
+    @Test
+    public void incrementalScan_skipsSubagentSession() throws IOException {
+        Path sessionsDir = tmp.newFolder("codex-index-subagent").toPath();
+        Path nested = sessionsDir.resolve("2026/07/29");
+        Files.createDirectories(nested);
+
+        writeSessionFile(nested, "rollout-main.jsonl", "thread_main1234567890");
+        writeSubagentSessionFile(nested, "rollout-subagent.jsonl", "thread_subagent123456");
+
+        SessionIndexManager.ProjectIndex existing = new SessionIndexManager.ProjectIndex();
+        CodexHistoryIndexService.ScanResult result = newService(sessionsDir).incrementalScanLite(existing);
+
+        assertEquals(1, result.sessions().size());
+        assertEquals("thread_main1234567890", result.sessions().get(0).sessionId);
+    }
+
     // --- helpers -----------------------------------------------------------
 
     private CodexHistoryIndexService newService(Path sessionsDir) {
@@ -154,6 +170,21 @@ public class CodexHistoryIndexServiceTest {
                 .append("\"payload\":{\"type\":\"user_message\",\"message\":\"Fresh title for ")
                 .append(sessionMetaId).append("\"}}\n");
         sb.append("{\"timestamp\":\"2026-04-21T10:00:10Z\",\"type\":\"response_item\",")
+                .append("\"payload\":{\"type\":\"message\"}}\n");
+        Files.writeString(file, sb.toString());
+        return file;
+    }
+
+    private Path writeSubagentSessionFile(Path dir, String fileName, String sessionMetaId) throws IOException {
+        Path file = dir.resolve(fileName);
+        StringBuilder sb = new StringBuilder();
+        sb.append("{\"timestamp\":\"2026-07-29T10:00:00Z\",\"type\":\"session_meta\",")
+                .append("\"payload\":{\"id\":\"").append(sessionMetaId)
+                .append("\",\"cwd\":\"/workspace/demo\",\"source\":{\"subagent\":{\"thread_spawn\":{")
+                .append("\"parent_thread_id\":\"thread_main1234567890\",\"depth\":1}}}}}\n");
+        sb.append("{\"timestamp\":\"2026-07-29T10:00:05Z\",\"type\":\"event_msg\",")
+                .append("\"payload\":{\"type\":\"user_message\",\"message\":\"Inherited parent context\"}}\n");
+        sb.append("{\"timestamp\":\"2026-07-29T10:00:10Z\",\"type\":\"response_item\",")
                 .append("\"payload\":{\"type\":\"message\"}}\n");
         Files.writeString(file, sb.toString());
         return file;

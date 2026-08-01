@@ -14,7 +14,7 @@ const translations: Record<string, string> = {
   'settings.codexProvider.description': 'Manage Codex providers',
   'settings.codexProvider.emptyProvider': 'No Codex providers configured',
   'settings.codexProvider.dialog.cliLoginProviderName': '使用本地配置信息',
-  'settings.codexProvider.dialog.cliLoginProviderDescription': '显式授权读取：~/.codex/config.toml 和 auth.json',
+  'settings.codexProvider.dialog.cliLoginProviderDescription': '让插件读取你已有的 ~/.codex/config.toml 和 auth.json 来发起 Codex 请求。\n\n• 适合喜欢手动管理配置的高级用户。\n• 适合使用第三方 cc-switch 管理的用户。',
   'settings.codexProvider.dialog.cliLoginAuthorizeTitle': 'Authorize Local Codex Config Access',
   'settings.codexProvider.dialog.cliLoginAuthorizeMessage': 'Read local Codex config files.',
   'settings.codexProvider.dialog.cliLoginAuthorizeDetail': 'Do not overwrite config.toml or auth.json.',
@@ -27,11 +27,19 @@ const translations: Record<string, string> = {
   'settings.provider.enable': 'Enable',
   'settings.provider.inUse': 'In Use',
   'settings.provider.dragToSort': 'Drag to sort',
+  'settings.provider.import': 'Import',
+  'settings.provider.importFromCcSwitchUpdate': 'Import/Update from cc-switch',
+  'settings.provider.importFromCcSwitchFile': 'Select cc-switch.db File',
+  'settings.provider.readingCcSwitch': 'Reading cc-switch configuration...',
   'common.add': 'Add',
   'common.cancel': 'Cancel',
   'common.edit': 'Edit',
   'common.delete': 'Delete',
 };
+
+vi.mock('../../../utils/bridge', () => ({
+  sendToJava: vi.fn(),
+}));
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -57,9 +65,38 @@ describe('CodexProviderSection', () => {
   const onDeleteCodexProvider = vi.fn();
   const onSwitchCodexProvider = vi.fn();
   const onRevokeCodexLocalConfigAuthorization = vi.fn();
+  const addToast = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('renders the import dropdown and reveals both cc-switch import options', () => {
+    render(
+      <CodexProviderSection
+        codexProviders={[]}
+        codexLoading={false}
+        onAddCodexProvider={onAddCodexProvider}
+        onEditCodexProvider={onEditCodexProvider}
+        onDeleteCodexProvider={onDeleteCodexProvider}
+        onSwitchCodexProvider={onSwitchCodexProvider}
+        onRevokeCodexLocalConfigAuthorization={onRevokeCodexLocalConfigAuthorization}
+        addToast={addToast}
+      />
+    );
+
+    // Import button is present next to Add
+    const importButton = screen.getByRole('button', { name: 'Import' });
+    expect(importButton).toBeTruthy();
+
+    // Options are hidden until the menu opens
+    expect(screen.queryByText('Import/Update from cc-switch')).toBeNull();
+
+    fireEvent.click(importButton);
+
+    // Both import options appear
+    expect(screen.getByText('Import/Update from cc-switch')).toBeTruthy();
+    expect(screen.getByText('Select cc-switch.db File')).toBeTruthy();
   });
 
   it('renders translated CLI login copy and confirms before enabling', () => {
@@ -78,11 +115,21 @@ describe('CodexProviderSection', () => {
         onDeleteCodexProvider={onDeleteCodexProvider}
         onSwitchCodexProvider={onSwitchCodexProvider}
         onRevokeCodexLocalConfigAuthorization={onRevokeCodexLocalConfigAuthorization}
+        addToast={addToast}
       />
     );
 
     expect(screen.getByText('使用本地配置信息')).toBeTruthy();
-    expect(screen.getByText('显式授权读取：~/.codex/config.toml 和 auth.json')).toBeTruthy();
+
+    // The detailed description now lives behind the info icon, not on the card
+    expect(screen.queryByText(/cc-switch/)).toBeNull();
+
+    // Open the help dialog via the info icon, then the description (incl. cc-switch) appears
+    fireEvent.click(screen.getByRole('button', { name: 'settings.provider.whatIsThis' }));
+    expect(screen.getByText(/cc-switch/)).toBeTruthy();
+
+    // Dismiss the help dialog
+    fireEvent.click(screen.getByRole('button', { name: 'common.gotIt' }));
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Authorize and Enable' })[0]);
 
@@ -112,6 +159,7 @@ describe('CodexProviderSection', () => {
         onDeleteCodexProvider={onDeleteCodexProvider}
         onSwitchCodexProvider={onSwitchCodexProvider}
         onRevokeCodexLocalConfigAuthorization={onRevokeCodexLocalConfigAuthorization}
+        addToast={addToast}
       />
     );
 
@@ -140,6 +188,7 @@ describe('CodexProviderSection', () => {
         onDeleteCodexProvider={onDeleteCodexProvider}
         onSwitchCodexProvider={onSwitchCodexProvider}
         onRevokeCodexLocalConfigAuthorization={onRevokeCodexLocalConfigAuthorization}
+        addToast={addToast}
       />
     );
 
@@ -174,6 +223,7 @@ describe('CodexProviderSection', () => {
         onDeleteCodexProvider={onDeleteCodexProvider}
         onSwitchCodexProvider={onSwitchCodexProvider}
         onRevokeCodexLocalConfigAuthorization={onRevokeCodexLocalConfigAuthorization}
+        addToast={addToast}
       />
     );
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ToolInput, ToolResultBlock } from '../../types';
 import { useIsToolDenied } from '../../hooks/useIsToolDenied';
@@ -16,9 +16,10 @@ interface BashToolBlockProps {
   toolId?: string;
 }
 
-const BashToolBlock = ({ input, result, toolId }: BashToolBlockProps) => {
+const BashToolBlock = memo(function BashToolBlock({ input, result, toolId }: BashToolBlockProps) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
+  const isDenied = useIsToolDenied(toolId);
 
   if (!input) {
     return null;
@@ -26,8 +27,7 @@ const BashToolBlock = ({ input, result, toolId }: BashToolBlockProps) => {
 
   const command = typeof input.command === 'string' ? input.command : '';
   const description = typeof input.description === 'string' ? input.description : '';
-
-  const isDenied = useIsToolDenied(toolId);
+  if (!command.trim() && !description.trim()) return null;
 
   // Determine tool call status based on result
   // If denied, treat as completed (show error state)
@@ -83,6 +83,6 @@ const BashToolBlock = ({ input, result, toolId }: BashToolBlockProps) => {
       )}
     </div>
   );
-};
+});
 
 export default BashToolBlock;

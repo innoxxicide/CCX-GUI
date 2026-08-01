@@ -3,8 +3,13 @@ package com.github.ccxgui.session;
 import com.github.ccxgui.provider.common.SDKResult;
 import com.github.ccxgui.session.ClaudeSession.Message;
 import com.github.ccxgui.permission.PermissionRequest;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import org.junit.Test;
 
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -211,6 +216,62 @@ public class CodexMessageHandlerTest {
 
         assertEquals(0, state.getMessages().size());
         assertEquals(0, callback.messageUpdateCount);
+    }
+
+    @Test
+    public void userMessageWithOnlySkillMetadataIsFiltered() {
+        SessionState state = new SessionState();
+
+        CallbackHandler callbackHandler = new CallbackHandler();
+        RecordingCallback callback = new RecordingCallback();
+        callbackHandler.setCallback(callback);
+
+        CodexMessageHandler handler = new CodexMessageHandler(null, state, callbackHandler);
+        handler.onMessage("user", "{\"message\":{\"role\":\"user\",\"content\":[{\"type\":\"text\","
+                + "\"text\":\"<skill>\\n<name>autopilot</name>\\n<path>/tmp/SKILL.md</path>\\n</skill>\"}]}}");
+
+        assertEquals(0, state.getMessages().size());
+        assertEquals(0, callback.messageUpdateCount);
+    }
+
+    @Test
+    public void userMessageStripsCodexImagePlaceholderFromContentAndRawBlocks() throws Exception {
+        Path imagePath = Files.createTempFile("codex-live-image", ".png");
+        Files.write(imagePath, "png-bytes".getBytes(StandardCharsets.UTF_8));
+        SessionState state = new SessionState();
+
+        try {
+            CallbackHandler callbackHandler = new CallbackHandler();
+            RecordingCallback callback = new RecordingCallback();
+            callbackHandler.setCallback(callback);
+
+            CodexMessageHandler handler = new CodexMessageHandler(null, state, callbackHandler);
+            JsonObject textBlock = new JsonObject();
+            textBlock.addProperty("type", "text");
+            textBlock.addProperty("text", "<image name=[Image #1] path=\"" + imagePath
+                    + "\">\n</image>\n\n测试通讯");
+            JsonArray inputBlocks = new JsonArray();
+            inputBlocks.add(textBlock);
+            JsonObject inputMessage = new JsonObject();
+            inputMessage.addProperty("role", "user");
+            inputMessage.add("content", inputBlocks);
+            JsonObject payload = new JsonObject();
+            payload.add("message", inputMessage);
+            handler.onMessage("user", payload.toString());
+
+            assertEquals(1, state.getMessages().size());
+            Message message = state.getMessages().get(0);
+            assertEquals("测试通讯", message.content);
+            JsonArray contentBlocks = message.raw
+                    .getAsJsonObject("message")
+                    .getAsJsonArray("content");
+            assertEquals(2, contentBlocks.size());
+            assertEquals("image", contentBlocks.get(0).getAsJsonObject().get("type").getAsString());
+            assertTrue(contentBlocks.get(0).getAsJsonObject().get("src").getAsString().startsWith("data:image/png;base64,"));
+            assertEquals("测试通讯", contentBlocks.get(1).getAsJsonObject().get("text").getAsString());
+        } finally {
+            Files.deleteIfExists(imagePath);
+        }
     }
 
     @Test

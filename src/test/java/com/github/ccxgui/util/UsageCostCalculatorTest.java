@@ -57,7 +57,7 @@ public class UsageCostCalculatorTest {
         double solCost = UsageCostCalculator.calculateTurnCostUsd("codex", usage, "gpt-5.6-sol");
         assertEquals(0.032195, solCost, 0.0000001);
 
-        // Bare "gpt-5.6" is aliased to gpt-5.6-sol, matching CodexUsageAggregator.
+        // Bare "gpt-5.6" is aliased to gpt-5.6-sol, matching CodexPricingTable.
         double aliasCost = UsageCostCalculator.calculateTurnCostUsd("codex", usage, "gpt-5.6");
         assertEquals(0.032195, aliasCost, 0.0000001);
     }

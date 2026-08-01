@@ -28,6 +28,8 @@ describe('CustomModelDialog', () => {
     fireEvent.change(screen.getByLabelText('settings.codexProvider.dialog.modelLabelPlaceholder'), {
       target: { value: 'Custom Model' },
     });
+    // Pricing is collapsed by default — expand it to enter rates.
+    fireEvent.click(screen.getByRole('button', { name: /settings\.pluginModels\.pricing\.title/ }));
     fireEvent.change(screen.getByLabelText('settings.pluginModels.pricing.inputLabel'), {
       target: { value: '0.2' },
     });
@@ -70,6 +72,8 @@ describe('CustomModelDialog', () => {
     fireEvent.change(screen.getByLabelText('settings.codexProvider.dialog.modelIdPlaceholder'), {
       target: { value: 'vendor/custom-model' },
     });
+    // Pricing is collapsed by default — expand it to enter the invalid value.
+    fireEvent.click(screen.getByRole('button', { name: /settings\.pluginModels\.pricing\.title/ }));
     fireEvent.change(screen.getByLabelText('settings.pluginModels.pricing.inputLabel'), {
       target: { value: '-1' },
     });
@@ -78,6 +82,29 @@ describe('CustomModelDialog', () => {
 
     expect(onModelsChange).not.toHaveBeenCalled();
     expect(screen.getByRole('alert').textContent).toBe('Pricing must be a non-negative number');
+  });
+
+  it('keeps the optional pricing section collapsed by default and expands on click', () => {
+    render(
+      <CustomModelDialog
+        isOpen
+        models={[]}
+        onModelsChange={vi.fn()}
+        onClose={vi.fn()}
+        initialAddMode
+      />,
+    );
+
+    const toggle = screen.getByRole('button', { name: /settings\.pluginModels\.pricing\.title/ });
+    // Pricing inputs are hidden until the section is expanded.
+    expect(screen.queryByLabelText('settings.pluginModels.pricing.inputLabel')).toBeNull();
+
+    fireEvent.click(toggle);
+    expect(screen.getByLabelText('settings.pluginModels.pricing.inputLabel')).toBeTruthy();
+
+    // Collapsing again hides the inputs.
+    fireEvent.click(toggle);
+    expect(screen.queryByLabelText('settings.pluginModels.pricing.inputLabel')).toBeNull();
   });
 
   it('edits pricing only for Claude models configured by the active provider', () => {

@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
 
 /**
  * Single source of truth for Codex built-in pricing, model normalization (snapshot suffix,
- * aliases, prefixes), and user-configured pricing resolution. Both {@code CodexUsageAggregator}
+ * aliases, prefixes), and user-configured pricing resolution. Usage-cost consumers
  * (Usage Statistics) and {@code UsageCostCalculator} (per-turn footer) resolve pricing through
  * here so the two can never disagree.
  */

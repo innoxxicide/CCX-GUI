@@ -257,6 +257,11 @@ export const ConfigSelect = ({
     if (!isOpen) return;
 
     const handleClickOutside = (e: MouseEvent) => {
+      // 当确认对话框打开时跳过外部点击处理：点击确认/取消按钮会先触发 mousedown，
+      // 若此时关闭 ConfigSelect 会让确认框随之卸载，导致 onConfirm 永不执行（issue #1522）
+      if (document.querySelector('.confirm-dialog-overlay')) {
+        return;
+      }
       if (
         dropdownRef.current &&
         !dropdownRef.current.contains(e.target as Node) &&

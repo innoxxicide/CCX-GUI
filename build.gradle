@@ -42,7 +42,7 @@ tasks.named('checkstyleTest') {
 }
 
 group = 'com.github.ccx-gui'
-version = '0.0.4'
+version = '0.0.5'
 
 java {
     sourceCompatibility = JavaVersion.VERSION_17
@@ -90,6 +90,7 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.10.1'
     implementation 'javazoom:jlayer:1.0.1'
     implementation 'org.snakeyaml:snakeyaml-engine:3.0.1'
+    implementation 'com.twelvemonkeys.imageio:imageio-webp:3.12.0'
     testImplementation 'junit:junit:4.13.2'
 
     intellijPlatform {
@@ -141,10 +142,10 @@ intellijPlatform {
         externalPrefixes = ['com.jetbrains.python']
 
         ides {
-            // 2026.2 EAP build 262.6228.19 – the exact build that surfaced
+            // 2026.2.1 EAP build 262.9437.22 – the exact build that surfaced
             // the CefResourceHandler / PluginManagerCore issues during
             // marketplace verification.
-            ide('IU', '262.6228.19')
+            ide('IU', '262.9437.22')
         }
     }
 }

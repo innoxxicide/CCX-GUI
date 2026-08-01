@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CLAUDE_MODELS } from '../../components/ChatInputBox/types';
+import { DEFAULT_CLAUDE_MODEL_ID } from '../../components/ChatInputBox/types';
 import type { PermissionMode } from '../../components/ChatInputBox/types';
 
 /**
@@ -8,7 +8,7 @@ import type { PermissionMode } from '../../components/ChatInputBox/types';
  * (useModelProviderState) since they need to read both Claude and Codex state.
  */
 export function useClaudeProvider() {
-  const [selectedClaudeModel, setSelectedClaudeModel] = useState(CLAUDE_MODELS[0].id);
+  const [selectedClaudeModel, setSelectedClaudeModel] = useState(DEFAULT_CLAUDE_MODEL_ID);
   const [claudePermissionMode, setClaudePermissionMode] = useState<PermissionMode>('default');
   const [longContextEnabled, setLongContextEnabled] = useState(true);
   const [claudeSettingsAlwaysThinkingEnabled, setClaudeSettingsAlwaysThinkingEnabled] = useState(true);

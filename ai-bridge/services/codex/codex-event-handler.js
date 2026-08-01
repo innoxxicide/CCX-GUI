@@ -105,6 +105,93 @@ function handleFunctionCallOutputPayload(payload, state) {
   return true;
 }
 
+function getResponseItemCallId(payload) {
+  const id = payload?.call_id ?? payload?.id;
+  return typeof id === 'string' && id.trim() ? id : '';
+}
+
+function createPatchBatchFromPayload(payload, config, fallbackCallId = '') {
+  const patchText = extractPatchFromResponseItemPayload(payload);
+  if (!patchText) return null;
+
+  const callId = getResponseItemCallId(payload) || fallbackCallId;
+  if (!callId) return null;
+
+  const operations = parseApplyPatchToOperations(patchText)
+    .map((op) => ({ ...op, filePath: resolveFilePath(op.filePath, config.cwd) }))
+    .filter((op) => op.filePath && (op.oldString !== '' || op.newString !== ''));
+  return operations.length > 0 ? { callId, operations } : null;
+}
+
+function emitSyntheticPatchToolUses(state, batch) {
+  if (!batch || !Array.isArray(batch.operations)) return 0;
+  let emittedCount = 0;
+  batch.operations.forEach((op, index) => {
+    const toolUseId = `codex_patch_${batch.callId}_${index}`;
+    const toolName = op.toolName === 'write' ? 'write' : 'edit';
+    if (state.emittedToolUseIds.has(toolUseId)) return;
+    state.emitMessage(toolUseMsg(toolUseId, toolName, {
+      file_path: op.filePath,
+      old_string: op.oldString,
+      new_string: op.newString,
+      start_line: op.startLine,
+      end_line: op.endLine,
+      replace_all: false,
+      source: 'codex_session_patch'
+    }));
+    state.emittedToolUseIds.add(toolUseId);
+    emittedCount += 1;
+  });
+  return emittedCount;
+}
+
+function emitSyntheticPatchToolResults(state, batch, isError) {
+  if (!batch || !Array.isArray(batch.operations)) return 0;
+  let emittedCount = 0;
+  batch.operations.forEach((_, index) => {
+    const toolUseId = `codex_patch_${batch.callId}_${index}`;
+    if (!state.emittedToolUseIds.has(toolUseId) || state.emittedToolResultIds.has(toolUseId)) return;
+    state.emitMessage(toolResultMsg(toolUseId, isError, isError ? 'Patch apply failed' : 'Patch applied'));
+    state.emittedToolResultIds.add(toolUseId);
+    emittedCount += 1;
+  });
+  return emittedCount;
+}
+
+function handleCustomToolCallPayload(payload, state, config) {
+  if (!payload || payload.type !== 'custom_tool_call') return false;
+
+  const batch = createPatchBatchFromPayload(payload, config);
+  if (!batch) return false;
+  if (state.processedPatchCallIds.has(batch.callId)) return true;
+
+  state.processedPatchCallIds.add(batch.callId);
+  state.pendingCustomPatchBatches.set(batch.callId, batch);
+  emitSyntheticPatchToolUses(state, batch);
+  return true;
+}
+
+function handleCustomToolCallOutputPayload(payload, state) {
+  if (!payload || payload.type !== 'custom_tool_call_output') return false;
+
+  const callId = getResponseItemCallId(payload);
+  const batch = callId ? state.pendingCustomPatchBatches.get(callId) : null;
+  if (!batch) return false;
+
+  const output = typeof payload.output === 'string' ? payload.output : JSON.stringify(payload.output ?? '');
+  const isError = payload.status === 'error' || /^(?:error:|failed to parse|permission denied|command denied)/i.test(output);
+  emitSyntheticPatchToolResults(state, batch, isError);
+  state.pendingCustomPatchBatches.delete(callId);
+  return true;
+}
+
+function flushPendingCustomPatchBatches(state, isError = false) {
+  for (const batch of state.pendingCustomPatchBatches.values()) {
+    emitSyntheticPatchToolResults(state, batch, isError);
+  }
+  state.pendingCustomPatchBatches.clear();
+}
+
 
 /** Creates the initial mutable state bag consumed by processCodexEventStream. */
 export function createInitialEventState(emitMessage) {
@@ -126,8 +213,11 @@ export function createInitialEventState(emitMessage) {
     sessionTurnBoundaryReady: false,
     sessionTurnBoundaryWarningLogged: false,
     processedPatchCallIds: new Set(),
+    pendingCustomPatchBatches: new Map(),
     processedSessionFunctionCallIds: new Set(),
     processedSessionFunctionOutputIds: new Set(),
+    processedSessionCustomToolCallIds: new Set(),
+    processedSessionCustomToolOutputIds: new Set(),
     reasoningTextCache: new Map(),
     assistantTextCache: new Map(),
     reasoningObserved: false,
@@ -315,15 +405,10 @@ async function collectPatchOperationsFromSession(state, config) {
     const callId = String(payload.call_id ?? payload.id ?? `line_${i}`);
     if (state.processedPatchCallIds.has(callId)) continue;
 
-    const patchText = extractPatchFromResponseItemPayload(payload);
-    if (!patchText) continue;
-
-    const operations = parseApplyPatchToOperations(patchText)
-      .map((op) => ({ ...op, filePath: resolveFilePath(op.filePath, config.cwd) }))
-      .filter((op) => op.filePath && (op.oldString !== '' || op.newString !== ''));
+    const batch = createPatchBatchFromPayload(payload, config, callId);
+    if (!batch) continue;
     state.processedPatchCallIds.add(callId);
-    if (operations.length === 0) continue;
-    batches.push({ callId, operations });
+    batches.push(batch);
   }
   state.sessionLineCursor = lines.length;
   return batches;
@@ -378,6 +463,26 @@ async function replayMissingFunctionCallsFromSession(state, config) {
       if (state.processedSessionFunctionOutputIds.has(callId)) continue;
       state.processedSessionFunctionOutputIds.add(callId);
       if (handleFunctionCallOutputPayload(payload, state)) {
+        toolResults += 1;
+      }
+      continue;
+    }
+
+    if (payloadType === 'custom_tool_call') {
+      const callId = getResponseItemCallId(payload) || `line_${i}`;
+      if (state.processedSessionCustomToolCallIds.has(callId)) continue;
+      state.processedSessionCustomToolCallIds.add(callId);
+      if (handleCustomToolCallPayload(payload, state, config)) {
+        toolUses += 1;
+      }
+      continue;
+    }
+
+    if (payloadType === 'custom_tool_call_output') {
+      const callId = getResponseItemCallId(payload) || `line_${i}`;
+      if (state.processedSessionCustomToolOutputIds.has(callId)) continue;
+      state.processedSessionCustomToolOutputIds.add(callId);
+      if (handleCustomToolCallOutputPayload(payload, state)) {
         toolResults += 1;
       }
     }
@@ -477,21 +582,9 @@ function emitSyntheticPatchOperations(state, patchBatches, isError, deniedCallId
   let emittedCount = 0;
   for (const batch of patchBatches) {
     if (!batch || !Array.isArray(batch.operations)) continue;
+    emitSyntheticPatchToolUses(state, batch);
     batch.operations.forEach((op, index) => {
       const toolUseId = `codex_patch_${batch.callId}_${index}`;
-      const toolName = op.toolName === 'write' ? 'write' : 'edit';
-      if (!state.emittedToolUseIds.has(toolUseId)) {
-        state.emitMessage(toolUseMsg(toolUseId, toolName, {
-          file_path: op.filePath,
-          old_string: op.oldString,
-          new_string: op.newString,
-          start_line: op.startLine,
-          end_line: op.endLine,
-          replace_all: false,
-          source: 'codex_session_patch'
-        }));
-        state.emittedToolUseIds.add(toolUseId);
-      }
       const deniedByUser = deniedCallIds instanceof Set && deniedCallIds.has(batch.callId);
       const rollbackResult = rollbackByCallId instanceof Map ? rollbackByCallId.get(batch.callId) : null;
       const rollbackSucceeded = !deniedByUser || rollbackResult?.success !== false;
@@ -501,8 +594,11 @@ function emitSyntheticPatchOperations(state, patchBatches, isError, deniedCallId
       else if (deniedByUser) {
         resultText = rollbackSucceeded ? 'Patch denied by user and rolled back' : 'Patch denied by user but rollback failed';
       }
-      state.emitMessage(toolResultMsg(toolUseId, opIsError, resultText));
-      emittedCount += 1;
+      if (!state.emittedToolResultIds.has(toolUseId)) {
+        state.emitMessage(toolResultMsg(toolUseId, opIsError, resultText));
+        state.emittedToolResultIds.add(toolUseId);
+        emittedCount += 1;
+      }
     });
   }
   return emittedCount;
@@ -819,6 +915,7 @@ export async function processCodexEventStream(events, state, config) {
         if (replayed.toolUses > 0 || replayed.toolResults > 0) {
           console.log('[DEBUG] Replayed session function calls:', JSON.stringify(replayed));
         }
+        flushPendingCustomPatchBatches(state);
         if (event.usage) {
           console.log('[DEBUG] Token usage:', event.usage);
           const claudeUsage = {
@@ -893,6 +990,18 @@ export async function processCodexEventStream(events, state, config) {
           if (handleFunctionCallOutputPayload(payload, state)) {
             if (payloadCallId) {
               state.processedSessionFunctionOutputIds.add(payloadCallId);
+            }
+            break;
+          }
+          if (handleCustomToolCallPayload(payload, state, config)) {
+            if (payloadCallId) {
+              state.processedSessionCustomToolCallIds.add(payloadCallId);
+            }
+            break;
+          }
+          if (handleCustomToolCallOutputPayload(payload, state)) {
+            if (payloadCallId) {
+              state.processedSessionCustomToolOutputIds.add(payloadCallId);
             }
             break;
           }

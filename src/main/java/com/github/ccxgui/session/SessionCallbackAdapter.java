@@ -38,6 +38,8 @@ public class SessionCallbackAdapter implements ClaudeSession.SessionCallback {
     private final StreamDeltaThrottler thinkingDeltaThrottler;
     private final Alarm streamEndFallbackAlarm;
     private volatile boolean active = true;
+    /** Lock making deactivate() atomic with onMessageUpdate()'s active-check-then-enqueue. */
+    private final Object lifecycleLock = new Object();
     /** Guards against duplicate onStreamEnd delivery from dual-path dispatch. */
     private volatile boolean streamEndSignalSent = false;
 
@@ -73,7 +75,9 @@ public class SessionCallbackAdapter implements ClaudeSession.SessionCallback {
     }
 
     public void deactivate() {
-        active = false;
+        synchronized (lifecycleLock) {
+            active = false;
+        }
         contentDeltaThrottler.dispose();
         thinkingDeltaThrottler.dispose();
         streamEndFallbackAlarm.cancelAllRequests();
@@ -85,10 +89,14 @@ public class SessionCallbackAdapter implements ClaudeSession.SessionCallback {
 
     @Override
     public void onMessageUpdate(List<ClaudeSession.Message> messages) {
-        if (isInactive()) {
-            return;
+        // Atomic vs deactivate(): a stale-session reload landing mid-transition
+        // must not enqueue with a post-barrier sequence and resurrect the cleared list.
+        synchronized (lifecycleLock) {
+            if (!active) {
+                return;
+            }
+            streamCoalescer.enqueue(messages);
         }
-        streamCoalescer.enqueue(messages);
     }
 
     @Override
@@ -356,12 +364,34 @@ public class SessionCallbackAdapter implements ClaudeSession.SessionCallback {
             if (isInactive()) {
                 return;
             }
-            double percentage = maxTokens > 0 ? (usedTokens * 100.0 / maxTokens) : 0.0;
+            int safeUsedTokens = normalizeUsageValue(usedTokens);
+            int safeMaxTokens = normalizeUsageValue(maxTokens);
+            double percentage = calculateUsagePercentage(safeUsedTokens, safeMaxTokens);
             String json = String.format("{\"percentage\":%.2f,\"usedTokens\":%d,\"maxTokens\":%d}",
-                    percentage, usedTokens, maxTokens);
+                    percentage, safeUsedTokens, safeMaxTokens);
             jsTarget.callJavaScript("onUsageUpdate", JsUtils.escapeJs(json));
-            LOG.debug("Usage update sent to frontend: " + usedTokens + "/" + maxTokens);
+            LOG.debug("Usage update sent to frontend: " + safeUsedTokens + "/" + safeMaxTokens);
         });
+    }
+
+    /**
+     * Keep usage counters non-negative before they cross the JavaScript bridge.
+     * Malformed or incomplete SDK usage payloads must not produce negative values
+     * in the context tooltip.
+     */
+    static int normalizeUsageValue(int value) {
+        return Math.max(0, value);
+    }
+
+    /**
+     * Calculate a bounded usage percentage for the context indicator.
+     */
+    static double calculateUsagePercentage(int usedTokens, int maxTokens) {
+        if (maxTokens <= 0) {
+            return 0.0;
+        }
+        double percentage = usedTokens * 100.0 / maxTokens;
+        return Math.max(0.0, Math.min(100.0, percentage));
     }
 
     @Override
@@ -383,6 +413,19 @@ public class SessionCallbackAdapter implements ClaudeSession.SessionCallback {
             return;
         }
         jsTarget.callJavaScript("patchMessageUuid", JsUtils.escapeJs(content), JsUtils.escapeJs(uuid));
+    }
+
+    @Override
+    public void onTaskEvent(String eventJson) {
+        if (isInactive() || eventJson == null || eventJson.trim().isEmpty()) {
+            return;
+        }
+        ApplicationManager.getApplication().invokeLater(() -> {
+            if (isInactive()) {
+                return;
+            }
+            jsTarget.callJavaScript("onTaskEvent", JsUtils.escapeJs(eventJson));
+        });
     }
 
     /**

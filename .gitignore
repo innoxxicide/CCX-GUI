@@ -74,3 +74,9 @@ logs/*.log
 .workflow
 .worktrees/
 .omx/
+
+.codex
+.opencode
+
+# Playwright MCP local test artifacts
+.playwright-mcp/

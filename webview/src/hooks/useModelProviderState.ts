@@ -50,7 +50,7 @@ export function useModelProviderState({ addToast, t }: UseModelProviderStateOpti
   // ── Provider-specific sub-hooks ──
   const claude = useClaudeProvider();
   const codex = useCodexProvider();
-  const { isSdkInstalled, ...usage } = useUsageTracking();
+  const { isSdkInstalled, sdkStatus, ...usage } = useUsageTracking();
   const claudeLimits = useClaudeLimits();
   const settings = useProviderSettings({ addToast, t });
 
@@ -94,6 +94,11 @@ export function useModelProviderState({ addToast, t }: UseModelProviderStateOpti
     () => isSdkInstalled(currentProvider),
     [isSdkInstalled, currentProvider],
   );
+  // Whether the installed Claude SDK meets the minimum version required for the
+  // selected model's tier (Fable needs >= 0.3.182). `undefined` means the backend
+  // hasn't reported it (SDK not installed, or an old plugin version without the
+  // field) — callers must only warn on an explicit `false` to avoid false positives.
+  const claudeSdkMeetsMinimum = sdkStatus?.['claude-sdk']?.meetsMinimumVersion;
 
   // ── Cross-provider handlers ──
   const handleModeSelect = useCallback((mode: PermissionMode) => {
@@ -195,10 +200,12 @@ export function useModelProviderState({ addToast, t }: UseModelProviderStateOpti
     ...usage,
     ...claudeLimits,
     ...settings,
+    sdkStatus,
     currentProvider, setCurrentProvider,
     permissionMode, setPermissionMode,
     selectedModel,
     currentSdkInstalled,
+    claudeSdkMeetsMinimum,
     currentProviderRef,
     handleModeSelect,
     handleModelSelect,

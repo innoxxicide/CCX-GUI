@@ -46,6 +46,116 @@ function makeConfig() {
   };
 }
 
+const CUSTOM_EXEC_PATCH = [
+  '*** Begin Patch',
+  '*** Update File: hbapp/src/example.js',
+  '@@ -1 +1 @@',
+  '-const size = 30;',
+  '+const size = 32;',
+  '*** End Patch',
+].join('\n');
+
+const CUSTOM_EXEC_SOURCE = `const patch = ${JSON.stringify(CUSTOM_EXEC_PATCH)}; text(await tools.apply_patch(patch));`;
+
+test('custom_tool_call exec apply_patch emits edit and result messages without file_change', async () => {
+  const emittedMessages = [];
+  const state = createInitialEventState((message) => emittedMessages.push(message));
+
+  await captureStdout(async () => {
+    await processCodexEventStream(
+      eventsFrom([
+        {
+          type: 'response_item',
+          payload: { type: 'custom_tool_call', call_id: 'patch-1', name: 'exec', input: CUSTOM_EXEC_SOURCE },
+        },
+        {
+          type: 'response_item',
+          payload: { type: 'custom_tool_call_output', call_id: 'patch-1', output: 'Done' },
+        },
+      ]),
+      state,
+      makeConfig(),
+    );
+  });
+
+  assert.equal(emittedMessages.length, 2);
+  assert.deepEqual(emittedMessages[0].message.content[0], {
+    type: 'tool_use',
+    id: 'codex_patch_patch-1_0',
+    name: 'edit',
+    input: {
+      file_path: 'hbapp/src/example.js',
+      old_string: 'const size = 30;',
+      new_string: 'const size = 32;',
+      start_line: 1,
+      end_line: undefined,
+      replace_all: false,
+      source: 'codex_session_patch',
+    },
+  });
+  assert.deepEqual(emittedMessages[1].message.content[0], {
+    type: 'tool_result',
+    tool_use_id: 'codex_patch_patch-1_0',
+    is_error: false,
+    content: 'Patch applied',
+  });
+});
+
+test('current-turn session replay emits custom_tool_call exec patches found only in JSONL', async () => {
+  const tempDirectory = await mkdtemp(join(tmpdir(), 'codex-custom-patch-replay-'));
+  const tempSessionPath = join(tempDirectory, 'fixture-session.jsonl');
+  await writeFile(tempSessionPath, '', 'utf8');
+
+  try {
+    const emittedMessages = [];
+    const state = createInitialEventState((message) => emittedMessages.push(message));
+    state.sessionFilePath = tempSessionPath;
+    await prepareSessionReplayBoundary(state, 'fixture-thread');
+
+    await appendFile(
+      tempSessionPath,
+      [
+        { type: 'turn_context', payload: { cwd: 'C:/fixture' } },
+        {
+          type: 'response_item',
+          payload: {
+            type: 'custom_tool_call',
+            call_id: 'session-patch-1',
+            name: 'exec',
+            input: CUSTOM_EXEC_SOURCE,
+          },
+        },
+        {
+          type: 'response_item',
+          payload: { type: 'custom_tool_call_output', call_id: 'session-patch-1', output: 'Done' },
+        },
+      ].map((entry) => JSON.stringify(entry)).join('\n') + '\n',
+      'utf8',
+    );
+
+    await captureStdout(async () => {
+      await processCodexEventStream(
+        eventsFrom([
+          { type: 'event_msg', payload: { type: 'patch_apply_end' } },
+          { type: 'turn.completed' },
+        ]),
+        state,
+        { ...makeConfig(), threadId: 'fixture-thread' },
+      );
+    });
+
+    const blocks = emittedMessages.flatMap((message) => message?.message?.content ?? []);
+    assert.equal(blocks.filter((block) => block.type === 'tool_use').length, 1);
+    assert.equal(blocks.filter((block) => block.type === 'tool_result').length, 1);
+    assert.equal(blocks[0].name, 'edit');
+    assert.equal(blocks[0].input.file_path, 'hbapp/src/example.js');
+    assert.equal(blocks[1].tool_use_id, 'codex_patch_session-patch-1_0');
+    assert.equal(blocks[1].is_error, false);
+  } finally {
+    await rm(tempDirectory, { recursive: true, force: true });
+  }
+});
+
 test('Codex item.updated agent_message emits incremental content deltas before completion', async () => {
   const emittedMessages = [];
   const state = createInitialEventState((message) => emittedMessages.push(message));

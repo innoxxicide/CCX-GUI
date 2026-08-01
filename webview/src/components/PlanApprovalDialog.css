@@ -16,6 +16,23 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+
+  /*
+   * Local card layering.
+   * --bg-primary (dialog surface) and --bg-elevated (cards) are only ~15
+   * brightness steps apart in the dark theme, so nested cards visually merge
+   * with the dialog surface. These local tokens give inner blocks a clearly
+   * distinct surface + border without touching the global variables.
+   */
+  --plan-card-bg: #33333b;
+  --plan-card-bg-hover: #3e3e47;
+  --plan-card-border: #4d4d57;
+}
+
+[data-theme="light"] .plan-approval-dialog {
+  --plan-card-bg: #f0f0f0;
+  --plan-card-bg-hover: #e8e8e8;
+  --plan-card-border: #bdbdbd;
 }
 
 /* Resize handle at the top of the dialog */
@@ -254,9 +271,9 @@
   overflow-y: auto;
   padding: 0 16px;
   margin: 0;
-  border: 1px solid var(--border-secondary);
+  border: 1px solid var(--plan-card-border);
   border-radius: 6px;
-  background: var(--bg-elevated);
+  background: var(--plan-card-bg);
   min-height: 0;
   max-height: 40vh;
 }
@@ -296,9 +313,9 @@
   align-items: flex-start;
   gap: 12px;
   padding: 12px;
-  border: 1px solid var(--border-secondary);
+  border: 1px solid var(--plan-card-border);
   border-radius: 6px;
-  background: var(--bg-elevated);
+  background: var(--plan-card-bg);
   cursor: pointer;
   transition: all 0.2s;
   text-align: left;
@@ -306,7 +323,7 @@
 }
 
 .mode-option:hover {
-  background: var(--bg-hover);
+  background: var(--plan-card-bg-hover);
   border-color: var(--accent-primary);
 }
 

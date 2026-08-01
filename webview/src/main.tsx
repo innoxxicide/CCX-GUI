@@ -5,6 +5,7 @@ import { MessagesProvider } from './contexts/MessagesContext';
 import { SessionProvider } from './contexts/SessionContext';
 import { UIStateProvider } from './contexts/UIStateContext';
 import { DialogProvider } from './contexts/DialogContext';
+import { TaskEventProvider } from './contexts/SubagentContext';
 import './codicon.css';
 import './styles/app.less';
 import './i18n/config';
@@ -15,6 +16,7 @@ import { applyLinkifyCapabilitiesPayload } from './utils/linkifyCapabilities';
 import { installRuntimeProviderDispatchers } from './utils/runtimeProviderCapabilities';
 import { sendBridgeEvent } from './utils/bridge';
 import { debugLog } from './utils/debug';
+import { forceWebviewRepaint } from './utils/forceWebviewRepaint';
 import type { UiFontConfig, CodeFontConfig } from './types/uiFontConfig';
 
 // Silence noisy console output in production (including third-party libs).
@@ -632,15 +634,6 @@ if (typeof window !== 'undefined' && !window.updateAutoCloseDialogOnTimeout) {
   };
 }
 
-// Pre-register updateUsageStatistics to handle backend status responses that arrive before Settings/UsageStatisticsSection initializes
-if (typeof window !== 'undefined' && !window.updateUsageStatistics) {
-  debugLog('[Main] Pre-registering updateUsageStatistics placeholder');
-  window.updateUsageStatistics = (json: string) => {
-    debugLog('[Main] Storing pending usage statistics, length=' + (json ? json.length : 0));
-    window.__pendingUsageStatistics = json;
-  };
-}
-
 // Pre-register onModeReceived to avoid losing early backend push before React callbacks are ready.
 if (typeof window !== 'undefined' && !window.onModeReceived) {
   debugLog('[Main] Pre-registering onModeReceived placeholder');
@@ -681,6 +674,9 @@ if (typeof window !== 'undefined') {
   window.updateLinkifyCapabilities = (json: string) => {
     applyLinkifyCapabilitiesPayload(json);
   };
+  window.onTabActivated = () => {
+    forceWebviewRepaint('tab-activated');
+  };
 }
 
 // Render the React application
@@ -689,9 +685,11 @@ ReactDOM.createRoot(document.getElementById('app') as HTMLElement).render(
     <UIStateProvider>
       <SessionProvider>
         <MessagesProvider>
-          <DialogProvider>
-            <App />
-          </DialogProvider>
+          <TaskEventProvider>
+            <DialogProvider>
+              <App />
+            </DialogProvider>
+          </TaskEventProvider>
         </MessagesProvider>
       </SessionProvider>
     </UIStateProvider>

@@ -2,6 +2,7 @@ package com.github.ccxgui.settings;
 
 import com.github.ccxgui.model.ConflictStrategy;
 import com.google.gson.Gson;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.intellij.openapi.diagnostic.Logger;
@@ -45,8 +46,11 @@ public class AgentManager {
 
         try (FileReader reader = new FileReader(agentFile, StandardCharsets.UTF_8)) {
             JsonObject config = JsonParser.parseReader(reader).getAsJsonObject();
-            // Ensure the agents node exists
-            if (!config.has("agents")) {
+            JsonElement agentsElement = config.get("agents");
+            if (agentsElement == null || !agentsElement.isJsonObject()) {
+                if (agentsElement != null) {
+                    LOG.warn("[AgentManager] Ignoring invalid agents node in agent.json");
+                }
                 config.add("agents", new JsonObject());
             }
             return config;
@@ -83,8 +87,15 @@ public class AgentManager {
         JsonObject config = readAgentConfig();
 
         JsonObject agents = config.getAsJsonObject("agents");
-        for (String key : agents.keySet()) {
-            JsonObject agent = agents.getAsJsonObject(key);
+        for (Map.Entry<String, JsonElement> entry : agents.entrySet()) {
+            String key = entry.getKey();
+            JsonElement value = entry.getValue();
+            if (!value.isJsonObject()) {
+                LOG.warn("[AgentManager] Ignoring non-object agent entry: " + key);
+                continue;
+            }
+
+            JsonObject agent = value.getAsJsonObject();
             // Ensure ID exists
             if (!agent.has("id")) {
                 agent.addProperty("id", key);
@@ -93,11 +104,7 @@ public class AgentManager {
         }
 
         // Sort by creation time descending (newest first)
-        result.sort((a, b) -> {
-            long timeA = a.has("createdAt") ? a.get("createdAt").getAsLong() : 0;
-            long timeB = b.has("createdAt") ? b.get("createdAt").getAsLong() : 0;
-            return Long.compare(timeB, timeA);
-        });
+        result.sort((a, b) -> Long.compare(getCreatedAt(b), getCreatedAt(a)));
 
         LOG.info("[AgentManager] Loaded " + result.size() + " agents from agent.json");
         return result;
@@ -139,11 +146,10 @@ public class AgentManager {
         JsonObject config = readAgentConfig();
         JsonObject agents = config.getAsJsonObject("agents");
 
-        if (!agents.has(id)) {
+        JsonObject agent = getAgentObject(agents, id);
+        if (agent == null) {
             throw new IllegalArgumentException("Agent with id '" + id + "' not found");
         }
-
-        JsonObject agent = agents.getAsJsonObject(id);
 
         // Merge updates
         for (String key : updates.keySet()) {
@@ -190,16 +196,32 @@ public class AgentManager {
         JsonObject config = readAgentConfig();
         JsonObject agents = config.getAsJsonObject("agents");
 
-        if (!agents.has(id)) {
+        JsonObject agent = getAgentObject(agents, id);
+        if (agent == null) {
             return null;
         }
-
-        JsonObject agent = agents.getAsJsonObject(id);
         if (!agent.has("id")) {
             agent.addProperty("id", id);
         }
 
         return agent;
+    }
+
+    private JsonObject getAgentObject(JsonObject agents, String id) {
+        JsonElement value = agents.get(id);
+        return value != null && value.isJsonObject() ? value.getAsJsonObject() : null;
+    }
+
+    private long getCreatedAt(JsonObject agent) {
+        JsonElement value = agent.get("createdAt");
+        if (value == null || !value.isJsonPrimitive()) {
+            return 0L;
+        }
+        try {
+            return value.getAsLong();
+        } catch (NumberFormatException e) {
+            return 0L;
+        }
     }
 
     /**

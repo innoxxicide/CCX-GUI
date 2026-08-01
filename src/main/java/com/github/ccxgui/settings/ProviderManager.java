@@ -490,9 +490,24 @@ public class ProviderManager {
      * @return the list of parsed providers
      */
     public List<JsonObject> parseProvidersFromCcSwitchDb(String dbPath) throws IOException {
-        List<JsonObject> result = new ArrayList<>();
+        return parseProvidersFromCcSwitchDb(dbPath, "claude");
+    }
 
-        LOG.info("[ProviderManager] Reading cc-switch database via Node.js: " + dbPath);
+    /**
+     * Parse provider configurations from cc-switch.db for the given app type.
+     * Uses a Node.js script to read the database (cross-platform compatible, avoids JDBC classloader issues).
+     *
+     * @param dbPath  the database file path
+     * @param appType the cc-switch app_type to filter ("claude" or "codex")
+     * @return the list of parsed providers
+     */
+    public List<JsonObject> parseProvidersFromCcSwitchDb(String dbPath, String appType) throws IOException {
+        List<JsonObject> result = new ArrayList<>();
+        if (appType == null || appType.trim().isEmpty()) {
+            appType = "claude";
+        }
+
+        LOG.info("[ProviderManager] Reading cc-switch database via Node.js (app_type=" + appType + "): " + dbPath);
 
         // Get the ai-bridge directory path (handles extraction automatically)
         String aiBridgePath = getAiBridgePath();
@@ -542,6 +557,7 @@ public class ProviderManager {
             // Build the Node.js command (WSL-aware: prepend 'wsl' and convert paths when needed)
             List<String> command = NodeDetector.buildNodeScriptCommand(nodePath, scriptPath);
             command.add(NodeDetector.isWslPath(nodePath) ? NodeDetector.convertToWslPath(dbPath) : dbPath);
+            command.add(appType);
             ProcessBuilder pb = new ProcessBuilder(command);
             pb.directory(new File(aiBridgePath));
             pb.redirectErrorStream(true); // Merge stderr into stdout

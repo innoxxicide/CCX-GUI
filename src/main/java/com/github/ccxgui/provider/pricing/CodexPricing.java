@@ -4,7 +4,7 @@ package com.github.ccxgui.provider.pricing;
  * Codex per-model pricing (USD per 1M tokens). Cache reads are billed separately; input
  * tokens passed to {@link #costUsd} are expected to already exclude cached input.
  *
- * <p>Shared single source of truth used by both {@code CodexUsageAggregator} and
+ * <p>Shared single source of truth used by
  * {@code UsageCostCalculator} via {@link CodexPricingTable}.
  */
 public record CodexPricing(double inputCostPer1M, double outputCostPer1M, double cacheReadCostPer1M) {

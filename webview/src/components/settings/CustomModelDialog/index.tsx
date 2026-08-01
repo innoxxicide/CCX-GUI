@@ -136,6 +136,8 @@ export function CustomModelDialog({
   const [newPricingInputs, setNewPricingInputs] = useState<Record<PricingFieldKey, string>>({ ...EMPTY_PRICING_INPUTS });
   const [modelIdError, setModelIdError] = useState<string | null>(null);
   const [pricingError, setPricingError] = useState<string | null>(null);
+  // Pricing is optional — collapsed by default to keep the form lightweight.
+  const [pricingCollapsed, setPricingCollapsed] = useState(true);
 
   const resetForm = useCallback(() => {
     setIsAdding(false);
@@ -147,6 +149,7 @@ export function CustomModelDialog({
     setNewPricingInputs({ ...EMPTY_PRICING_INPUTS });
     setModelIdError(null);
     setPricingError(null);
+    setPricingCollapsed(true);
   }, []);
 
   // Auto-open add form when initialAddMode is true
@@ -175,6 +178,14 @@ export function CustomModelDialog({
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
   }, [isOpen, onClose]);
+
+  // A pricing validation error only surfaces on submit — make sure the
+  // collapsed section expands so the user can see what went wrong.
+  useEffect(() => {
+    if (pricingError) {
+      setPricingCollapsed(false);
+    }
+  }, [pricingError]);
 
   const validateModelId = useCallback((id: string): string | null => {
     const trimmedId = sanitizeInput(id).trim();
@@ -283,6 +294,8 @@ export function CustomModelDialog({
       cacheWriteCostPer1M: formatPricingValue(model.pricing?.cacheWriteCostPer1M),
       cacheReadCostPer1M: formatPricingValue(model.pricing?.cacheReadCostPer1M),
     });
+    // Reveal pricing only when the model already has rates to edit.
+    setPricingCollapsed(!hasPricing(model.pricing));
     setIsAdding(true);
     setModelIdError(null);
     setPricingError(null);
@@ -300,6 +313,8 @@ export function CustomModelDialog({
       cacheWriteCostPer1M: formatPricingValue(model.pricing?.cacheWriteCostPer1M),
       cacheReadCostPer1M: formatPricingValue(model.pricing?.cacheReadCostPer1M),
     });
+    // For provider-configured models pricing is the only editable field.
+    setPricingCollapsed(false);
     setIsAdding(true);
     setModelIdError(null);
     setPricingError(null);
@@ -503,46 +518,67 @@ export function CustomModelDialog({
                 disabled={isEditingConfiguredModel}
               />
 
-              <fieldset className={styles.pricingFieldset}>
-                <legend className={styles.pricingLegend}>{t('settings.pluginModels.pricing.title')}</legend>
-                <p id="model-pricing-hint" className={styles.pricingHint}>
-                  {t('settings.pluginModels.pricing.hint')}
-                </p>
-                <div className={styles.pricingGrid}>
-                  {PRICING_FIELDS.map((field) => {
-                    const value = newPricingInputs[field.key];
-                    const invalid = isInvalidPricingValue(value);
-                    return (
-                      <div key={field.key} className={styles.pricingField}>
-                        <label htmlFor={`model-pricing-${field.key}`}>
-                          {t(field.labelKey)}
-                        </label>
-                        <input
-                          id={`model-pricing-${field.key}`}
-                          type="number"
-                          min="0"
-                          step="0.000001"
-                          inputMode="decimal"
-                          className={`form-input ${invalid ? 'input-error' : ''}`}
-                          placeholder={field.placeholder}
-                          value={value}
-                          onChange={(e) => {
-                            setNewPricingInputs(prev => ({ ...prev, [field.key]: e.target.value }));
-                            if (pricingError) setPricingError(null);
-                          }}
-                          aria-invalid={invalid}
-                          aria-describedby={pricingError ? 'model-pricing-hint model-pricing-error' : 'model-pricing-hint'}
-                        />
+              <div className={styles.pricingSection}>
+                <button
+                  type="button"
+                  className={styles.pricingToggle}
+                  onClick={() => setPricingCollapsed(prev => !prev)}
+                  aria-expanded={!pricingCollapsed}
+                  aria-controls="model-pricing-content"
+                >
+                  <span
+                    className={`codicon ${pricingCollapsed ? 'codicon-chevron-right' : 'codicon-chevron-down'}`}
+                    aria-hidden="true"
+                  />
+                  <span className={styles.pricingToggleLabel}>
+                    {t('settings.pluginModels.pricing.title')}
+                  </span>
+                  <span className={styles.optionalBadge}>
+                    {t('settings.pluginModels.pricing.optionalLabel')}
+                  </span>
+                </button>
+                {!pricingCollapsed && (
+                  <div id="model-pricing-content" className={styles.pricingContent}>
+                    <p id="model-pricing-hint" className={styles.pricingHint}>
+                      {t('settings.pluginModels.pricing.hint')}
+                    </p>
+                    <div className={styles.pricingGrid}>
+                      {PRICING_FIELDS.map((field) => {
+                        const value = newPricingInputs[field.key];
+                        const invalid = isInvalidPricingValue(value);
+                        return (
+                          <div key={field.key} className={styles.pricingField}>
+                            <label htmlFor={`model-pricing-${field.key}`}>
+                              {t(field.labelKey)}
+                            </label>
+                            <input
+                              id={`model-pricing-${field.key}`}
+                              type="number"
+                              min="0"
+                              step="0.000001"
+                              inputMode="decimal"
+                              className={`form-input ${invalid ? 'input-error' : ''}`}
+                              placeholder={field.placeholder}
+                              value={value}
+                              onChange={(e) => {
+                                setNewPricingInputs(prev => ({ ...prev, [field.key]: e.target.value }));
+                                if (pricingError) setPricingError(null);
+                              }}
+                              aria-invalid={invalid}
+                              aria-describedby={pricingError ? 'model-pricing-hint model-pricing-error' : 'model-pricing-hint'}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {pricingError && (
+                      <div id="model-pricing-error" className={styles.validationError} role="alert">
+                        {pricingError}
                       </div>
-                    );
-                  })}
-                </div>
-                {pricingError && (
-                  <div id="model-pricing-error" className={styles.validationError} role="alert">
-                    {pricingError}
+                    )}
                   </div>
                 )}
-              </fieldset>
+              </div>
 
               <div className={styles.formActions}>
                 <button type="button" className="btn btn-secondary btn-sm" onClick={handleCancelEdit}>

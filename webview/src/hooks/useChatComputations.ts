@@ -4,6 +4,7 @@ import type {
   ClaudeContentBlock,
   ClaudeMessage,
   ClaudeRawMessage,
+  SubagentHistoryResponse,
   TodoItem,
   ToolResultBlock,
 } from '../types';
@@ -31,6 +32,7 @@ interface UseChatComputationsParams {
   t: TFunction;
   messages: ClaudeMessage[];
   mergedMessages: ClaudeMessage[];
+  subagentHistories: Record<string, SubagentHistoryResponse>;
   customSessionTitle: string | null;
   streamingActive: boolean;
   currentProvider: string;
@@ -38,6 +40,26 @@ interface UseChatComputationsParams {
   currentSessionIdRef: RefObject<string | null>;
   getMessageText: ReturnType<typeof useMessageProcessing>['getMessageText'];
   getContentBlocks: ReturnType<typeof useMessageProcessing>['getContentBlocks'];
+}
+
+/**
+ * Whether a message slice contains any assistant tool_use block. Used to decide
+ * whether the latest-turn scope is carrying active tool work worth focusing on,
+ * or is empty of tools (a reload snapshot / text-only turn) and should widen to
+ * the full conversation so StatusPanel lists do not disappear.
+ */
+function sliceHasToolUse(
+  messages: ClaudeMessage[],
+  getContentBlocks: (message: ClaudeMessage) => ClaudeContentBlock[],
+): boolean {
+  for (const message of messages) {
+    if (message.type !== 'assistant') continue;
+    const blocks = getContentBlocks(message);
+    for (const block of blocks) {
+      if (block.type === 'tool_use') return true;
+    }
+  }
+  return false;
 }
 
 export function deriveTodosForTurn(
@@ -78,6 +100,7 @@ export function useChatComputations({
   t,
   messages,
   mergedMessages,
+  subagentHistories,
   customSessionTitle,
   streamingActive,
   currentProvider,
@@ -145,11 +168,31 @@ export function useChatComputations({
 
   const latestTurnMessages = useMemo(() => sliceLatestConversationTurn(messages), [messages]);
 
+  // While streaming, focus on the current turn's task progress; once settled
+  // (history replay or idle), widen the scope to the whole conversation -
+  // otherwise a multi-turn history session whose last turn has no task tool
+  // would lose its task and subagent lists entirely.
+  //
+  // Exception: if the latest-turn slice carries no tool_use at all (e.g. a
+  // same-session reload snapshot whose latest turn predates the active work, or
+  // a text-only turn), widen to the full conversation. Without this, the
+  // StatusPanel subagent/todo lists can briefly disappear when a deferred
+  // reload's message refresh lands at the frontend a moment before the
+  // stream-end signal flips streamingActive back to false. Widening only adds
+  // content (earlier turns' settled items) - it never drops the current turn's.
+  const statusScopeMessages = useMemo(() => {
+    if (!streamingActive) return messages;
+    return latestTurnMessages.length > 0 && sliceHasToolUse(latestTurnMessages, getContentBlocks)
+      ? latestTurnMessages
+      : messages;
+  }, [streamingActive, latestTurnMessages, messages, getContentBlocks]);
+
   const latestTurnSubagents = useSubagents({
-    messages: latestTurnMessages,
+    messages: statusScopeMessages,
     getContentBlocks,
     findToolResult,
     getToolResultRaw,
+    subagentHistories,
   });
 
   const subagents = useMemo(
@@ -158,8 +201,8 @@ export function useChatComputations({
   );
 
   const globalTodos = useMemo(() => {
-    return deriveTodosForTurn(latestTurnMessages, getContentBlocks, streamingActive);
-  }, [latestTurnMessages, getContentBlocks, streamingActive]);
+    return deriveTodosForTurn(statusScopeMessages, getContentBlocks, streamingActive);
+  }, [statusScopeMessages, getContentBlocks, streamingActive]);
 
   const canRewindFromMessageIndex = useCallback(
     (userMessageIndex: number) => {

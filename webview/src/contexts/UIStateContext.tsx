@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
-import type { ToastMessage } from '../components/Toast';
+import type { ToastAction, ToastMessage } from '../components/Toast';
 import type { SettingsTab } from '../components/settings/SettingsSidebar';
 import type { ContextInfo, ViewMode } from '../hooks';
 import { APP_VERSION } from '../version/version';
@@ -17,7 +17,7 @@ export interface UIStateContextValue {
 
   // Toasts
   toasts: ToastMessage[];
-  addToast: (message: string, type?: ToastMessage['type']) => void;
+  addToast: (message: string, type?: ToastMessage['type'], action?: ToastAction) => void;
   dismissToast: (id: string) => void;
   clearToasts: () => void;
 
@@ -65,10 +65,10 @@ export function UIStateProvider({ children }: { children: ReactNode }) {
   const [draftInput, setDraftInput] = useState<string>('');
   const [searchOpen, setSearchOpen] = useState<boolean>(false);
 
-  const addToast = useCallback((message: string, type: ToastMessage['type'] = 'info') => {
+  const addToast = useCallback((message: string, type: ToastMessage['type'] = 'info', action?: ToastAction) => {
     if (message === DEFAULT_STATUS || !message) return;
     const id = `toast-${Date.now()}-${Math.random()}`;
-    setToasts((prev) => [...prev, { id, message, type }]);
+    setToasts((prev) => [...prev, { id, message, type, action }]);
   }, []);
 
   const dismissToast = useCallback((id: string) => {

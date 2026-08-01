@@ -179,6 +179,7 @@ const ProviderTabSection = ({
           onDeleteCodexProvider={onDeleteCodexProvider}
           onSwitchCodexProvider={onSwitchCodexProvider}
           onRevokeCodexLocalConfigAuthorization={onRevokeCodexLocalConfigAuthorization}
+          addToast={addToast}
           showHeader={false}
         />
       </div>

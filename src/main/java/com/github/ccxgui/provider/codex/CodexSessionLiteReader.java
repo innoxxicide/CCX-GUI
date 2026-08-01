@@ -1,6 +1,7 @@
 package com.github.ccxgui.provider.codex;
 
 import com.github.ccxgui.provider.common.SessionLiteReader;
+import com.google.gson.JsonObject;
 import com.intellij.openapi.diagnostic.Logger;
 
 import java.nio.file.Path;
@@ -94,6 +95,11 @@ public class CodexSessionLiteReader {
             SessionLiteReader.LiteSessionFile lite
     ) {
         if (lite == null || sessionId == null) {
+            return null;
+        }
+
+        JsonObject sessionMeta = CodexSessionMetadata.findSessionMetaPayload(lite.head);
+        if (CodexSessionMetadata.isSubagent(sessionMeta)) {
             return null;
         }
 

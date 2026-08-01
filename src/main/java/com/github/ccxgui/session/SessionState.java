@@ -58,8 +58,8 @@ public class SessionState {
     }
 
     // Session identifiers
-    private String sessionId;
-    private String channelId;
+    private volatile String sessionId;
+    private volatile String channelId;
     private volatile String runtimeSessionEpoch = UUID.randomUUID().toString();
 
     // Session state — accessed only on EDT / single handler thread, no volatile needed.
@@ -83,7 +83,7 @@ public class SessionState {
     // explicit, informed opt-in — see security remediation A: shipping bypass as the
     // out-of-the-box default removed the only confirmation gate for AI-issued commands.
     private volatile String permissionMode = "default";
-    private volatile String model = "claude-sonnet-4-6";
+    private volatile String model = "claude-sonnet-4-7";
     private volatile String provider = "claude";
     // Reasoning effort (thinking depth). Null means "do not override SDK/settings".
     private volatile String reasoningEffort = null;

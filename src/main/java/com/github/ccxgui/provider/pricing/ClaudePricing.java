@@ -4,7 +4,7 @@ package com.github.ccxgui.provider.pricing;
  * Claude per-model pricing (USD per 1M tokens), with an optional above-200K tier.
  *
  * <p>Shared single source of truth used by both the Usage Statistics aggregator
- * ({@code ClaudeUsageAggregator}) and the per-turn message footer cost
+ * and the per-turn message footer cost
  * ({@code UsageCostCalculator}) via {@link ClaudePricingTable}.
  */
 public record ClaudePricing(

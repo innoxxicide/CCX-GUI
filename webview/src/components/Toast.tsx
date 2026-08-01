@@ -1,9 +1,15 @@
 import React, { useEffect, useState } from 'react';
 
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
+}
+
 export interface ToastMessage {
   id: string;
   message: string;
   type?: 'info' | 'success' | 'warning' | 'error';
+  action?: ToastAction;
 }
 
 interface ToastProps {
@@ -28,6 +34,18 @@ const Toast: React.FC<ToastProps> = ({ message, onDismiss, duration = 1000 }) =>
     <div className={`toast toast-${message.type || 'info'} ${isExiting ? 'toast-exit' : ''}`}>
       <div className="toast-content">
         <span className="toast-message">{message.message}</span>
+        {message.action && (
+          <button
+            className="toast-action"
+            onClick={() => {
+              message.action?.onClick();
+              setIsExiting(true);
+              setTimeout(() => onDismiss(message.id), 300);
+            }}
+          >
+            {message.action.label}
+          </button>
+        )}
         <button
           className="toast-close"
           onClick={() => {

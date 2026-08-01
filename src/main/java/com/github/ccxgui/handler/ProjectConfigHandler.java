@@ -5,8 +5,6 @@ import com.github.ccxgui.handler.core.HandlerContext;
 import com.github.ccxgui.i18n.ClaudeCodeGuiBundle;
 import com.github.ccxgui.settings.CodemossSettingsService;
 import com.github.ccxgui.action.SendShortcutSync;
-import com.github.ccxgui.provider.claude.ClaudeHistoryReader;
-import com.github.ccxgui.provider.codex.CodexHistoryReader;
 import com.github.ccxgui.util.FontConfigService;
 import com.github.ccxgui.util.ThemeConfigService;
 import com.google.gson.Gson;
@@ -19,8 +17,6 @@ import com.intellij.openapi.fileChooser.FileChooser;
 import com.intellij.openapi.fileChooser.FileChooserDescriptor;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
-
-import java.util.concurrent.CompletableFuture;
 
 /**
  * Handles project-level configuration: working directory, streaming, sandbox mode,
@@ -829,53 +825,5 @@ public class ProjectConfigHandler {
         } catch (Exception e) {
             LOG.error("[ProjectConfigHandler] Failed to dispatch code font config: " + e.getMessage(), e);
         }
-    }
-
-    /** Get usage statistics. Supports both Claude and Codex providers. */
-    public void handleGetUsageStatistics(String content) {
-        CompletableFuture.runAsync(() -> {
-            try {
-                String projectPath = "all";
-                String provider = "claude";
-                long cutoffTime = 0;
-                if (content != null && !content.isEmpty() && !content.equals("{}")) {
-                    try {
-                        JsonObject json = gson.fromJson(content, JsonObject.class);
-                        if (json.has("scope")) {
-                            projectPath = "current".equals(json.get("scope").getAsString())
-                                ? context.getProject().getBasePath() : "all";
-                        }
-                        if (json.has("provider")) {
-                            provider = json.get("provider").getAsString();
-                        }
-                        if (json.has("dateRange")) {
-                            String dateRange = json.get("dateRange").getAsString();
-                            long now = System.currentTimeMillis();
-                            if ("7d".equals(dateRange)) { cutoffTime = now - 7L * 24 * 60 * 60 * 1000; }
-                            else if ("30d".equals(dateRange)) { cutoffTime = now - 30L * 24 * 60 * 60 * 1000; }
-                        }
-                    } catch (Exception e) {
-                        projectPath = "current".equals(content) ? context.getProject().getBasePath() : content;
-                    }
-                }
-                String json;
-                if ("codex".equals(provider)) {
-                    CodexHistoryReader reader = new CodexHistoryReader();
-                    CodexHistoryReader.ProjectStatistics stats = reader.getProjectStatistics(projectPath, cutoffTime);
-                    LOG.info("[ProjectConfigHandler] Codex statistics - sessions: " + stats.totalSessions +
-                             ", cost: " + stats.estimatedCost + ", total tokens: " + stats.totalUsage.totalTokens);
-                    json = gson.toJson(stats);
-                } else {
-                    ClaudeHistoryReader reader = new ClaudeHistoryReader();
-                    json = gson.toJson(reader.getProjectStatistics(projectPath, cutoffTime));
-                }
-                final String statsJson = json;
-                ApplicationManager.getApplication().invokeLater(() ->
-                    context.callJavaScript("window.updateUsageStatistics", context.escapeJs(statsJson)));
-            } catch (Exception e) {
-                LOG.error("[ProjectConfigHandler] Failed to get usage statistics: " + e.getMessage(), e);
-                showError("Failed to get statistics: " + e.getMessage());
-            }
-        });
     }
 }

@@ -64,7 +64,7 @@ const SubagentRow = memo(({ subagent, isExpanded, history, canLoad, onToggle, t 
 
 SubagentRow.displayName = 'SubagentRow';
 
-const SubagentList = memo(({ subagents, histories = {}, currentSessionId, isStreaming = false }: SubagentListProps) => {
+const SubagentList = memo(({ subagents, histories = {}, currentSessionId }: SubagentListProps) => {
   const { t } = useTranslation();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -85,6 +85,11 @@ const SubagentList = memo(({ subagents, histories = {}, currentSessionId, isStre
     }));
   }, [currentSessionId]);
 
+  // Track the expanded row's status so the polling effect re-runs (and clears
+  // its interval) when it transitions out of "running", instead of leaving a
+  // no-op interval firing every 2 s until the row is collapsed.
+  const expandedStatus = subagents.find((item) => item.id === expandedId)?.status;
+
   useEffect(() => {
     if (!expandedId) return;
     const subagent = subagentsRef.current.find((item) => item.id === expandedId);
@@ -92,14 +97,14 @@ const SubagentList = memo(({ subagents, histories = {}, currentSessionId, isStre
     if (!historiesRef.current[expandedId]) {
       requestHistory(subagent);
     }
-    if (!isStreaming || subagent.status !== 'running') return;
+    if (!currentSessionId || subagent.status !== 'running') return;
     const timer = window.setInterval(() => {
       const current = subagentsRef.current.find((item) => item.id === expandedId);
       if (!current || current.status !== 'running') return;
       requestHistory(current);
     }, 2_000);
     return () => window.clearInterval(timer);
-  }, [currentSessionId, expandedId, isStreaming, requestHistory]);
+  }, [currentSessionId, expandedId, requestHistory, expandedStatus]);
 
   const historyById = useMemo(() => histories, [histories]);
 

@@ -676,11 +676,39 @@ public class ClaudeMessageHandler implements MessageCallback {
      * Handle a system-level message (not from AI, but from the system).
      */
     private void handleSystemMessage(String content) {
-        LOG.debug("System message: " + content);
+        // Truncate to avoid dumping full system messages (which may carry
+        // slash_commands or task_notification payloads) into the IDE log.
+        LOG.debug("System message: " + (content.length() > 200 ? content.substring(0, 200) + "..." : content));
 
         // Parse slash_commands field from the system message
         try {
             JsonObject systemObj = gson.fromJson(content, JsonObject.class);
+            // gson.fromJson returns null for a JSON "null" literal; guard the
+            // has()/get() calls below against NPE. In practice [MESSAGE]
+            // payloads are always JSON objects, but keep the parse defensive.
+            if (systemObj == null) {
+                return;
+            }
+
+            // Forward task_* SDK system events (async subagent lifecycle) to the
+            // frontend. Async agents run in a background sidechain whose detailed
+            // messages never enter the main stream; the only mainstream signal of
+            // their existence is these lightweight events (task_started /
+            // task_progress / task_notification). Without forwarding, the subagent
+            // list cannot tell launch from completion, and async results vanish.
+            //
+            // This is the in-turn [MESSAGE] delivery path. task_notification may
+            // also arrive inter-turn via the daemon channel (DaemonBridge
+            // "task_event" -> ClaudeChatWindow -> onTaskEvent); both paths are
+            // intentional defense-in-depth - see DaemonBridge.handleDaemonEvent.
+            String subtype = systemObj.has("subtype") && !systemObj.get("subtype").isJsonNull()
+                    ? systemObj.get("subtype").getAsString() : null;
+            if (subtype != null && subtype.startsWith("task_")) {
+                callbackHandler.notifyTaskEvent(content);
+                // task_* events carry no slash_commands; skip the rest.
+                return;
+            }
+
             if (systemObj.has("slash_commands") && systemObj.get("slash_commands").isJsonArray()) {
                 JsonArray commandsArray = systemObj.getAsJsonArray("slash_commands");
                 List<String> commands = new ArrayList<>();
@@ -692,7 +720,7 @@ public class ClaudeMessageHandler implements MessageCallback {
                 callbackHandler.notifySlashCommandsReceived(commands);
             }
         } catch (Exception e) {
-            LOG.warn("Failed to extract slash commands from system message: " + e.getMessage());
+            LOG.warn("Failed to parse system message: " + e.getMessage());
         }
     }
 

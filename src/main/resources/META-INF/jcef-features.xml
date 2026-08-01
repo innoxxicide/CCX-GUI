@@ -1,3 +1,5 @@
 <idea-plugin>
-    <!-- JCEF-dependent extensions belong here when they are introduced. -->
+    <extensions defaultExtensionNs="com.intellij">
+        <applicationService serviceImplementation="com.github.claudecodegui.util.JcefModuleAvailability"/>
+    </extensions>
 </idea-plugin>

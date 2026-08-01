@@ -4,11 +4,40 @@ import type { ProviderConfig } from '../../../types/provider';
 import { SPECIAL_PROVIDER_IDS } from '../../../types/provider';
 import { sendToJava } from '../../../utils/bridge';
 import { useDragSort } from '../hooks/useDragSort';
+import { ProviderModelIcon } from '../../shared/ProviderModelIcon';
 import ImportConfirmDialog from './ImportConfirmDialog';
 import styles from './style.module.less';
 
 const ICON_MR_8_STYLE: React.CSSProperties = { marginRight: '8px' };
 const CLI_ACCOUNT_INFO_STYLE: React.CSSProperties = { marginTop: '4px', opacity: 0.8 };
+
+/**
+ * Wraps a colored brand logo so it aligns with the provider name text and
+ * never shrinks, matching the layout of the codicon used by the local/CLI cards.
+ */
+const PROVIDER_LOGO_STYLE: React.CSSProperties = {
+  marginRight: '8px',
+  flexShrink: 0,
+  display: 'inline-flex',
+  alignItems: 'center',
+};
+
+/**
+ * Pick the most representative configured model id for brand detection.
+ * The base URL is the primary brand signal; the model id is only a fallback,
+ * so any of the configured mapping models is sufficient.
+ */
+function pickModelId(provider: ProviderConfig): string | undefined {
+  const env = provider.settingsConfig?.env;
+  if (!env) return undefined;
+  return (
+    env.ANTHROPIC_DEFAULT_FABLE_MODEL
+    || env.ANTHROPIC_MODEL
+    || env.ANTHROPIC_DEFAULT_SONNET_MODEL
+    || env.ANTHROPIC_DEFAULT_OPUS_MODEL
+    || env.ANTHROPIC_DEFAULT_HAIKU_MODEL
+  );
+}
 
 interface ProviderListProps {
   providers: ProviderConfig[];
@@ -40,6 +69,7 @@ export default function ProviderList({
   const [showCliLoginConfirm, setShowCliLoginConfirm] = useState(false);
   const [showCliLoginDisableConfirm, setShowCliLoginDisableConfirm] = useState(false);
   const [cliLoginAccountEmail, setCliLoginAccountEmail] = useState<string | null>(null);
+  const [helpKind, setHelpKind] = useState<'local' | 'cli' | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const importMenuRef = useRef<HTMLDivElement>(null);
   const mountedRef = useRef(true);
@@ -439,6 +469,32 @@ export default function ProviderList({
         </div>
       )}
 
+      {helpKind && (
+        <div className={styles.warningOverlay}>
+          <div className={styles.warningDialog}>
+            <div className={styles.warningTitle}>
+              <span className="codicon codicon-info" />
+              {helpKind === 'local'
+                ? t('settings.provider.localProviderHelpTitle')
+                : t('settings.provider.cliLoginHelpTitle')}
+            </div>
+            <div className={styles.warningContent} style={{ whiteSpace: 'pre-wrap' }}>
+              {helpKind === 'local'
+                ? t('settings.provider.localProviderHelpBody')
+                : t('settings.provider.cliLoginHelpBody')}
+            </div>
+            <div className={styles.warningActions}>
+              <button
+                className={styles.btnPrimary}
+                onClick={() => setHelpKind(null)}
+              >
+                {t('common.gotIt')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className={styles.header}>
         <h4 className={styles.title}>{t('settings.provider.allProviders')}</h4>
 
@@ -515,10 +571,16 @@ export default function ProviderList({
             <div className={styles.cardInfo}>
               <div className={styles.name}>
                 <span className="codicon codicon-file" style={ICON_MR_8_STYLE} />
-                {t('settings.provider.localProviderName')}
-              </div>
-              <div className={styles.website} title={t('settings.provider.localProviderDescription')}>
-                {t('settings.provider.localProviderDescription')}
+                <span className={styles.nameText}>{t('settings.provider.localProviderName')}</span>
+                <button
+                  type="button"
+                  className={styles.nameInfoIcon}
+                  onClick={(e) => { e.stopPropagation(); setHelpKind('local'); }}
+                  title={t('settings.provider.whatIsThis')}
+                  aria-label={t('settings.provider.whatIsThis')}
+                >
+                  <span className="codicon codicon-info" />
+                </button>
               </div>
             </div>
 
@@ -550,10 +612,16 @@ export default function ProviderList({
             <div className={styles.cardInfo}>
               <div className={styles.name}>
                 <span className="codicon codicon-key" style={ICON_MR_8_STYLE} />
-                {t('settings.provider.cliLoginProviderName')}
-              </div>
-              <div className={styles.website} title={t('settings.provider.cliLoginProviderDescription')}>
-                {t('settings.provider.cliLoginProviderDescription')}
+                <span className={styles.nameText}>{t('settings.provider.cliLoginProviderName')}</span>
+                <button
+                  type="button"
+                  className={styles.nameInfoIcon}
+                  onClick={(e) => { e.stopPropagation(); setHelpKind('cli'); }}
+                  title={t('settings.provider.whatIsThis')}
+                  aria-label={t('settings.provider.whatIsThis')}
+                >
+                  <span className="codicon codicon-info" />
+                </button>
               </div>
               {cliLoginAccountEmail && localProviders.some(p => p.id === SPECIAL_PROVIDER_IDS.CLI_LOGIN && p.isActive) && (
                 <div className={styles.website} style={CLI_ACCOUNT_INFO_STYLE}>
@@ -612,7 +680,15 @@ export default function ProviderList({
               </div>
               <div className={styles.cardInfo}>
                 <div className={styles.name}>
-                  {provider.name}
+                  <span style={PROVIDER_LOGO_STYLE}>
+                    <ProviderModelIcon
+                      baseUrl={provider.settingsConfig?.env?.ANTHROPIC_BASE_URL}
+                      modelId={pickModelId(provider)}
+                      size={18}
+                      colored
+                    />
+                  </span>
+                  <span className={styles.nameText}>{provider.name}</span>
                 </div>
                 {(provider.remark || provider.websiteUrl) && (
                   <div className={styles.website} title={provider.remark || provider.websiteUrl}>

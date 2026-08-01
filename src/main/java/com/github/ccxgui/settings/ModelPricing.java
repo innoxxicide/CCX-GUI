@@ -7,9 +7,8 @@ package com.github.ccxgui.settings;
  * the default pricing for that token kind". This keeps the structure backward-compatible
  * when new pricing dimensions are introduced and lets users specify only the rates they know.
  *
- * <p>Units are USD per 1,000,000 tokens, consistent with the existing {@code *CostPer1M}
- * fields in {@link com.github.ccxgui.provider.claude.ClaudeUsageAggregator} and
- * {@link com.github.ccxgui.provider.codex.CodexUsageAggregator}.
+ * <p>Units are USD per 1,000,000 tokens, consistent with the {@code *CostPer1M}
+ * fields used by the per-turn message footer cost calculator.
  */
 public record ModelPricing(
         Double inputCostPer1M,
@@ -26,8 +25,7 @@ public record ModelPricing(
 
     /**
      * Build a Codex-style pricing (no cache-write dimension; Codex sessions do not track
-     * cache-write tokens — see {@code cacheWriteTokens = 0} in
-     * {@link com.github.ccxgui.provider.codex.CodexUsageAggregator}).
+     * cache-write tokens).
      */
     public static ModelPricing codex(double input, double output, double cacheRead) {
         return new ModelPricing(input, output, null, cacheRead);

@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.nio.file.FileVisitOption;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
@@ -23,8 +24,11 @@ import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
 /**
@@ -42,6 +46,12 @@ public class CodexSkillService {
     private static final Logger LOG = Logger.getInstance(CodexSkillService.class);
     private static final Gson gson = new Gson();
     private static final int MAX_SCAN_LEVELS = 3;
+    private static final int MAX_SKILL_SCAN_DEPTH = 8;
+    private static final int MAX_SKILL_SCAN_NODES = 10_000;
+    private static final int MAX_DISCOVERED_SKILLS = 1_000;
+    private static final Set<String> SKIPPED_SKILL_SCAN_DIRECTORIES = Set.of(
+            "node_modules", "build", "target", "dist", "out", "coverage"
+    );
 
     // Shared instance to avoid repeated instantiation (I1)
     private static final CodexSettingsManager codexSettingsManager = new CodexSettingsManager(gson);
@@ -179,22 +189,69 @@ public class CodexSkillService {
      * Scans a directory for skill subdirectories and returns skill metadata as JsonObject.
      */
     public static JsonObject scanSkillsDirectory(String dirPath, String scope) {
+        return scanSkillsDirectory(dirPath, scope, MAX_SKILL_SCAN_NODES);
+    }
+
+    static JsonObject scanSkillsDirectory(String dirPath, String scope, int maxScanNodes) {
         JsonObject skills = new JsonObject();
-        File dir = new File(dirPath);
+        Path rootDir = Paths.get(dirPath).toAbsolutePath().normalize();
+        File dir = rootDir.toFile();
 
         if (!dir.exists() || !dir.isDirectory()) {
             return skills;
         }
 
-        File[] entries = dir.listFiles();
-        if (entries == null) {
+        List<File> entries = new ArrayList<>();
+        AtomicInteger visitedNodes = new AtomicInteger();
+        AtomicBoolean limitReached = new AtomicBoolean(false);
+        try {
+            Files.walkFileTree(rootDir, EnumSet.noneOf(FileVisitOption.class), MAX_SKILL_SCAN_DEPTH,
+                    new SimpleFileVisitor<>() {
+                @Override
+                public FileVisitResult preVisitDirectory(Path currentDir, BasicFileAttributes attrs) {
+                    if (!currentDir.equals(rootDir) && (containsHiddenPathSegment(rootDir, currentDir)
+                            || isSkippedSkillScanDirectory(currentDir))) {
+                        return FileVisitResult.SKIP_SUBTREE;
+                    }
+                    if (visitedNodes.incrementAndGet() > maxScanNodes) {
+                        limitReached.set(true);
+                        return FileVisitResult.TERMINATE;
+                    }
+                    if (!currentDir.equals(rootDir) && locateSkillDefinition(currentDir) != null) {
+                        if (entries.size() >= MAX_DISCOVERED_SKILLS) {
+                            limitReached.set(true);
+                            return FileVisitResult.TERMINATE;
+                        }
+                        entries.add(currentDir.toFile());
+                        return FileVisitResult.SKIP_SUBTREE;
+                    }
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                    if (visitedNodes.incrementAndGet() > maxScanNodes) {
+                        limitReached.set(true);
+                        return FileVisitResult.TERMINATE;
+                    }
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult visitFileFailed(Path file, IOException e) {
+                    LOG.warn("[CodexSkills] Skipping unreadable path: " + file, e);
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        } catch (IOException e) {
+            LOG.warn("[CodexSkills] Failed to scan skills directory: " + dirPath, e);
             return skills;
         }
+        if (limitReached.get()) {
+            LOG.warn("[CodexSkills] Skill scan limit reached: " + dirPath);
+        }
 
-        for (File entry : entries) {
-            if (!entry.isDirectory() || entry.getName().startsWith(".")) {
-                continue;
-            }
+        for (File entry : entries.stream().distinct().sorted().toList()) {
             // Use normalized path in id to prevent collisions when same-named skills
             // exist in different scan directories (child vs parent)
             String normalizedEntryPath = normalizePath(entry.getAbsolutePath());
@@ -219,11 +276,8 @@ public class CodexSkillService {
             }
 
             // Store skillPath (SKILL.md path) for config.toml operations
-            Path skillMd = entry.toPath().resolve("SKILL.md");
-            if (!Files.exists(skillMd)) {
-                skillMd = entry.toPath().resolve("skill.md");
-            }
-            if (Files.exists(skillMd)) {
+            Path skillMd = locateSkillDefinition(entry.toPath());
+            if (skillMd != null) {
                 skill.addProperty("skillPath", skillMd.toString());
             }
 
@@ -241,6 +295,36 @@ public class CodexSkillService {
 
         LOG.info("[CodexSkills] Scanned " + skills.size() + " skills from " + scope + ": " + dirPath);
         return skills;
+    }
+
+    private static boolean isSkippedSkillScanDirectory(Path directory) {
+        Path fileName = directory.getFileName();
+        return fileName != null && SKIPPED_SKILL_SCAN_DIRECTORIES.contains(
+                fileName.toString().toLowerCase(Locale.ROOT)
+        );
+    }
+
+    private static Path locateSkillDefinition(Path skillDir) {
+        Path upper = skillDir.resolve("SKILL.md");
+        if (Files.isRegularFile(upper, LinkOption.NOFOLLOW_LINKS)) {
+            return upper;
+        }
+        Path lower = skillDir.resolve("skill.md");
+        return Files.isRegularFile(lower, LinkOption.NOFOLLOW_LINKS) ? lower : null;
+    }
+
+    private static boolean containsHiddenPathSegment(Path rootDir, Path skillDir) {
+        Path normalizedSkillDir = skillDir.toAbsolutePath().normalize();
+        if (!normalizedSkillDir.startsWith(rootDir)) {
+            return true;
+        }
+        Path relative = rootDir.relativize(normalizedSkillDir);
+        for (Path segment : relative) {
+            if (segment.toString().startsWith(".")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     // ==================== Config.toml Integration ====================

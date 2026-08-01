@@ -50,6 +50,7 @@ function parseBashItem(
 
   const command = typeof input.command === 'string' ? input.command : '';
   const description = typeof input.description === 'string' ? input.description : '';
+  if (!command.trim() && !description.trim()) return null;
 
   let output = '';
   if (result) {
@@ -170,12 +171,17 @@ const BashToolGroupBlock = ({ items, deniedToolIds }: BashToolGroupBlockProps) =
     overflowY: overflowY,
   };
 
+  const headerStyle: React.CSSProperties = {
+    ...(expanded && { borderBottom: '1px solid var(--border-primary)' }),
+  };
+
   return (
     <div className="task-container bash-group-container">
       {/* Header - always visible */}
       <div
         className="task-header bash-group-header"
         onClick={() => setExpanded((prev) => !prev)}
+        style={headerStyle}
       >
         <div className="task-title-section">
           <span className="tool-title-text">

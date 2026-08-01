@@ -14,10 +14,16 @@ public enum SdkDefinition {
         "claude-sdk",
         "Claude Code SDK",
         "@anthropic-ai/claude-agent-sdk",
-        "^0.2.58",
+        // The Fable tier (ANTHROPIC_DEFAULT_FABLE_MODEL env + the 'fable' model alias)
+        // was introduced in SDK 0.3.182. Older 0.2.x CLIs don't recognize the alias and
+        // pass it through as a literal model name, so third-party relays without a model
+        // literally called "fable" reject requests with a 401 ("model fable" / "No
+        // available channel"). Pin the floor at 0.3.182 to guarantee Fable support.
+        "^0.3.182",
         Arrays.asList("@anthropic-ai/sdk", "@anthropic-ai/bedrock-sdk"),
-        Arrays.asList("0.2.88", "0.2.81", "0.2.58"),
-        "Claude AI 提供商所需，包含 Agent SDK 和 Bedrock 支持。"
+        Arrays.asList("0.3.220", "0.3.201", "0.3.182"),
+        "Claude AI 提供商所需，包含 Agent SDK 和 Bedrock 支持。",
+        "0.3.182" // minRequiredVersion — Fable tier (ANTHROPIC_DEFAULT_FABLE_MODEL) needs SDK >= 0.3.182
     ),
 
     CODEX_SDK(
@@ -27,7 +33,8 @@ public enum SdkDefinition {
         "latest",
         Collections.emptyList(),
         Arrays.asList("0.117.0", "0.116.0", "0.115.0"),
-        "Codex AI 提供商所需。"
+        "Codex AI 提供商所需。",
+        null // minRequiredVersion — no enforced minimum
     );
 
     private final String id;
@@ -37,9 +44,11 @@ public enum SdkDefinition {
     private final List<String> dependencies;
     private final List<String> fallbackVersions;
     private final String description;
+    private final String minRequiredVersion;
 
     SdkDefinition(String id, String displayName, String npmPackage, String version,
-                  List<String> dependencies, List<String> fallbackVersions, String description) {
+                  List<String> dependencies, List<String> fallbackVersions, String description,
+                  String minRequiredVersion) {
         this.id = id;
         this.displayName = displayName;
         this.npmPackage = npmPackage;
@@ -47,6 +56,7 @@ public enum SdkDefinition {
         this.dependencies = dependencies;
         this.fallbackVersions = fallbackVersions;
         this.description = description;
+        this.minRequiredVersion = minRequiredVersion;
     }
 
     public String getId() {
@@ -75,6 +85,15 @@ public enum SdkDefinition {
 
     public String getDescription() {
         return description;
+    }
+
+    /**
+     * Minimum installed version required for full feature support.
+     * The Claude SDK needs 0.3.182 or later for the Fable tier; Codex has no minimum.
+     * Null means no minimum is enforced.
+     */
+    public String getMinRequiredVersion() {
+        return minRequiredVersion;
     }
 
     /**
