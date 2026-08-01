@@ -3,6 +3,7 @@ import styles from './style.module.less';
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_PERMISSION_DIALOG_TIMEOUT_SECONDS } from '../../../utils/permissionDialogTimeout';
 import { PermissionDialogTimeoutSetting } from './PermissionDialogTimeoutSetting';
+import { KeepAwakeSetting } from './KeepAwakeSetting';
 
 /** Upward-opening custom select for sound selection (avoids JCEF clipping) */
 const SoundSelectUpward = ({
@@ -522,6 +523,10 @@ const BehaviorTab = ({
           <span>{t('settings.basic.detailedOutput.hint')}</span>
         </small>
       </div>
+
+      {/* Keep the machine awake while an agent is working. Self-contained IPC —
+          the value is account-global, so it is not part of this tab's props. */}
+      <KeepAwakeSetting />
 
       {/* ===== Message notification settings (grouped) ===== */}
 

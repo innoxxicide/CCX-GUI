@@ -623,6 +623,18 @@ public class CodemossSettingsService {
         ClaudeAutoResumeSettings.setClaudeAutoResumePrompt(this, prompt);
     }
 
+    // ==================== Keep-Awake Config Management ====================
+
+    public static final boolean DEFAULT_KEEP_AWAKE_ENABLED = KeepAwakeSettings.DEFAULT_KEEP_AWAKE_ENABLED;
+
+    public boolean getKeepAwakeEnabled() throws IOException {
+        return KeepAwakeSettings.getKeepAwakeEnabled(this);
+    }
+
+    public void setKeepAwakeEnabled(boolean enabled) throws IOException {
+        KeepAwakeSettings.setKeepAwakeEnabled(this, enabled);
+    }
+
     // ==================== Streaming Config Management ====================
 
     /**

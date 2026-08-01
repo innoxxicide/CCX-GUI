@@ -73,6 +73,8 @@ public class SettingsHandler extends BaseMessageHandler {
         "set_claude_auto_resume_enabled",
         "get_claude_auto_resume_prompt",
         "set_claude_auto_resume_prompt",
+        "get_keep_awake_enabled",
+        "set_keep_awake_enabled",
         "get_commit_generation_enabled",
         "set_commit_generation_enabled",
         "get_status_bar_widget_enabled",
@@ -271,6 +273,12 @@ public class SettingsHandler extends BaseMessageHandler {
                 return true;
             case "set_claude_auto_resume_prompt":
                 projectConfigHandler.handleSetClaudeAutoResumePrompt(content);
+                return true;
+            case "get_keep_awake_enabled":
+                projectConfigHandler.handleGetKeepAwakeEnabled();
+                return true;
+            case "set_keep_awake_enabled":
+                projectConfigHandler.handleSetKeepAwakeEnabled(content);
                 return true;
             case "get_commit_generation_enabled":
                 projectConfigHandler.handleGetCommitGenerationEnabled();

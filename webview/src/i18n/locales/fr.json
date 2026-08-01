@@ -286,6 +286,12 @@
         "disabled": "Désactivé",
         "hint": "Lorsque cette option est activée, le pied des messages affiche le coût estimé du tour quand il est disponible et inclut les accès au cache dans le résumé des tokens d’entrée. La consommation de tokens reste toujours visible."
       },
+      "keepAwake": {
+        "label": "Empêcher l’ordinateur de se mettre en veille pendant le travail",
+        "enabled": "Activé",
+        "disabled": "Désactivé",
+        "hint": "Lorsque cette option est activée, l’ordinateur ne se met pas en veille tant qu’un agent travaille, ni pendant l’attente d’un redémarrage après la réinitialisation d’une limite d’usage. Seule la veille automatique par inactivité est empêchée : fermer le capot ou mettre en veille manuellement fonctionne toujours, et l’écran peut s’éteindre normalement."
+      },
       "sendShortcut": {
         "label": "Raccourci d'envoi",
         "enter": "Entrée pour envoyer",

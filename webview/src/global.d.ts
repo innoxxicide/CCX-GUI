@@ -439,6 +439,12 @@ interface Window {
   updateAutoCloseDialogOnTimeout?: (json: string) => void;
 
   /**
+   * Update the "keep the computer awake while an agent is working" toggle.
+   * Payload: {"keepAwakeWhileAgentWorksEnabled": boolean}
+   */
+  updateKeepAwakeEnabled?: (json: string) => void;
+
+  /**
    * Update the Claude "auto-resume after usage-limit reset" master toggle.
    * Payload: {"claudeAutoResumeOnLimitEnabled": boolean}
    */

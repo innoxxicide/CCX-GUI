@@ -298,6 +298,12 @@
         "disabled": "Desativado",
         "hint": "Quando ativado, o rodapé das mensagens mostra o custo estimado do turno quando disponível e inclui os acertos de cache no resumo de tokens de entrada. O uso de tokens permanece sempre visível."
       },
+      "keepAwake": {
+        "label": "Impedir que o computador durma durante o trabalho",
+        "enabled": "Ativado",
+        "disabled": "Desativado",
+        "hint": "Quando ativado, o computador não entra em suspensão enquanto um agente está trabalhando nem enquanto uma execução aguarda reinício após a redefinição de um limite de uso. Apenas a suspensão automática por inatividade é impedida: fechar a tampa ou suspender manualmente continua funcionando, e a tela ainda pode desligar."
+      },
       "sendShortcut": {
         "label": "Atalho de Envio",
         "enter": "Enter para Enviar",

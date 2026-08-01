@@ -142,12 +142,19 @@ public final class ClaudeAutoResumeController {
      * in an error. Ignored unless the feature is enabled for a Claude session and
      * no wake is already armed. Fetches fresh usage data (bypassing the display
      * cache/throttle) and arms only if a rate-limit window is actually exhausted.
+     *
+     * @return a future completing once the limit assessment has resolved — either
+     *         by arming (in which case {@link Host#onArmed} has already run) or by
+     *         deciding this was not a limit error. Completes immediately when the
+     *         controller declines to assess. Callers use this to bridge state
+     *         across the assessment's network round-trip; nothing depends on the
+     *         value, and the future never completes exceptionally.
      */
-    public void onTurnError(String error) {
+    public CompletableFuture<Void> onTurnError(String error) {
         if (disposed || armed || !isEnabledForClaude()) {
-            return;
+            return CompletableFuture.completedFuture(null);
         }
-        usageFetcher.get().thenAccept(json -> {
+        return usageFetcher.get().thenAccept(json -> {
             if (disposed || armed) {
                 return;
             }

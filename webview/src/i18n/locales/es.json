@@ -286,6 +286,12 @@
         "disabled": "Desactivado",
         "hint": "Cuando está activada, el pie de cada mensaje muestra el coste estimado del turno cuando esté disponible e incluye los aciertos de caché dentro del resumen de tokens de entrada. El uso de tokens siempre permanece visible."
       },
+      "keepAwake": {
+        "label": "Impedir que el equipo se suspenda mientras trabaja",
+        "enabled": "Activado",
+        "disabled": "Desactivado",
+        "hint": "Cuando está activado, el equipo no se suspende mientras un agente está trabajando ni mientras una ejecución espera para reiniciarse tras el restablecimiento de un límite de uso. Solo se impide la suspensión automática por inactividad: cerrar la tapa o suspender manualmente sigue funcionando, y la pantalla puede apagarse igualmente."
+      },
       "sendShortcut": {
         "label": "Atajo de envío",
         "enter": "Enter para enviar",

@@ -3,6 +3,7 @@ package com.github.ccxgui.handler;
 import com.github.ccxgui.handler.core.HandlerContext;
 
 import com.github.ccxgui.i18n.ClaudeCodeGuiBundle;
+import com.github.ccxgui.power.KeepAwakeService;
 import com.github.ccxgui.settings.CodemossSettingsService;
 import com.github.ccxgui.action.SendShortcutSync;
 import com.github.ccxgui.util.FontConfigService;
@@ -325,6 +326,26 @@ public class ProjectConfigHandler {
             settingsService::setClaudeAutoResumeEnabled,
             "window.updateClaudeAutoResumeEnabled",
             "Failed to save Claude auto-resume setting");
+    }
+
+    public void handleGetKeepAwakeEnabled() {
+        respondWithJson("window.updateKeepAwakeEnabled",
+            () -> jsonOf("keepAwakeWhileAgentWorksEnabled", settingsService.getKeepAwakeEnabled()),
+            jsonOf("keepAwakeWhileAgentWorksEnabled", CodemossSettingsService.DEFAULT_KEEP_AWAKE_ENABLED),
+            "Failed to get keep-awake enabled");
+    }
+
+    public void handleSetKeepAwakeEnabled(String content) {
+        handleBooleanToggle(content, "keepAwakeWhileAgentWorksEnabled",
+            CodemossSettingsService.DEFAULT_KEEP_AWAKE_ENABLED, "keep-awake enabled",
+            enabled -> {
+                settingsService.setKeepAwakeEnabled(enabled);
+                // Apply to the live inhibitor too: turning the toggle off must let the
+                // machine sleep now, not after the current turn finishes.
+                KeepAwakeService.getInstance().setEnabled(enabled);
+            },
+            "window.updateKeepAwakeEnabled",
+            "Failed to save keep-awake setting");
     }
 
     public void handleGetClaudeAutoResumePrompt() {

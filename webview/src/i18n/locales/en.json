@@ -437,6 +437,12 @@
         "disabled": "Disabled",
         "hint": "When enabled, message footers show estimated turn cost when available and include cache hits inside the input token summary. Token usage remains visible either way."
       },
+      "keepAwake": {
+        "label": "Keep Computer Awake While Working",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "hint": "When enabled, the computer is kept from falling asleep while an agent is working — and while a run is waiting to restart after a usage limit resets. Only automatic idle sleep is suppressed: closing the lid or sleeping the machine yourself still works, and the display is still free to switch off."
+      },
       "sendShortcut": {
         "label": "Send Shortcut",
         "enter": "Enter to Send",

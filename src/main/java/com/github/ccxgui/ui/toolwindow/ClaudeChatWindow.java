@@ -6,6 +6,7 @@ import com.github.ccxgui.handler.history.HistoryHandler;
 import com.github.ccxgui.handler.core.MessageDispatcher;
 import com.github.ccxgui.handler.PermissionHandler;
 import com.github.ccxgui.permission.PermissionService;
+import com.github.ccxgui.power.KeepAwakeService;
 import com.github.ccxgui.provider.claude.ClaudeAutoResumeController;
 import com.github.ccxgui.provider.claude.ClaudeSDKBridge;
 import com.github.ccxgui.provider.codex.CodexSDKBridge;
@@ -142,6 +143,15 @@ public class ClaudeChatWindow {
     // route to the deactivated adapter and be dropped - leaving the subagent
     // stuck on "running".
     private volatile SessionCallbackAdapter sessionCallbackAdapter;
+
+    // Keep-awake holds owned by this window. Three separate tokens because the
+    // reasons to stay awake overlap in time and end independently: a turn can
+    // finish (busy hold gone) while a usage-limit assessment is still in flight,
+    // and that assessment can hand off to an armed wake that outlives both.
+    // Identity is all that matters — KeepAwakeService compares tokens by reference.
+    private final Object busyKeepAwakeToken = new Object();
+    private final Object limitCheckKeepAwakeToken = new Object();
+    private final Object autoResumeKeepAwakeToken = new Object();
 
     public ClaudeChatWindow(Project project) {
         this(project, false);
@@ -870,9 +880,24 @@ public class ClaudeChatWindow {
             }
 
             @Override
+            public void onStateChange(boolean busy, boolean loading, String error) {
+                super.onStateChange(busy, loading, error);
+                // Deliberately outside super's active-check: a deactivated adapter
+                // stops talking to the webview, but a hold it took must still be
+                // released. Both providers route every busy transition through here.
+                updateBusyKeepAwake(busy);
+            }
+
+            @Override
             public void onTurnError(String error) {
                 super.onTurnError(error);
-                autoResumeController.onTurnError(error);
+                // The busy hold has just been dropped by onStateChange, but this may
+                // be a usage-limit failure that ends in a scheduled restart — in
+                // which case sleep must stay blocked. Hold across the assessment so
+                // the decision, not a race with it, decides whether we let go.
+                KeepAwakeService.getInstance().acquire(limitCheckKeepAwakeToken, "usage-limit assessment");
+                autoResumeController.onTurnError(error).whenComplete((ignored, throwable) ->
+                        KeepAwakeService.getInstance().release(limitCheckKeepAwakeToken));
             }
         };
         session.setCallback(sessionCallbackAdapter);
@@ -1342,6 +1367,11 @@ public class ClaudeChatWindow {
             @Override
             public void onArmed(long wakeAtMs, java.util.Set<String> exhaustedWindows) {
                 persistTabSessionState();
+                // A restart is scheduled, so the work is not finished — keep the
+                // machine awake through the wait. This is also what makes the wake
+                // fire on time: a scheduled wake does not survive the machine
+                // sleeping through its deadline.
+                KeepAwakeService.getInstance().acquire(autoResumeKeepAwakeToken, "auto-resume armed");
                 pushAutoResumeStatus(true, wakeAtMs, exhaustedWindows, false);
             }
 
@@ -1362,15 +1392,37 @@ public class ClaudeChatWindow {
             @Override
             public void onManualResumeNeeded(long wakeAtMs) {
                 persistTabSessionState();
+                // Auto-resume gave up; the next move is a human's, so there is
+                // nothing left worth keeping the machine awake for.
+                KeepAwakeService.getInstance().release(autoResumeKeepAwakeToken);
                 pushAutoResumeStatus(false, wakeAtMs, java.util.Collections.emptySet(), true);
             }
 
             @Override
             public void onDisarmed() {
                 persistTabSessionState();
+                // Fires immediately before the resume prompt is sent, so the busy
+                // hold that send takes replaces this one; the service's release
+                // grace covers the gap between the two.
+                KeepAwakeService.getInstance().release(autoResumeKeepAwakeToken);
                 pushAutoResumeStatus(false, 0L, java.util.Collections.emptySet(), false);
             }
         };
+    }
+
+    /**
+     * Mirror the session's busy flag into the application-wide keep-awake state.
+     * Idempotent by design: {@link KeepAwakeService} keys holds by token identity,
+     * so the repeated {@code busy=false} reports the message handlers emit collapse
+     * into a single release.
+     */
+    private void updateBusyKeepAwake(boolean busy) {
+        KeepAwakeService service = KeepAwakeService.getInstance();
+        if (busy) {
+            service.acquire(busyKeepAwakeToken, "agent busy");
+        } else {
+            service.release(busyKeepAwakeToken);
+        }
     }
 
     /**
@@ -1455,6 +1507,16 @@ public class ClaudeChatWindow {
             return;
         }
         this.disposed = true;
+
+        // First, ahead of any teardown step that could throw: closing a tab mid-turn
+        // (or with a wake armed) must not strand a keep-awake hold, because nothing
+        // is left afterwards to release it and the machine would never sleep again.
+        // Safe to repeat — releasing a token that is not held is a no-op.
+        KeepAwakeService keepAwakeService = KeepAwakeService.getInstance();
+        keepAwakeService.release(busyKeepAwakeToken);
+        keepAwakeService.release(limitCheckKeepAwakeToken);
+        keepAwakeService.release(autoResumeKeepAwakeToken);
+
         JBCefBrowser targetBrowser = this.browser;
         this.browser = null;
         if (this.handlerContext != null) {
