@@ -13,8 +13,8 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_DATA: ChangelogEntry[] = [
   {
-    version: '0.0.5',
-    date: '2026-08-01',
+    version: '0.0.4',
+    date: '2026-07-25',
     content: {
       en: `🔄 Upstream sync
 - **Merged upstream CC GUI v0.4.9** (\`zhukunpenglinyutong/jetbrains-cc-gui\`), together with the v0.4.8 branch tail. Fork identity and every fork-only feature — Claude usage battery, agent error/question notification sounds, Concise mode, permission-dialog timeout toggle, auto-resume after a usage-limit reset — are preserved
@@ -29,6 +29,7 @@ export const CHANGELOG_DATA: ChangelogEntry[] = [
 - Add the **Fable 5 model tier** and raise the Claude SDK floor to **0.3.182+** so the \`fable\` alias is recognized
 
 🔧 Improvements
+- **Keep the header usage-limit indicators fresh while no agent is running.** The 5-hour and weekly battery gauges used to update only when an agent turn reported usage, so an idle or freshly opened tab could sit on numbers that were hours old. On top of that push, they now also refresh when a session tab opens (a new tab, an existing session loaded from history, or a tab restored at plugin start), when the IDE window regains focus, and once a minute for as long as the tab is open. IDE-window focus is detected on the plugin side rather than in the webview, because alt-tabbing back with the caret in the editor raises no browser focus event. Every trigger goes through the same account-global cache and in-flight lock, so any number of open tabs and projects still make at most one usage request per minute
 - **Resolve provider brand icons by base URL first**, so an endpoint proxying another vendor's models shows that vendor's logo
 - Make the **pricing section of the custom-model dialog collapsible**
 
@@ -37,15 +38,6 @@ export const CHANGELOG_DATA: ChangelogEntry[] = [
 - Fix **context-usage display overflow**, **webview watchdog startup recovery**, and **ConfigSelect closing under a confirm dialog**
 - Fix **stale proxy env leaking into the Codex CLI**, **Codex weekly-only quota mapping**, **the last background-turn answer staying invisible**, and **"Environment Check Failed" after an in-place plugin update**
 - Fix **npm resolution for mise/Volta Node installs on Windows**, **Android Studio JCEF detection**, **new tabs always reusing the "AI1" name**, and **retired saved models resetting to the list head**`,
-      zh: ``,
-    },
-  },
-  {
-    version: '0.0.4',
-    date: '2026-07-25',
-    content: {
-      en: `🔧 Improvements
-- **Keep the header usage-limit indicators fresh while no agent is running.** The 5-hour and weekly battery gauges used to update only when an agent turn reported usage, so an idle or freshly opened tab could sit on numbers that were hours old. On top of that push, they now also refresh when a session tab opens (a new tab, an existing session loaded from history, or a tab restored at plugin start), when the IDE window regains focus, and once a minute for as long as the tab is open. IDE-window focus is detected on the plugin side rather than in the webview, because alt-tabbing back with the caret in the editor raises no browser focus event. Every trigger goes through the same account-global cache and in-flight lock, so any number of open tabs and projects still make at most one usage request per minute`,
       zh: ``,
     },
   },
