@@ -34,6 +34,7 @@ export const CHANGELOG_DATA: ChangelogEntry[] = [
 - Make the **pricing section of the custom-model dialog collapsible**
 
 🐛 Fixes
+- Fix **a prompt sent while subagents are running disappearing from the transcript** (the agent still received and answered it). The optimistic bubble was only carried across backend snapshots while it was the last entry, but the streaming assistant placeholder is appended right after it — so a lagging snapshot dropped it until the backend's own copy landed, by then far above everything generated since
 - Fix the **Tasks and Subagents tabs going blank after a stopped run is resumed**: both lists narrow to the current turn while streaming, so the plan and the still-running background agents left behind in the interrupted turn fell out of scope. The scope now reaches back to the turn that owns a running subagent, and an unfinished plan carries into the resumed turn
 - Fix **streaming UI stability**: completed content blocks render as each block finishes, and the message list no longer twitches or loses expand state when tool calls ripple through mid-stream
 - Fix **context-usage display overflow**, **webview watchdog startup recovery**, and **ConfigSelect closing under a confirm dialog**

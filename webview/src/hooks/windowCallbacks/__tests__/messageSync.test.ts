@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { MutableRefObject } from 'react';
 import type { ClaudeMessage } from '../../../types';
 import {
+  OPTIMISTIC_MESSAGE_LOOKBACK,
   OPTIMISTIC_MESSAGE_TIME_WINDOW,
   appendOptimisticMessageIfMissing,
   ensureStreamingAssistantInList,
@@ -298,6 +299,65 @@ describe('appendOptimisticMessageIfMissing', () => {
     const result = appendOptimisticMessageIfMissing(prev, next);
     expect(result).toHaveLength(2);
     expect(result[result.length - 1]).toBe(optimistic);
+  });
+
+  it('keeps the optimistic message after onStreamStart appended a placeholder', () => {
+    // onStreamStart appends a streaming assistant bubble as soon as the turn
+    // opens, so the optimistic message is no longer last. A backend snapshot
+    // that predates the prompt being persisted must not drop the user's bubble.
+    const optimistic = makeUserMsg('new prompt', { isOptimistic: true });
+    const placeholder = makeAssistantMsg('', { isStreaming: true, __turnId: 7 });
+    const olderUser = makeUserMsg('older prompt');
+    const olderAnswer = makeAssistantMsg('older answer');
+    const streamingBubble = makeAssistantMsg('');
+
+    const result = appendOptimisticMessageIfMissing(
+      [olderUser, olderAnswer, optimistic, placeholder],
+      [olderUser, olderAnswer, streamingBubble],
+    );
+
+    expect(result).toHaveLength(4);
+    // Placed before the turn's assistant bubble, not below the answer it triggered.
+    expect(result[2]).toBe(optimistic);
+    expect(result[3]).toBe(streamingBubble);
+  });
+
+  it('still appends at the end when nothing follows the optimistic message', () => {
+    const optimistic = makeUserMsg('new prompt', { isOptimistic: true });
+    const previousAnswer = makeAssistantMsg('previous answer');
+
+    const result = appendOptimisticMessageIfMissing(
+      [previousAnswer, optimistic],
+      [previousAnswer],
+    );
+
+    // No assistant was appended after the optimistic message, so the trailing
+    // assistant in nextList belongs to the PREVIOUS turn and must stay above.
+    expect(result).toEqual([previousAnswer, optimistic]);
+  });
+
+  it('does not duplicate when the backend copy landed and the optimistic is no longer last', () => {
+    const ts = new Date().toISOString();
+    const optimistic = makeUserMsg('new prompt', { isOptimistic: true, timestamp: ts });
+    const placeholder = makeAssistantMsg('', { isStreaming: true });
+    const backendCopy = makeUserMsg('new prompt', { timestamp: ts });
+
+    const result = appendOptimisticMessageIfMissing(
+      [optimistic, placeholder],
+      [backendCopy, makeAssistantMsg('answering')],
+    );
+
+    expect(result).toHaveLength(2);
+    expect(result[0]).toBe(backendCopy);
+  });
+
+  it('does not resurrect an optimistic message beyond the lookback window', () => {
+    const optimistic = makeUserMsg('stale prompt', { isOptimistic: true });
+    const trailing = Array.from({ length: OPTIMISTIC_MESSAGE_LOOKBACK }, (_, i) =>
+      makeAssistantMsg(`follow-up ${i}`));
+    const next = [makeAssistantMsg('snapshot')];
+
+    expect(appendOptimisticMessageIfMissing([optimistic, ...trailing], next)).toBe(next);
   });
 
   it('does not append when optimistic message is matched by content and time', () => {

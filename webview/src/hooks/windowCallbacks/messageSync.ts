@@ -79,8 +79,57 @@ export const preserveMessageIdentity = (
 };
 
 /**
- * If the previous list ended with an optimistic user message that has not yet
- * been matched by a backend message, keep it appended to nextList.
+ * How far back from the tail of prevList an unconfirmed optimistic user message
+ * may sit and still be protected.
+ *
+ * It cannot be pinned to the last slot: onStreamStart appends a streaming
+ * assistant placeholder the moment the answering turn opens, so the optimistic
+ * message stops being last almost immediately - while backend snapshots
+ * generated before it was persisted can still be in flight. Requiring the last
+ * slot dropped the user's own bubble in exactly that window.
+ *
+ * The scan is bounded so a bubble the backend never confirms cannot be
+ * resurrected forever once real conversation has moved past it.
+ */
+export const OPTIMISTIC_MESSAGE_LOOKBACK = 4;
+
+const findOptimisticIndex = (prevList: ClaudeMessage[]): number => {
+  const stopAt = Math.max(0, prevList.length - OPTIMISTIC_MESSAGE_LOOKBACK);
+  for (let i = prevList.length - 1; i >= stopAt; i -= 1) {
+    if (prevList[i]?.isOptimistic) return i;
+  }
+  return -1;
+};
+
+/**
+ * Where a restored optimistic message belongs in nextList: before the run of
+ * assistant messages that was appended after it in prevList. Appending at the
+ * very end instead would render the user's own prompt below the answer it
+ * triggered. When nothing follows it in prevList - the classic case - this is
+ * exactly nextList.length, i.e. a plain append.
+ */
+const resolveOptimisticInsertIndex = (
+  prevList: ClaudeMessage[],
+  nextList: ClaudeMessage[],
+  optimisticIndex: number,
+): number => {
+  let trailingAssistants = 0;
+  for (let i = prevList.length - 1; i > optimisticIndex; i -= 1) {
+    if (prevList[i]?.type !== 'assistant') break;
+    trailingAssistants += 1;
+  }
+
+  let insertAt = nextList.length;
+  while (insertAt > 0 && trailingAssistants > 0 && nextList[insertAt - 1]?.type === 'assistant') {
+    insertAt -= 1;
+    trailingAssistants -= 1;
+  }
+  return insertAt;
+};
+
+/**
+ * If the previous list still carries an optimistic user message that has not yet
+ * been matched by a backend message, keep it in nextList.
  * Also merges attachment blocks from the optimistic message into the matched
  * backend message so non-image file attachments remain visible.
  */
@@ -88,10 +137,10 @@ export const appendOptimisticMessageIfMissing = (
   prevList: ClaudeMessage[],
   nextList: ClaudeMessage[],
 ): ClaudeMessage[] => {
-  const lastPrev = prevList[prevList.length - 1];
-  if (!lastPrev?.isOptimistic) return nextList;
+  const optimisticIndex = findOptimisticIndex(prevList);
+  if (optimisticIndex < 0) return nextList;
 
-  const optimisticMsg = lastPrev;
+  const optimisticMsg = prevList[optimisticIndex];
   const optimisticText = getUserMessageComparableContent(optimisticMsg);
   const optimisticTime = getMessageTimestampMs(optimisticMsg) ?? Number.NaN;
 
@@ -151,7 +200,11 @@ export const appendOptimisticMessageIfMissing = (
         return nextList;
       }
     }
-    return [...nextList, optimisticMsg];
+    const insertAt = resolveOptimisticInsertIndex(prevList, nextList, optimisticIndex);
+    if (insertAt >= nextList.length) {
+      return [...nextList, optimisticMsg];
+    }
+    return [...nextList.slice(0, insertAt), optimisticMsg, ...nextList.slice(insertAt)];
   }
 
   // Backend message matched the optimistic message.  Preserve attachment blocks
