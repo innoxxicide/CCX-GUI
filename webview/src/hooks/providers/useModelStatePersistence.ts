@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { sendBridgeEvent } from '../../utils/bridge';
 import {
   CLAUDE_MODELS,
@@ -89,20 +89,31 @@ export function useModelStatePersistence(options: UseModelStatePersistenceOption
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      // Per-tab restore (issue #1353): when the Java backend has loaded a saved
-      // session for this specific tab, it injects __INITIAL_TAB_PROVIDER__ /
-      // __INITIAL_TAB_MODEL__ into the HTML before React boots. Those values
-      // win over the global localStorage snapshot, which is shared across every
-      // tab in the JCEF process and would otherwise cause every CC tab on
-      // restart to be set to whichever provider was last saved by ANY tab.
+      // Per-tab restore (issue #1353): when the Java backend holds a preference
+      // for this specific tab, it injects __INITIAL_TAB_PROVIDER__ /
+      // __INITIAL_TAB_MODEL__ / __INITIAL_TAB_REASONING_EFFORT__ into the HTML
+      // before React boots. Those values win over the global localStorage
+      // snapshot, which is shared across every tab in the JCEF process and would
+      // otherwise cause every CC tab on restart to be set to whichever provider
+      // was last saved by ANY tab.
+      //
+      // Java only injects values a tab actually had chosen for it — an empty
+      // string means "no backend preference, use localStorage". It must stay that
+      // way: forwarding a placeholder default here resets each newly opened tab
+      // to the default model instead of the selection carried over from the tab
+      // it was opened from.
       const initialTabProvider = typeof window.__INITIAL_TAB_PROVIDER__ === 'string'
         ? window.__INITIAL_TAB_PROVIDER__.trim()
         : '';
       const initialTabModel = typeof window.__INITIAL_TAB_MODEL__ === 'string'
         ? window.__INITIAL_TAB_MODEL__.trim()
         : '';
+      const initialTabReasoningEffort = typeof window.__INITIAL_TAB_REASONING_EFFORT__ === 'string'
+        ? window.__INITIAL_TAB_REASONING_EFFORT__.trim()
+        : '';
       const hasBackendProvider = initialTabProvider === 'claude' || initialTabProvider === 'codex';
       const hasBackendModel = initialTabModel.length > 0;
+      const hasBackendReasoningEffort = isReasoningEffort(initialTabReasoningEffort);
 
       let restoredProvider = 'claude';
       let restoredClaudeModel = DEFAULT_CLAUDE_MODEL_ID;
@@ -111,6 +122,14 @@ export function useModelStatePersistence(options: UseModelStatePersistenceOption
       let restoredCodexPermissionMode: PermissionMode = 'default';
       let restoredLongContextEnabled = true;
       let restoredCodexFastMode: CodexFastMode = 'normal';
+      let restoredReasoningEffort: ReasoningEffort | null = null;
+
+      const applyReasoningEffort = (effort: unknown) => {
+        if (isReasoningEffort(effort)) {
+          restoredReasoningEffort = effort;
+          setReasoningEffort(effort);
+        }
+      };
 
       // Model validation helpers — close over the restored* lets so both
       // branches (saved localStorage / fresh backend-only) share the same logic
@@ -157,9 +176,7 @@ export function useModelStatePersistence(options: UseModelStatePersistenceOption
           setLongContextEnabled(state.longContextEnabled);
         }
 
-        if (isReasoningEffort(state.reasoningEffort)) {
-          setReasoningEffort(state.reasoningEffort);
-        }
+        applyReasoningEffort(state.reasoningEffort);
         if (isCodexFastMode(state.codexFastMode)) {
           restoredCodexFastMode = state.codexFastMode;
           setCodexFastMode(restoredCodexFastMode);
@@ -183,6 +200,13 @@ export function useModelStatePersistence(options: UseModelStatePersistenceOption
           if (initialTabProvider === 'claude') applyClaudeModel(initialTabModel);
           else if (initialTabProvider === 'codex') applyCodexModel(initialTabModel);
         }
+      }
+
+      // Backend-supplied effort wins over the localStorage snapshot, same as the
+      // provider/model above: it is this tab's own value, while localStorage is
+      // shared by every tab in the JCEF process.
+      if (hasBackendReasoningEffort) {
+        applyReasoningEffort(initialTabReasoningEffort);
       }
 
       const initialPermissionMode: PermissionMode = restoredProvider === 'codex'
@@ -211,6 +235,13 @@ export function useModelStatePersistence(options: UseModelStatePersistenceOption
           // The mode is only sent to Java on an explicit user switch
           // (handleModeSelect → set_mode).
           sendBridgeEvent('set_codex_fast_mode', restoredCodexFastMode);
+          // Reasoning effort, unlike the permission mode, is webview-owned: Java
+          // only learns it from an explicit dropdown change or from the per-turn
+          // send payload, so without this the tab's backend record stays empty and
+          // a tab opened from this one has no effort to inherit.
+          if (restoredReasoningEffort) {
+            sendBridgeEvent('set_reasoning_effort', restoredReasoningEffort);
+          }
         } else {
           syncRetryCount++;
           if (syncRetryCount < MAX_SYNC_RETRIES) {
@@ -225,8 +256,20 @@ export function useModelStatePersistence(options: UseModelStatePersistenceOption
     }
   }, []);
 
-  // Persist snapshot whenever any of the seven keys change.
+  // Persist snapshot whenever any of the persisted keys change.
+  //
+  // The mount pass is skipped on purpose. Effects run in declaration order within
+  // one commit, so this would fire immediately after the hydration effect above
+  // but still see the *pre-hydration* render's props — writing the slice defaults
+  // over the saved snapshot. localStorage is shared by every tab in the JCEF
+  // process, so a tab booting at that moment would hydrate from those defaults.
+  // The hydration setters re-render, and that pass saves the real values.
+  const skipInitialSaveRef = useRef(true);
   useEffect(() => {
+    if (skipInitialSaveRef.current) {
+      skipInitialSaveRef.current = false;
+      return;
+    }
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
         provider: currentProvider,

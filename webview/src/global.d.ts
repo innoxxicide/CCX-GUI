@@ -1077,6 +1077,12 @@ interface Window {
    */
   __INITIAL_TAB_MODEL__?: string;
 
+  /**
+   * Per-tab reasoning effort injected by Java, used the same way as
+   * __INITIAL_TAB_PROVIDER__. Empty / unset means no backend preference.
+   */
+  __INITIAL_TAB_REASONING_EFFORT__?: string;
+
   // ============================================================================
   // Provider settings panel callbacks (registered by ProviderList)
   // ============================================================================

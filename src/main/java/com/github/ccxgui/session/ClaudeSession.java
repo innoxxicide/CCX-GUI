@@ -671,6 +671,14 @@ public class ClaudeSession {
     }
 
     /**
+     * Whether this session's model was actually chosen (webview sync, per-tab
+     * restore, tab inheritance) rather than left on {@link SessionState#DEFAULT_MODEL}.
+     */
+    public boolean isModelExplicitlySet() {
+        return state.isModelExplicitlySet();
+    }
+
+    /**
      * Returns the start time of the latest submitted turn, or {@code 0} when
      * no turn has been submitted yet.
      */
@@ -691,6 +699,14 @@ public class ClaudeSession {
      */
     public String getProvider() {
         return state.getProvider();
+    }
+
+    /**
+     * Whether this session's provider was actually chosen rather than left on
+     * {@link SessionState#DEFAULT_PROVIDER}.
+     */
+    public boolean isProviderExplicitlySet() {
+        return state.isProviderExplicitlySet();
     }
 
     /**

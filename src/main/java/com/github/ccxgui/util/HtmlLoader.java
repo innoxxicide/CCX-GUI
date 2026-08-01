@@ -96,26 +96,30 @@ public class HtmlLoader {
     }
 
     /**
-     * Inject per-tab provider/model into the HTML so the WebView can prefer
-     * the backend-restored values over the global localStorage snapshot.
+     * Inject per-tab provider/model/reasoning effort into the HTML so the WebView
+     * can prefer the backend-restored values over the global localStorage snapshot.
      *
      * Without this, every tab in a multi-tab setup hydrates from the same
      * localStorage key ("model-selection-state") and clobbers the per-tab
      * provider that ClaudeChatWindow.restorePersistedTabSessionState already
      * applied to the session — see issue #1353.
      *
-     * Both arguments may be null/empty. Null/empty values are injected as
+     * Every argument may be null/empty. Null/empty values are injected as
      * empty strings; the frontend treats an empty string as "no backend
      * preference" and falls back to localStorage. Only non-empty values
-     * override the global localStorage snapshot.
+     * override the global localStorage snapshot — so callers must pass null
+     * for anything the session has not actually had chosen for it, or a
+     * placeholder default would masquerade as a real per-tab preference.
      */
-    public String injectInitialTabState(String html, String provider, String model) {
+    public String injectInitialTabState(String html, String provider, String model, String reasoningEffort) {
         try {
             String safeProvider = escapeForSingleQuotedJs(provider == null ? "" : provider);
             String safeModel = escapeForSingleQuotedJs(model == null ? "" : model);
+            String safeReasoningEffort = escapeForSingleQuotedJs(reasoningEffort == null ? "" : reasoningEffort);
             String scriptInjection = "\n    <script>"
                     + "window.__INITIAL_TAB_PROVIDER__ = '" + safeProvider + "';"
                     + "window.__INITIAL_TAB_MODEL__ = '" + safeModel + "';"
+                    + "window.__INITIAL_TAB_REASONING_EFFORT__ = '" + safeReasoningEffort + "';"
                     + "</script>";
             int headIndex = html.indexOf("<head>");
             if (headIndex != -1) {

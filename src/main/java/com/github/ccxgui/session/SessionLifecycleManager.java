@@ -81,12 +81,18 @@ public class SessionLifecycleManager {
         LOG.info("Creating new session...");
 
         ClaudeSession oldSession = host.getSession();
-        ClaudeSession defaultSession = createDefaultSession();
-        String previousPermissionMode = (oldSession != null) ? oldSession.getPermissionMode() : defaultSession.getPermissionMode();
-        String previousProvider = (oldSession != null) ? oldSession.getProvider() : defaultSession.getProvider();
-        String previousModel = (oldSession != null) ? oldSession.getModel() : defaultSession.getModel();
+        // Snapshot the preferences to carry over. Detached from the old session so
+        // the copy is unaffected by anything that mutates it while the interrupt
+        // below is in flight.
+        SessionState previousPreferences = new SessionState();
+        if (oldSession != null) {
+            previousPreferences.copyPreferencesFrom(oldSession.getState());
+        }
+        String previousPermissionMode = previousPreferences.getPermissionMode();
         LOG.info("Preserving session state: mode=" + previousPermissionMode
-                         + ", provider=" + previousProvider + ", model=" + previousModel);
+                         + ", provider=" + previousPreferences.getProvider()
+                         + ", model=" + previousPreferences.getModel()
+                         + ", reasoningEffort=" + previousPreferences.getReasoningEffort());
 
         host.invalidateSessionCallbacks();
         long clearBarrierSeq = host.getStreamCoalescer().resetStreamState();
@@ -109,11 +115,14 @@ public class SessionLifecycleManager {
             });
 
             ClaudeSession newSession = createDefaultSession();
+            newSession.getState().copyPreferencesFrom(previousPreferences);
+            // Routed through the session (not the state) so the PermissionManager
+            // is synced along with the stored mode.
             newSession.setPermissionMode(previousPermissionMode);
-            newSession.setProvider(previousProvider);
-            newSession.setModel(previousModel);
             LOG.info("Restored session state to new session: mode=" + previousPermissionMode
-                             + ", provider=" + previousProvider + ", model=" + previousModel);
+                             + ", provider=" + newSession.getProvider()
+                             + ", model=" + newSession.getModel()
+                             + ", reasoningEffort=" + newSession.getReasoningEffort());
 
             completeNewSessionBootstrap(newSession, determineWorkingDirectory(),
                     "New session created successfully, working directory: ");
@@ -205,25 +214,23 @@ public class SessionLifecycleManager {
         LOG.info("Loading history session: " + sessionId + " from project: " + projectPath);
 
         ClaudeSession oldSession = host.getSession();
+        // Snapshot the preferences to carry over (see createNewSession).
+        SessionState previousPreferences = new SessionState();
         String previousPermissionMode;
-        String previousProvider;
-        String previousModel;
 
         if (oldSession != null) {
-            previousPermissionMode = oldSession.getPermissionMode();
-            previousProvider = oldSession.getProvider();
-            previousModel = oldSession.getModel();
+            previousPreferences.copyPreferencesFrom(oldSession.getState());
+            previousPermissionMode = previousPreferences.getPermissionMode();
         } else {
             PropertiesComponent props = PropertiesComponent.getInstance();
             String savedMode = props.getValue(PERMISSION_MODE_PROPERTY_KEY);
-            ClaudeSession defaultSession = createDefaultSession();
             previousPermissionMode = (savedMode != null && !savedMode.trim().isEmpty())
-                                             ? savedMode.trim() : defaultSession.getPermissionMode();
-            previousProvider = defaultSession.getProvider();
-            previousModel = defaultSession.getModel();
+                                             ? savedMode.trim() : previousPreferences.getPermissionMode();
         }
         LOG.info("Preserving session state when loading history: mode=" + previousPermissionMode
-                         + ", provider=" + previousProvider + ", model=" + previousModel);
+                         + ", provider=" + previousPreferences.getProvider()
+                         + ", model=" + previousPreferences.getModel()
+                         + ", reasoningEffort=" + previousPreferences.getReasoningEffort());
 
         host.invalidateSessionCallbacks();
         long clearBarrierSeq = host.getStreamCoalescer().resetStreamState();
@@ -244,11 +251,17 @@ public class SessionLifecycleManager {
 
             ClaudeSession newSession = new ClaudeSession(
                     host.getProject(), host.getClaudeSDKBridge(), host.getCodexSDKBridge());
+            newSession.getState().copyPreferencesFrom(previousPreferences);
+            // Routed through the session (not the state) so the PermissionManager
+            // is synced along with the stored mode.
             newSession.setPermissionMode(previousPermissionMode);
-            newSession.setProvider(provider != null && !provider.trim().isEmpty() ? provider : previousProvider);
-            newSession.setModel(previousModel);
+            if (provider != null && !provider.trim().isEmpty()) {
+                newSession.setProvider(provider);
+            }
             LOG.info("Restored session state to loaded session: mode=" + previousPermissionMode
-                             + ", provider=" + newSession.getProvider() + ", model=" + previousModel);
+                             + ", provider=" + newSession.getProvider()
+                             + ", model=" + newSession.getModel()
+                             + ", reasoningEffort=" + newSession.getReasoningEffort());
 
             host.setSession(newSession);
             host.getHandlerContext().setSession(newSession);

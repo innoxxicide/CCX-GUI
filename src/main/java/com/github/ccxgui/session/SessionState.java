@@ -76,6 +76,15 @@ public class SessionState {
     private long lastModifiedTime = System.currentTimeMillis();
     private String cwd = null;
 
+    /**
+     * Placeholder provider/model for a session nobody has configured yet. They keep
+     * every reader (send path, context-limit lookup, status bar) working before the
+     * webview reports a selection, but they are NOT a user choice — see
+     * {@link #isModelExplicitlySet()}.
+     */
+    public static final String DEFAULT_PROVIDER = "claude";
+    public static final String DEFAULT_MODEL = "claude-sonnet-4-7";
+
     // Configuration fields below are volatile because set_mode / set_model / set_provider
     // and send_message may execute on different async handler threads with no other
     // happens-before guarantee between them.
@@ -83,8 +92,16 @@ public class SessionState {
     // explicit, informed opt-in — see security remediation A: shipping bypass as the
     // out-of-the-box default removed the only confirmation gate for AI-issued commands.
     private volatile String permissionMode = "default";
-    private volatile String model = "claude-sonnet-4-7";
-    private volatile String provider = "claude";
+    private volatile String model = DEFAULT_MODEL;
+    private volatile String provider = DEFAULT_PROVIDER;
+    // Whether anything ever chose the provider/model for this tab (webview sync,
+    // per-tab restore, or inheritance from the tab a new tab was opened from), as
+    // opposed to the placeholder defaults above. The webview needs the distinction:
+    // it treats a backend-supplied provider/model as an authoritative per-tab
+    // preference that outranks its own remembered selection, so advertising a
+    // placeholder would reset every newly opened tab to the default model.
+    private volatile boolean modelExplicitlySet = false;
+    private volatile boolean providerExplicitlySet = false;
     // Reasoning effort (thinking depth). Null means "do not override SDK/settings".
     private volatile String reasoningEffort = null;
     // Codex service tier: null = use Codex defaults, "fast" = Codex /fast.
@@ -147,6 +164,20 @@ public class SessionState {
 
     public String getProvider() {
         return provider;
+    }
+
+    /**
+     * Whether {@link #getModel()} reflects a real selection rather than {@link #DEFAULT_MODEL}.
+     */
+    public boolean isModelExplicitlySet() {
+        return modelExplicitlySet;
+    }
+
+    /**
+     * Whether {@link #getProvider()} reflects a real selection rather than {@link #DEFAULT_PROVIDER}.
+     */
+    public boolean isProviderExplicitlySet() {
+        return providerExplicitlySet;
     }
 
     public String getReasoningEffort() {
@@ -214,10 +245,43 @@ public class SessionState {
 
     public void setModel(String model) {
         this.model = model;
+        if (model != null && !model.trim().isEmpty()) {
+            this.modelExplicitlySet = true;
+        }
     }
 
     public void setProvider(String provider) {
         this.provider = provider;
+        if (provider != null && !provider.trim().isEmpty()) {
+            this.providerExplicitlySet = true;
+        }
+    }
+
+    /**
+     * Copy the user-selectable preferences (provider, model, permission mode,
+     * reasoning effort) from another state.
+     *
+     * <p>The "explicitly set" bits travel with the values on purpose: a tab that
+     * inherits a placeholder default must keep reporting it as a placeholder, or
+     * it would advertise a default model to the webview as if the user had picked
+     * it and overwrite the selection the webview remembered.
+     *
+     * <p>Permission mode is copied into this state only. Callers holding a
+     * {@link ClaudeSession} must still route the mode through
+     * {@link ClaudeSession#setPermissionMode(String)} so the PermissionManager
+     * stays in sync.
+     */
+    public void copyPreferencesFrom(SessionState source) {
+        if (source == null) {
+            return;
+        }
+        setProvider(source.getProvider());
+        setModel(source.getModel());
+        setPermissionMode(source.getPermissionMode());
+        setReasoningEffort(source.getReasoningEffort());
+        // After the setters, which would otherwise mark a copied placeholder explicit.
+        this.providerExplicitlySet = source.providerExplicitlySet;
+        this.modelExplicitlySet = source.modelExplicitlySet;
     }
 
     public void setReasoningEffort(String reasoningEffort) {

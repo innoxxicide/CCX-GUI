@@ -164,3 +164,111 @@ describe('useModelStatePersistence — retired model migration', () => {
     expect(DEFAULT_CLAUDE_MODEL_ID).not.toBe('claude-fable-5');
   });
 });
+
+describe('useModelStatePersistence — per-tab handoff of the remembered selection', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    sendBridgeEventMock.mockClear();
+    (window as unknown as { sendToJava?: unknown }).sendToJava = () => {};
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    delete (window as unknown as { sendToJava?: unknown }).sendToJava;
+    delete (window as unknown as { __INITIAL_TAB_PROVIDER__?: unknown }).__INITIAL_TAB_PROVIDER__;
+    delete (window as unknown as { __INITIAL_TAB_MODEL__?: unknown }).__INITIAL_TAB_MODEL__;
+    delete (window as unknown as { __INITIAL_TAB_REASONING_EFFORT__?: unknown }).__INITIAL_TAB_REASONING_EFFORT__;
+  });
+
+  it('keeps the remembered model when the backend has no preference for this tab', () => {
+    // A tab nobody configured must inject empty strings, not its placeholder
+    // default — otherwise every newly opened tab overrides the remembered
+    // selection with claude-sonnet-4-7.
+    const setSelectedClaudeModel = vi.fn();
+    (window as unknown as { __INITIAL_TAB_PROVIDER__?: unknown }).__INITIAL_TAB_PROVIDER__ = '';
+    (window as unknown as { __INITIAL_TAB_MODEL__?: unknown }).__INITIAL_TAB_MODEL__ = '';
+    localStorage.setItem('model-selection-state', JSON.stringify({
+      provider: 'claude',
+      claudeModel: 'claude-opus-5',
+      longContextEnabled: false,
+    }));
+
+    renderHook(() => useModelStatePersistence(makeOptions({ setSelectedClaudeModel })));
+    vi.advanceTimersByTime(200);
+
+    expect(setSelectedClaudeModel).toHaveBeenCalledWith('claude-opus-5');
+    expect(bridgeEventsFor('set_model')).toEqual([['set_model', 'claude-opus-5']]);
+  });
+
+  it('restores the remembered reasoning effort and reports it to the backend', () => {
+    // Java only learns the effort from an explicit dropdown change or a send
+    // payload, so a tab that never touched the dropdown had nothing to hand to
+    // the next tab. Syncing on boot seeds the per-tab record.
+    const setReasoningEffort = vi.fn();
+    localStorage.setItem('model-selection-state', JSON.stringify({
+      provider: 'claude',
+      claudeModel: 'claude-opus-5',
+      reasoningEffort: 'xhigh',
+    }));
+
+    renderHook(() => useModelStatePersistence(makeOptions({ setReasoningEffort })));
+    vi.advanceTimersByTime(200);
+
+    expect(setReasoningEffort).toHaveBeenCalledWith('xhigh');
+    expect(bridgeEventsFor('set_reasoning_effort')).toEqual([['set_reasoning_effort', 'xhigh']]);
+  });
+
+  it('prefers the backend per-tab reasoning effort over the shared localStorage snapshot', () => {
+    const setReasoningEffort = vi.fn();
+    (window as unknown as { __INITIAL_TAB_REASONING_EFFORT__?: unknown }).__INITIAL_TAB_REASONING_EFFORT__ = 'low';
+    localStorage.setItem('model-selection-state', JSON.stringify({
+      provider: 'claude',
+      claudeModel: 'claude-opus-5',
+      reasoningEffort: 'xhigh',
+    }));
+
+    renderHook(() => useModelStatePersistence(makeOptions({ setReasoningEffort })));
+    vi.advanceTimersByTime(200);
+
+    expect(setReasoningEffort).toHaveBeenLastCalledWith('low');
+    expect(bridgeEventsFor('set_reasoning_effort')).toEqual([['set_reasoning_effort', 'low']]);
+  });
+
+  it('ignores an unrecognized backend reasoning effort', () => {
+    const setReasoningEffort = vi.fn();
+    (window as unknown as { __INITIAL_TAB_REASONING_EFFORT__?: unknown }).__INITIAL_TAB_REASONING_EFFORT__ = 'turbo';
+    localStorage.setItem('model-selection-state', JSON.stringify({
+      provider: 'claude',
+      reasoningEffort: 'xhigh',
+    }));
+
+    renderHook(() => useModelStatePersistence(makeOptions({ setReasoningEffort })));
+    vi.advanceTimersByTime(200);
+
+    expect(setReasoningEffort).toHaveBeenCalledTimes(1);
+    expect(setReasoningEffort).toHaveBeenCalledWith('xhigh');
+  });
+
+  it('does not overwrite the shared snapshot with slice defaults on mount', () => {
+    // localStorage is shared by every tab in the JCEF process. The save effect
+    // runs in the same commit as hydration and still sees the pre-hydration
+    // props, so writing on mount would hand slice defaults to any tab booting
+    // at that moment.
+    const saved = {
+      provider: 'codex',
+      claudeModel: 'claude-opus-5',
+      codexModel: 'gpt-5.6-sol',
+      claudePermissionMode: 'acceptEdits',
+      codexPermissionMode: 'acceptEdits',
+      longContextEnabled: true,
+      reasoningEffort: 'xhigh',
+      codexFastMode: 'fast',
+    };
+    localStorage.setItem('model-selection-state', JSON.stringify(saved));
+
+    renderHook(() => useModelStatePersistence(makeOptions()));
+
+    expect(JSON.parse(localStorage.getItem('model-selection-state') as string)).toEqual(saved);
+  });
+});

@@ -952,12 +952,24 @@ public class WebviewInitializer {
         String htmlContent = htmlLoader.loadChatHtml();
 
         // Each tab reads the same localStorage snapshot. Preserve the session's
-        // provider and model on both initial load and watchdog recovery.
+        // provider, model and reasoning effort on both initial load and watchdog
+        // recovery.
+        //
+        // Only pass values this tab actually had chosen for it. A session nobody
+        // configured yet still reports SessionState's placeholder provider/model,
+        // and the webview treats anything non-empty here as an authoritative
+        // per-tab preference that outranks its own remembered selection — so
+        // forwarding the placeholder would reset a newly opened tab to the default
+        // model (and, through the reasoning-level clamp, to a default effort).
         ClaudeSession session = host.getHandlerContext() != null
                 ? host.getHandlerContext().getSession() : null;
-        String tabProvider = session != null ? session.getProvider() : null;
-        String tabModel = session != null ? session.getModel() : null;
-        return htmlLoader.injectInitialTabState(htmlContent, tabProvider, tabModel);
+        String tabProvider = session != null && session.isProviderExplicitlySet()
+                ? session.getProvider() : null;
+        String tabModel = session != null && session.isModelExplicitlySet()
+                ? session.getModel() : null;
+        // Reasoning effort is null until something sets it, so it needs no flag.
+        String tabReasoningEffort = session != null ? session.getReasoningEffort() : null;
+        return htmlLoader.injectInitialTabState(htmlContent, tabProvider, tabModel, tabReasoningEffort);
     }
 
     /**

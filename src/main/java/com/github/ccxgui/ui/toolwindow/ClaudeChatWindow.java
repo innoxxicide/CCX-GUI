@@ -557,10 +557,10 @@ public class ClaudeChatWindow {
     }
 
     static void copySessionPreferences(SessionState source, SessionState target) {
-        target.setProvider(source.getProvider());
-        target.setModel(source.getModel());
-        target.setPermissionMode(source.getPermissionMode());
-        target.setReasoningEffort(source.getReasoningEffort());
+        // Carries the "explicitly set" flags too, so a new tab opened from a tab
+        // that was never configured does not present the placeholder default to
+        // the webview as a real per-tab selection.
+        target.copyPreferencesFrom(source);
     }
 
     public SessionLifecycleManager getSessionLifecycleManager() {
@@ -1304,10 +1304,14 @@ public class ClaudeChatWindow {
         }
 
         TabStateService.TabSessionState snapshot = new TabStateService.TabSessionState();
-        snapshot.provider = session.getProvider();
+        // Persist provider/model only once this tab actually has them chosen.
+        // Writing the placeholder defaults would make the next IDE start restore
+        // them as a real per-tab preference, which then outranks (and discards)
+        // the selection the webview remembered.
+        snapshot.provider = session.isProviderExplicitlySet() ? session.getProvider() : null;
         snapshot.sessionId = session.getSessionId();
         snapshot.cwd = session.getCwd();
-        snapshot.model = session.getModel();
+        snapshot.model = session.isModelExplicitlySet() ? session.getModel() : null;
         snapshot.permissionMode = session.getPermissionMode();
         snapshot.reasoningEffort = session.getReasoningEffort();
         snapshot.claudeAutoResumeWakeAt = autoResumeController != null ? autoResumeController.getWakeAtMs() : 0L;
