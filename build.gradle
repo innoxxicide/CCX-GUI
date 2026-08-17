@@ -42,7 +42,7 @@ tasks.named('checkstyleTest') {
 }
 
 group = 'com.github.ccx-gui'
-version = '0.0.4'
+version = '0.0.5'
 
 java {
     sourceCompatibility = JavaVersion.VERSION_17

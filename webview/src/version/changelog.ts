@@ -13,6 +13,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_DATA: ChangelogEntry[] = [
   {
+    version: '0.0.5',
+    date: '2026-08-17',
+    content: {
+      en: `✨ Features
+- Add **Send scheduled**: a clock button left of the send button opens a small date/time picker, pre-filled with the current date and time, and queues the message currently in the input box for delivery at the chosen moment. The input clears as it does on a normal send, and a strip above it shows what is queued and when, with a one-click cancel. The timer lives in the IDE rather than the webview, alongside the auto-resume-after-usage-limit wake and under the same rules: the pending message is persisted per tab, so it survives a webview reload, a tab switch and an IDE restart; the machine is held awake until it fires, since a scheduled wake does not fire on time if the machine idle-slept through its deadline; a restart across the deadline still delivers within 30 minutes, and anything staler is offered as a "Send now" prompt rather than started behind your back. The message must be non-empty, at most 10,000 characters, in the future and within 7 days — a rejected request says which rule it broke instead of quietly moving the time. One schedule per tab. If a turn is still streaming when the time comes, the send is deferred rather than interleaved, retried for up to ten minutes, then handed back for a manual send so the text is never lost. Works for Claude and Codex alike; attachments are not carried, so only the text is scheduled`,
+      zh: ``,
+    },
+  },
+  {
     version: '0.0.4',
     date: '2026-07-25',
     content: {
