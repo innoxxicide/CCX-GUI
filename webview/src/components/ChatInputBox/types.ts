@@ -604,6 +604,12 @@ export interface ChatInputBoxProps {
   // Event callbacks
   /** Submit message */
   onSubmit?: (content: string, attachments?: Attachment[]) => void;
+  /**
+   * Schedule the current input text for delivery at the given epoch millis.
+   * Text only — the scheduled message is held by the plugin backend across IDE
+   * restarts, so attachments are deliberately not part of it.
+   */
+  onScheduleSend?: (content: string, fireAtMs: number) => void;
   /** Stop generation */
   onStop?: () => void;
   /** Input change */
@@ -718,6 +724,8 @@ export interface ButtonAreaProps {
   onCodexFastModeChange?: (mode: CodexFastMode) => void;
   /** Enhance prompt callback */
   onEnhancePrompt?: () => void;
+  /** Schedule the current input for delivery at the given epoch millis */
+  onScheduleSend?: (fireAtMs: number) => void;
   /** Whether always thinking enabled */
   alwaysThinkingEnabled?: boolean;
   /** Toggle thinking mode */

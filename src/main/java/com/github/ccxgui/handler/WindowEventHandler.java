@@ -17,7 +17,9 @@ public class WindowEventHandler extends BaseMessageHandler {
     private static final String[] SUPPORTED_TYPES = {
         "heartbeat", "tab_loading_changed", "tab_status_changed",
         "create_new_session", "frontend_ready", "refresh_slash_commands",
-        "claude_auto_resume_manual"
+        "claude_auto_resume_manual",
+        "schedule_send", "cancel_scheduled_send", "send_scheduled_now",
+        "get_scheduled_send_status"
     };
 
     /**
@@ -31,6 +33,22 @@ public class WindowEventHandler extends BaseMessageHandler {
         void onFrontendReady();
         void onRefreshSlashCommands();
         void onManualAutoResume();
+
+        /** Schedule the message currently in the input box for delivery at {@code fireAt} (epoch millis). */
+        void onScheduleSend(String message, long fireAt);
+
+        /** Drop the pending scheduled send. */
+        void onCancelScheduledSend();
+
+        /** Send the pending (or missed) scheduled message right now. */
+        void onSendScheduledNow();
+
+        /**
+         * Re-push the current scheduled-send state. The status is otherwise only
+         * pushed on change, so a webview that reloaded mid-schedule would show
+         * nothing until the next transition.
+         */
+        void onRequestScheduledSendStatus();
     }
 
     private final Callback callback;
@@ -64,6 +82,18 @@ public class WindowEventHandler extends BaseMessageHandler {
             case "claude_auto_resume_manual":
                 callback.onManualAutoResume();
                 return true;
+            case "schedule_send":
+                handleScheduleSend(content);
+                return true;
+            case "cancel_scheduled_send":
+                callback.onCancelScheduledSend();
+                return true;
+            case "send_scheduled_now":
+                callback.onSendScheduledNow();
+                return true;
+            case "get_scheduled_send_status":
+                callback.onRequestScheduledSendStatus();
+                return true;
             default:
                 return false;
         }
@@ -81,6 +111,26 @@ public class WindowEventHandler extends BaseMessageHandler {
             callback.onTabLoadingChanged(loading);
         } catch (Exception e) {
             LOG.warn("[TabLoading] Failed to parse loading state: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Parse a {@code {"message": string, "fireAt": number}} payload. A malformed
+     * payload is dropped rather than scheduled: the controller would reject it
+     * anyway, and guessing a fire time would send the message at the wrong moment.
+     */
+    private void handleScheduleSend(String content) {
+        try {
+            JsonObject json = new Gson().fromJson(content, JsonObject.class);
+            String message = json != null && json.has("message") && !json.get("message").isJsonNull()
+                    ? json.get("message").getAsString()
+                    : "";
+            long fireAt = json != null && json.has("fireAt") && !json.get("fireAt").isJsonNull()
+                    ? json.get("fireAt").getAsLong()
+                    : 0L;
+            callback.onScheduleSend(message, fireAt);
+        } catch (Exception e) {
+            LOG.warn("[ScheduledSend] Failed to parse schedule payload: " + e.getMessage());
         }
     }
 

@@ -463,6 +463,14 @@ interface Window {
   updateClaudeAutoResumeStatus?: (json: string) => void;
 
   /**
+   * Push the "Send scheduled" state for the active tab.
+   * Payload: {scheduled: boolean, fireAt: number, preview: string, missed: boolean, error?: string}
+   * `error` appears only when a schedule request was rejected, in which case the
+   * rest of the payload still describes the unchanged current state.
+   */
+  updateScheduledSendStatus?: (json: string) => void;
+
+  /**
    * Update current Claude config
    */
   updateCurrentClaudeConfig?: (json: string) => void;

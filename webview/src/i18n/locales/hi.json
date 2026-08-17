@@ -1561,6 +1561,28 @@
       "label": "OpenCode"
     }
   },
+  "scheduledSend": {
+    "buttonTooltip": "निर्धारित समय पर भेजें",
+    "dialogTitle": "निर्धारित समय पर भेजें",
+    "dateLabel": "तारीख",
+    "timeLabel": "समय",
+    "schedule": "शेड्यूल करें",
+    "cancel": "रद्द करें",
+    "pending": "संदेश शेड्यूल किया गया",
+    "pendingAt": "संदेश {{time}} पर भेजा जाएगा",
+    "cancelPending": "रद्द करें",
+    "missed": "शेड्यूल किया गया संदेश समय पर नहीं भेजा जा सका",
+    "sendNow": "अभी भेजें",
+    "discard": "हटाएँ",
+    "dismiss": "बंद करें",
+    "error": {
+      "invalid": "मान्य तारीख और समय चुनें",
+      "past": "भविष्य का समय चुनें",
+      "tooFarAhead": "अगले 7 दिनों के भीतर का समय चुनें",
+      "empty": "शेड्यूल करने से पहले संदेश लिखें",
+      "tooLong": "संदेश शेड्यूल करने के लिए बहुत लंबा है (अधिकतम 10,000 अक्षर)"
+    }
+  },
   "promptEnhancer": {
     "title": "Prompt Enhancer",
     "tooltip": "Enhance Prompt",

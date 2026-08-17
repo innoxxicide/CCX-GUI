@@ -191,6 +191,14 @@ public final class TabStateService implements PersistentStateComponent<TabStateS
          * replayed through {@code ClaudeAutoResumeController.restoreFromPersisted}.
          */
         public long claudeAutoResumeWakeAt;
+        /**
+         * Epoch millis of a pending "Send scheduled" delivery, or {@code 0} when
+         * none is scheduled. Persisted so a scheduled send survives IDE restart;
+         * replayed through {@code ScheduledSendController.restoreFromPersisted}.
+         */
+        public long scheduledSendAt;
+        /** Text of the pending scheduled send, or {@code null} when none is scheduled. */
+        public String scheduledSendText;
 
         public TabSessionState copy() {
             TabSessionState copy = new TabSessionState();
@@ -201,6 +209,8 @@ public final class TabStateService implements PersistentStateComponent<TabStateS
             copy.permissionMode = this.permissionMode;
             copy.reasoningEffort = this.reasoningEffort;
             copy.claudeAutoResumeWakeAt = this.claudeAutoResumeWakeAt;
+            copy.scheduledSendAt = this.scheduledSendAt;
+            copy.scheduledSendText = this.scheduledSendText;
             return copy;
         }
     }

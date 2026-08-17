@@ -72,6 +72,7 @@ export const ChatInputBox = memo(forwardRef<ChatInputBoxHandle, ChatInputBoxProp
       disabled = false,
       value,
       onSubmit,
+      onScheduleSend,
       onStop,
       onInput,
       onAddAttachment,
@@ -413,6 +414,33 @@ export const ChatInputBox = memo(forwardRef<ChatInputBoxHandle, ChatInputBoxProp
       t,
     });
 
+    /**
+     * Hand the current input text to the backend for delivery at fireAtMs.
+     *
+     * Mirrors handleSubmit's read-then-clear so a scheduled message leaves the
+     * box exactly like a sent one, but keeps attachments: they are not part of a
+     * scheduled send (the backend persists only text across restarts), so
+     * dropping them would silently discard files the user had staged.
+     */
+    const handleScheduleSend = useCallback(
+      (fireAtMs: number) => {
+        invalidateCache();
+        const content = getTextContent();
+        const cleanContent = content.replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
+        if (!cleanContent) {
+          // Reachable with attachments but no text: hasInputContent counts both,
+          // while a scheduled send carries text only.
+          addToast?.(t('scheduledSend.error.empty'), 'warning');
+          return;
+        }
+        recordInputHistory(content);
+        debouncedOnInput.cancel();
+        clearInput();
+        onScheduleSend?.(content, fireAtMs);
+      },
+      [invalidateCache, getTextContent, recordInputHistory, debouncedOnInput, clearInput, onScheduleSend, addToast, t]
+    );
+
     // Prompt enhancer hook
     const {
       isEnhancing,
@@ -711,6 +739,7 @@ export const ChatInputBox = memo(forwardRef<ChatInputBoxHandle, ChatInputBoxProp
           onReasoningChange={onReasoningChange}
           onCodexFastModeChange={onCodexFastModeChange}
           onEnhancePrompt={handleEnhancePrompt}
+          onScheduleSend={handleScheduleSend}
           alwaysThinkingEnabled={alwaysThinkingEnabled}
           onToggleThinking={onToggleThinking}
           streamingEnabled={streamingEnabled}

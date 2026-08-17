@@ -34,6 +34,7 @@ export function ChatInputBoxFooter({
   onReasoningChange,
   onCodexFastModeChange,
   onEnhancePrompt,
+  onScheduleSend,
   alwaysThinkingEnabled,
   onToggleThinking,
   streamingEnabled,
@@ -71,6 +72,7 @@ export function ChatInputBoxFooter({
   onReasoningChange?: (effort: ReasoningEffort) => void;
   onCodexFastModeChange?: (mode: CodexFastMode) => void;
   onEnhancePrompt: () => void;
+  onScheduleSend?: (fireAtMs: number) => void;
   alwaysThinkingEnabled?: boolean;
   onToggleThinking?: (enabled: boolean) => void;
   streamingEnabled?: boolean;
@@ -120,6 +122,7 @@ export function ChatInputBoxFooter({
         onReasoningChange={onReasoningChange}
         onCodexFastModeChange={onCodexFastModeChange}
         onEnhancePrompt={onEnhancePrompt}
+        onScheduleSend={onScheduleSend}
         alwaysThinkingEnabled={alwaysThinkingEnabled}
         onToggleThinking={onToggleThinking}
         streamingEnabled={streamingEnabled}

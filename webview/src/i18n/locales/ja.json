@@ -1567,6 +1567,28 @@
       "label": "OpenCode"
     }
   },
+  "scheduledSend": {
+    "buttonTooltip": "予約送信",
+    "dialogTitle": "予約送信",
+    "dateLabel": "日付",
+    "timeLabel": "時刻",
+    "schedule": "予約",
+    "cancel": "キャンセル",
+    "pending": "メッセージを予約しました",
+    "pendingAt": "{{time}} に送信予定",
+    "cancelPending": "キャンセル",
+    "missed": "予約したメッセージを時間どおりに送信できませんでした",
+    "sendNow": "今すぐ送信",
+    "discard": "破棄",
+    "dismiss": "閉じる",
+    "error": {
+      "invalid": "有効な日付と時刻を選択してください",
+      "past": "未来の時刻を選択してください",
+      "tooFarAhead": "7 日以内の時刻を選択してください",
+      "empty": "予約するメッセージを入力してください",
+      "tooLong": "メッセージが長すぎて予約できません（最大 10,000 文字）"
+    }
+  },
   "promptEnhancer": {
     "title": "プロンプトエンハンサー",
     "tooltip": "プロンプトを書き直してより多くのコンテキストを提供し、エージェントの応答を改善",

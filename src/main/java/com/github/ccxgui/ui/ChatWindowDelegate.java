@@ -106,6 +106,18 @@ public class ChatWindowDelegate {
         void persistTabSessionState();
         void manualResumeAutoResume();
 
+        /** Schedule the webview's current input text for delivery at {@code fireAt} (epoch millis). */
+        void scheduleSend(String message, long fireAt);
+
+        /** Drop the pending scheduled send. */
+        void cancelScheduledSend();
+
+        /** Deliver the pending (or missed) scheduled message immediately. */
+        void sendScheduledNow();
+
+        /** Re-push the current scheduled-send state to the webview. */
+        void requestScheduledSendStatus();
+
         /**
          * Soft-reload the currently active session's transcript without interrupting
          * any in-flight turn.
@@ -340,6 +352,10 @@ public class ChatWindowDelegate {
                 host.getSessionLifecycleManager().fetchSlashCommandsOnStartup();
             }
             @Override public void onManualAutoResume() { host.manualResumeAutoResume(); }
+            @Override public void onScheduleSend(String message, long fireAt) { host.scheduleSend(message, fireAt); }
+            @Override public void onCancelScheduledSend() { host.cancelScheduledSend(); }
+            @Override public void onSendScheduledNow() { host.sendScheduledNow(); }
+            @Override public void onRequestScheduledSendStatus() { host.requestScheduledSendStatus(); }
         }));
 
         PermissionHandler permissionHandler = new PermissionHandler(handlerContext);

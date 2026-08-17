@@ -1946,6 +1946,28 @@
       "label": "OpenCode"
     }
   },
+  "scheduledSend": {
+    "buttonTooltip": "定时发送",
+    "dialogTitle": "定时发送",
+    "dateLabel": "日期",
+    "timeLabel": "时间",
+    "schedule": "定时",
+    "cancel": "取消",
+    "pending": "消息已定时",
+    "pendingAt": "消息将于 {{time}} 发送",
+    "cancelPending": "取消",
+    "missed": "定时消息未能按时发送",
+    "sendNow": "立即发送",
+    "discard": "丢弃",
+    "dismiss": "知道了",
+    "error": {
+      "invalid": "请选择有效的日期和时间",
+      "past": "请选择将来的时间",
+      "tooFarAhead": "请选择 7 天以内的时间",
+      "empty": "请先输入要定时发送的消息",
+      "tooLong": "消息过长，无法定时发送（最多 10000 个字符）"
+    }
+  },
   "promptEnhancer": {
     "title": "增强提示词",
     "tooltip": "增强提示词",

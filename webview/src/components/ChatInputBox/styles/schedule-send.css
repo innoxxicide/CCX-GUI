@@ -1,0 +1,169 @@
+/**
+ * "Send scheduled" button and its date/time popover.
+ * Follows the confirm-popover language from context-bar.css so the two small
+ * anchored dialogs in the input box read as one component.
+ */
+
+/* ============================================================
+   Toolbar button (sits left of the send button)
+   ============================================================ */
+.schedule-send-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: var(--button-bg);
+  border: none;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.schedule-send-button:hover:not(:disabled) {
+  background: var(--button-hover);
+  color: var(--text-primary);
+}
+
+.schedule-send-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.schedule-send-button.active {
+  color: var(--button-primary);
+  background: var(--button-hover);
+}
+
+.schedule-send-button .codicon {
+  font-size: 16px;
+}
+
+.schedule-send-anchor {
+  position: relative;
+  display: inline-block;
+}
+
+/* ============================================================
+   Popover
+   ============================================================ */
+.schedule-send-popover {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  z-index: 10000;
+  min-width: 240px;
+  padding: 12px;
+  background: var(--dropdown-bg);
+  border: 1px solid var(--dropdown-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  animation: schedule-send-fade-in 0.12s ease-out;
+  cursor: default;
+  text-align: left;
+}
+
+@keyframes schedule-send-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.schedule-send-title {
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.schedule-send-fields {
+  display: flex;
+  gap: 8px;
+}
+
+.schedule-send-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.schedule-send-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.schedule-send-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 4px 6px;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text-primary);
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 4px;
+  outline: none;
+}
+
+.schedule-send-input:focus {
+  border-color: var(--input-focus-border);
+}
+
+/* The native pickers ship a light icon that vanishes on a dark background. */
+[data-theme='dark'] .schedule-send-input::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.schedule-send-error {
+  margin-top: 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--error-color);
+}
+
+.schedule-send-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.schedule-send-btn {
+  padding: 4px 12px;
+  font-family: inherit;
+  font-size: 11px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.schedule-send-btn-cancel {
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--dropdown-border);
+}
+
+.schedule-send-btn-cancel:hover {
+  background: var(--button-hover);
+  color: var(--text-primary);
+}
+
+.schedule-send-btn-confirm {
+  color: #ffffff;
+  background: var(--button-primary);
+  border: 1px solid var(--button-primary);
+}
+
+.schedule-send-btn-confirm:hover {
+  opacity: 0.85;
+}

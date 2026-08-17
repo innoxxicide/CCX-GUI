@@ -1567,6 +1567,28 @@
       "label": "OpenCode"
     }
   },
+  "scheduledSend": {
+    "buttonTooltip": "定時發送",
+    "dialogTitle": "定時發送",
+    "dateLabel": "日期",
+    "timeLabel": "時間",
+    "schedule": "定時",
+    "cancel": "取消",
+    "pending": "訊息已定時",
+    "pendingAt": "訊息將於 {{time}} 發送",
+    "cancelPending": "取消",
+    "missed": "定時訊息未能準時發送",
+    "sendNow": "立即發送",
+    "discard": "捨棄",
+    "dismiss": "知道了",
+    "error": {
+      "invalid": "請選擇有效的日期和時間",
+      "past": "請選擇將來的時間",
+      "tooFarAhead": "請選擇 7 天以內的時間",
+      "empty": "請先輸入要定時發送的訊息",
+      "tooLong": "訊息過長，無法定時發送（最多 10000 個字元）"
+    }
+  },
   "promptEnhancer": {
     "title": "Prompt Enhancer",
     "tooltip": "Enhance Prompt",

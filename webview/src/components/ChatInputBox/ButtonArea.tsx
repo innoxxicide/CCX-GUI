@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ButtonAreaProps, CodexFastMode, ModelInfo, PermissionMode, ReasoningEffort } from './types';
 import { CodexFastModeSelect, ConfigSelect, ModelSelect, ModeSelect, ProviderSelect, ReasoningSelect } from './selectors';
+import { ScheduleSendPopover } from './ScheduleSendPopover';
 import { CLAUDE_MODELS, CODEX_MODELS } from './types';
 import { STORAGE_KEYS, validateCodexCustomModels } from '../../types/provider';
 import type { CodexCustomModel } from '../../types/provider';
@@ -84,6 +85,7 @@ export const ButtonArea = ({
   onReasoningChange,
   onCodexFastModeChange,
   onEnhancePrompt,
+  onScheduleSend,
   alwaysThinkingEnabled = false,
   onToggleThinking,
   streamingEnabled = true,
@@ -97,6 +99,10 @@ export const ButtonArea = ({
 }: ButtonAreaProps) => {
   const { t } = useTranslation();
   // const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // "Send scheduled" date/time popover. Kept here rather than in the popover so
+  // the button can render its own open/active state.
+  const [scheduleOpen, setScheduleOpen] = useState(false);
 
   // Track changes to custom models in localStorage
   // When localStorage changes, updating this version number triggers useMemo recalculation
@@ -253,6 +259,31 @@ export const ButtonArea = ({
     onEnhancePrompt?.();
   }, [onEnhancePrompt]);
 
+  /**
+   * Toggle the schedule popover
+   */
+  const handleScheduleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setScheduleOpen(open => !open);
+  }, []);
+
+  const handleScheduleClose = useCallback(() => {
+    setScheduleOpen(false);
+  }, []);
+
+  const handleScheduleConfirm = useCallback((fireAtMs: number) => {
+    setScheduleOpen(false);
+    onScheduleSend?.(fireAtMs);
+  }, [onScheduleSend]);
+
+  // An empty input has nothing to schedule, and a popover left open while the
+  // input drains would confirm into nothing.
+  useEffect(() => {
+    if (!hasInputContent) {
+      setScheduleOpen(false);
+    }
+  }, [hasInputContent]);
+
   return (
     <div className="button-area" data-provider={currentProvider}>
       {/* Left side: selectors */}
@@ -293,6 +324,21 @@ export const ButtonArea = ({
         >
           <span className={`codicon ${isEnhancing ? 'codicon-loading codicon-modifier-spin' : 'codicon-sparkle'}`} />
         </button>
+
+        {/* Send scheduled button + its date/time popover */}
+        <div className="schedule-send-anchor">
+          <button
+            className={`schedule-send-button${scheduleOpen ? ' active' : ''}`}
+            onClick={handleScheduleClick}
+            disabled={disabled || !hasInputContent || isLoading}
+            title={t('scheduledSend.buttonTooltip')}
+          >
+            <span className="codicon codicon-clock" />
+          </button>
+          {scheduleOpen && (
+            <ScheduleSendPopover onSchedule={handleScheduleConfirm} onClose={handleScheduleClose} />
+          )}
+        </div>
 
         {/* Send/Stop button */}
         {isLoading ? (

@@ -1,0 +1,106 @@
+.banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+
+  .codicon {
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.4;
+}
+
+/* Preview of the queued message, dimmed so the time stays the headline. */
+.preview {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  opacity: 0.75;
+  font-size: 11px;
+}
+
+/* Passive "waiting for the scheduled time" indicator. */
+.pending {
+  background: rgba(156, 39, 176, 0.1);
+  border-color: rgba(156, 39, 176, 0.25);
+  color: #ce93d8;
+}
+
+/* Actionable "we could not deliver it on time" prompt. */
+.missed {
+  background: rgba(255, 152, 0, 0.12);
+  border-color: rgba(255, 152, 0, 0.3);
+  color: #ffb74d;
+}
+
+/* A rejected schedule request (time in the past, too far ahead, …). */
+.error {
+  background: rgba(244, 67, 54, 0.1);
+  border-color: rgba(244, 67, 54, 0.28);
+  color: #ef9a9a;
+}
+
+.primaryBtn {
+  flex-shrink: 0;
+  padding: 3px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #ffffff;
+  background: rgba(255, 152, 0, 0.85);
+  border: 1px solid rgba(255, 152, 0, 0.9);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: rgba(255, 152, 0, 1);
+  }
+}
+
+.ghostBtn {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  font-size: 11px;
+  color: inherit;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  opacity: 0.8;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+[data-theme='light'] {
+  .pending {
+    background: rgba(156, 39, 176, 0.08);
+    border-color: rgba(156, 39, 176, 0.2);
+    color: #7b1fa2;
+  }
+
+  .missed {
+    background: rgba(245, 124, 0, 0.1);
+    border-color: rgba(245, 124, 0, 0.25);
+    color: #e65100;
+  }
+
+  .error {
+    background: rgba(211, 47, 47, 0.08);
+    border-color: rgba(211, 47, 47, 0.22);
+    color: #c62828;
+  }
+}

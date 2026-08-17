@@ -12,6 +12,7 @@ import com.github.ccxgui.provider.claude.ClaudeSDKBridge;
 import com.github.ccxgui.provider.codex.CodexSDKBridge;
 import com.github.ccxgui.provider.common.DaemonBridge;
 import com.github.ccxgui.provider.common.MessageCallback;
+import com.github.ccxgui.schedule.ScheduledSendController;
 import com.github.ccxgui.session.ClaudeSession;
 import com.github.ccxgui.session.SessionCallbackAdapter;
 import com.github.ccxgui.session.SessionLifecycleManager;
@@ -136,6 +137,15 @@ public class ClaudeChatWindow {
     // toggle is on and the bound session is Claude. One instance per window; its
     // Host reads the live session field so it survives session re-binding.
     private final ClaudeAutoResumeController autoResumeController;
+    // User-scheduled "Send scheduled" delivery for this tab. Provider-agnostic and
+    // idle until the user picks a time; like the controller above, its Host reads
+    // the live session field so it survives session re-binding.
+    private final ScheduledSendController scheduledSendController;
+    // Text of a scheduled send that could not be delivered on time. Held so the
+    // banner's "Send now" has something to send — the controller drops its own
+    // copy when it disarms. volatile: written from the scheduler thread that
+    // reports the miss, read on the EDT when the user clicks.
+    private volatile String missedScheduledSendText = null;
     // volatile: read from the daemon reader thread by the task_event listener
     // (titleEventListener), while reassigned on the EDT in setupSessionCallbacks.
     // Without volatile a session switch could publish a new adapter on the EDT
@@ -152,6 +162,9 @@ public class ClaudeChatWindow {
     private final Object busyKeepAwakeToken = new Object();
     private final Object limitCheckKeepAwakeToken = new Object();
     private final Object autoResumeKeepAwakeToken = new Object();
+    // A scheduled send has the same deadline problem as an armed auto-resume wake:
+    // it does not fire on time if the machine idle-slept through it.
+    private final Object scheduledSendKeepAwakeToken = new Object();
 
     public ClaudeChatWindow(Project project) {
         this(project, false);
@@ -206,6 +219,7 @@ public class ClaudeChatWindow {
 
         this.session = new ClaudeSession(project, claudeSDKBridge, codexSDKBridge);
         this.autoResumeController = new ClaudeAutoResumeController(createAutoResumeHost(), settingsService);
+        this.scheduledSendController = new ScheduledSendController(createScheduledSendHost());
 
         this.chatWindowDelegate = new ChatWindowDelegate(createDelegateHost());
         chatWindowDelegate.loadPermissionModeFromSettings();
@@ -615,6 +629,11 @@ public class ClaudeChatWindow {
         // above, so the controller's Claude/enabled gate reads correctly here.
         if (autoResumeController != null) {
             autoResumeController.restoreFromPersisted(savedState.claudeAutoResumeWakeAt);
+        }
+        // Same ordering reason as above: replay before persisting, or a still
+        // pending scheduled send is overwritten with the empty snapshot below.
+        if (scheduledSendController != null) {
+            scheduledSendController.restoreFromPersisted(savedState.scheduledSendAt, savedState.scheduledSendText);
         }
         persistTabSessionState();
 
@@ -1340,6 +1359,8 @@ public class ClaudeChatWindow {
         snapshot.permissionMode = session.getPermissionMode();
         snapshot.reasoningEffort = session.getReasoningEffort();
         snapshot.claudeAutoResumeWakeAt = autoResumeController != null ? autoResumeController.getWakeAtMs() : 0L;
+        snapshot.scheduledSendAt = scheduledSendController != null ? scheduledSendController.getFireAtMs() : 0L;
+        snapshot.scheduledSendText = scheduledSendController != null ? scheduledSendController.getMessage() : null;
 
         TabStateService.getInstance(project).saveTabSessionState(tabIndex, snapshot);
     }
@@ -1408,6 +1429,142 @@ public class ClaudeChatWindow {
                 pushAutoResumeStatus(false, 0L, java.util.Collections.emptySet(), false);
             }
         };
+    }
+
+    /**
+     * Build the {@link ScheduledSendController.Host} bridging the controller to
+     * this window. Mirrors {@link #createAutoResumeHost()}: persistence rides
+     * {@link #persistTabSessionState()}, which reads the controller's current
+     * schedule, so arming and disarming save (or clear) it automatically.
+     */
+    private ScheduledSendController.Host createScheduledSendHost() {
+        return new ScheduledSendController.Host() {
+            @Override
+            public boolean isActive() {
+                return !disposed;
+            }
+
+            @Override
+            public boolean isBusy() {
+                ClaudeSession current = session;
+                return current != null && current.isBusy();
+            }
+
+            @Override
+            public void onArmed(long fireAtMs, String message) {
+                missedScheduledSendText = null;
+                persistTabSessionState();
+                // A scheduled wake does not survive the machine idle-sleeping
+                // through its deadline, so hold the machine awake until it fires.
+                KeepAwakeService.getInstance().acquire(scheduledSendKeepAwakeToken, "scheduled send pending");
+                pushScheduledSendStatus(true, fireAtMs, message, false, null);
+            }
+
+            @Override
+            public void send(String message) {
+                ClaudeSession current = session;
+                if (current == null) {
+                    return;
+                }
+                // Cast disambiguates send(String, String agentPrompt) from the
+                // send(String, List<Attachment>) overload; null = default agent.
+                current.send(message, (String) null).exceptionally(ex -> {
+                    LOG.warn("[ScheduledSend] Send failed: " + ex.getMessage());
+                    return null;
+                });
+            }
+
+            @Override
+            public void onMissed(long fireAtMs, String message) {
+                // Held so the "Send now" button has something to send: the
+                // controller has already dropped its own copy by this point.
+                missedScheduledSendText = message;
+                persistTabSessionState();
+                // The next move is a human's; nothing left worth staying awake for.
+                KeepAwakeService.getInstance().release(scheduledSendKeepAwakeToken);
+                pushScheduledSendStatus(false, fireAtMs, message, true, null);
+            }
+
+            @Override
+            public void onDisarmed() {
+                missedScheduledSendText = null;
+                persistTabSessionState();
+                // Fires immediately before the message is sent, so the busy hold
+                // that send takes replaces this one; the service's release grace
+                // covers the gap between the two.
+                KeepAwakeService.getInstance().release(scheduledSendKeepAwakeToken);
+                pushScheduledSendStatus(false, 0L, null, false, null);
+            }
+        };
+    }
+
+    /**
+     * Push the current scheduled-send state to the webview. {@code errorCode} is
+     * non-null only when a schedule request was rejected, in which case the rest of
+     * the payload still describes the (unchanged) current state. The frontend
+     * consumes {@code window.updateScheduledSendStatus}; the call is a safe no-op
+     * until that handler exists.
+     */
+    private void pushScheduledSendStatus(boolean scheduled, long fireAtMs, String message,
+                                         boolean missed, String errorCode) {
+        JsonObject payload = new JsonObject();
+        payload.addProperty("scheduled", scheduled);
+        payload.addProperty("fireAt", fireAtMs);
+        payload.addProperty("missed", missed);
+        // Only a preview travels: the banner shows one line, and the full text can
+        // run to ScheduledSendController.MAX_MESSAGE_LENGTH. "Send now" reads the
+        // authoritative copy on this side, so the webview never needs all of it.
+        payload.addProperty("preview", buildSchedulePreview(message));
+        if (errorCode != null) {
+            payload.addProperty("error", errorCode);
+        }
+        callJavaScript("updateScheduledSendStatus", JsUtils.escapeJs(new Gson().toJson(payload)));
+    }
+
+    private static final int SCHEDULE_PREVIEW_LENGTH = 120;
+
+    private static String buildSchedulePreview(String message) {
+        if (message == null) {
+            return "";
+        }
+        String flattened = message.replaceAll("\\s+", " ").trim();
+        return flattened.length() > SCHEDULE_PREVIEW_LENGTH
+                ? flattened.substring(0, SCHEDULE_PREVIEW_LENGTH) + "…"
+                : flattened;
+    }
+
+    /** Re-push the current scheduled-send state, e.g. after the webview reloaded. */
+    private void pushCurrentScheduledSendStatus() {
+        if (scheduledSendController == null) {
+            return;
+        }
+        if (scheduledSendController.isArmed()) {
+            pushScheduledSendStatus(true, scheduledSendController.getFireAtMs(),
+                    scheduledSendController.getMessage(), false, null);
+        } else if (missedScheduledSendText != null) {
+            pushScheduledSendStatus(false, 0L, missedScheduledSendText, true, null);
+        } else {
+            pushScheduledSendStatus(false, 0L, null, false, null);
+        }
+    }
+
+    /**
+     * Map a rejected schedule request to the frontend's error vocabulary. Returns
+     * {@code null} for a successful request.
+     */
+    private static String scheduleErrorCode(ScheduledSendController.Result result) {
+        switch (result) {
+            case EMPTY_MESSAGE:
+                return "empty";
+            case MESSAGE_TOO_LONG:
+                return "tooLong";
+            case TIME_IN_PAST:
+                return "past";
+            case TOO_FAR_AHEAD:
+                return "tooFarAhead";
+            default:
+                return null;
+        }
     }
 
     /**
@@ -1516,6 +1673,7 @@ public class ClaudeChatWindow {
         keepAwakeService.release(busyKeepAwakeToken);
         keepAwakeService.release(limitCheckKeepAwakeToken);
         keepAwakeService.release(autoResumeKeepAwakeToken);
+        keepAwakeService.release(scheduledSendKeepAwakeToken);
 
         JBCefBrowser targetBrowser = this.browser;
         this.browser = null;
@@ -1540,6 +1698,11 @@ public class ClaudeChatWindow {
             // Stops the scheduled wake only; persisted state is left intact so a
             // wake survives IDE shutdown (tab close removes the tab state itself).
             autoResumeController.dispose();
+        }
+        if (scheduledSendController != null) {
+            // Same contract as above: cancels the pending fire, leaves the
+            // persisted schedule for restoreFromPersisted to replay.
+            scheduledSendController.dispose();
         }
         deferredReloadSafetyAlarm.cancelAllRequests();
         Disposer.dispose(safetyAlarmDisposable);
@@ -1883,6 +2046,44 @@ public class ClaudeChatWindow {
                 if (autoResumeController != null) {
                     autoResumeController.manualResume();
                 }
+            }
+
+            @Override
+            public void scheduleSend(String message, long fireAt) {
+                if (scheduledSendController == null) {
+                    return;
+                }
+                ScheduledSendController.Result result = scheduledSendController.schedule(message, fireAt);
+                String errorCode = scheduleErrorCode(result);
+                if (errorCode != null) {
+                    // Rejected requests leave the schedule untouched, so report the
+                    // reason alongside the state the tab still has.
+                    LOG.info("[ScheduledSend] Rejected schedule request: " + result);
+                    pushScheduledSendStatus(scheduledSendController.isArmed(),
+                            scheduledSendController.getFireAtMs(),
+                            scheduledSendController.getMessage(), false, errorCode);
+                }
+            }
+
+            @Override
+            public void cancelScheduledSend() {
+                missedScheduledSendText = null;
+                if (scheduledSendController != null) {
+                    scheduledSendController.cancel();
+                }
+                pushCurrentScheduledSendStatus();
+            }
+
+            @Override
+            public void sendScheduledNow() {
+                if (scheduledSendController != null) {
+                    scheduledSendController.sendNow(missedScheduledSendText);
+                }
+            }
+
+            @Override
+            public void requestScheduledSendStatus() {
+                pushCurrentScheduledSendStatus();
             }
 
             @Override

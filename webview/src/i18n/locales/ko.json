@@ -1680,6 +1680,28 @@
       "label": "OpenCode"
     }
   },
+  "scheduledSend": {
+    "buttonTooltip": "예약 전송",
+    "dialogTitle": "예약 전송",
+    "dateLabel": "날짜",
+    "timeLabel": "시간",
+    "schedule": "예약",
+    "cancel": "취소",
+    "pending": "메시지가 예약되었습니다",
+    "pendingAt": "{{time}}에 전송 예정",
+    "cancelPending": "취소",
+    "missed": "예약한 메시지를 제시간에 보내지 못했습니다",
+    "sendNow": "지금 보내기",
+    "discard": "삭제",
+    "dismiss": "닫기",
+    "error": {
+      "invalid": "유효한 날짜와 시간을 선택하세요",
+      "past": "미래의 시간을 선택하세요",
+      "tooFarAhead": "7일 이내의 시간을 선택하세요",
+      "empty": "예약할 메시지를 입력하세요",
+      "tooLong": "메시지가 너무 길어 예약할 수 없습니다(최대 10,000자)"
+    }
+  },
   "promptEnhancer": {
     "title": "프롬프트 강화",
     "tooltip": "프롬프트 강화",

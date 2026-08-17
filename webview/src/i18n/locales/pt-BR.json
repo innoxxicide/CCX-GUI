@@ -1735,6 +1735,28 @@
       "label": "OpenCode"
     }
   },
+  "scheduledSend": {
+    "buttonTooltip": "Envio agendado",
+    "dialogTitle": "Envio agendado",
+    "dateLabel": "Data",
+    "timeLabel": "Hora",
+    "schedule": "Agendar",
+    "cancel": "Cancelar",
+    "pending": "Mensagem agendada",
+    "pendingAt": "Mensagem agendada para {{time}}",
+    "cancelPending": "Cancelar",
+    "missed": "Não foi possível enviar uma mensagem agendada no horário",
+    "sendNow": "Enviar agora",
+    "discard": "Descartar",
+    "dismiss": "Fechar",
+    "error": {
+      "invalid": "Escolha uma data e uma hora válidas",
+      "past": "Escolha um horário futuro",
+      "tooFarAhead": "Escolha um horário dentro dos próximos 7 dias",
+      "empty": "Digite uma mensagem antes de agendá-la",
+      "tooLong": "A mensagem é longa demais para ser agendada (máximo de 10.000 caracteres)"
+    }
+  },
   "promptEnhancer": {
     "title": "Melhorador de Prompt",
     "tooltip": "Melhorar Prompt",

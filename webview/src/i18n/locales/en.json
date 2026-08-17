@@ -1941,6 +1941,28 @@
       "label": "OpenCode"
     }
   },
+  "scheduledSend": {
+    "buttonTooltip": "Send scheduled",
+    "dialogTitle": "Send scheduled",
+    "dateLabel": "Date",
+    "timeLabel": "Time",
+    "schedule": "Schedule",
+    "cancel": "Cancel",
+    "pending": "Message scheduled",
+    "pendingAt": "Message scheduled for {{time}}",
+    "cancelPending": "Cancel",
+    "missed": "A scheduled message could not be sent on time",
+    "sendNow": "Send now",
+    "discard": "Discard",
+    "dismiss": "Dismiss",
+    "error": {
+      "invalid": "Pick a valid date and time",
+      "past": "Pick a time in the future",
+      "tooFarAhead": "Pick a time within the next 7 days",
+      "empty": "Type a message before scheduling it",
+      "tooLong": "The message is too long to schedule (max 10,000 characters)"
+    }
+  },
   "promptEnhancer": {
     "title": "Prompt Enhancer",
     "tooltip": "Enhance Prompt",

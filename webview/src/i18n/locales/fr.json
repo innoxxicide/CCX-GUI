@@ -1562,6 +1562,28 @@
       "label": "OpenCode"
     }
   },
+  "scheduledSend": {
+    "buttonTooltip": "Envoi programmé",
+    "dialogTitle": "Envoi programmé",
+    "dateLabel": "Date",
+    "timeLabel": "Heure",
+    "schedule": "Programmer",
+    "cancel": "Annuler",
+    "pending": "Message programmé",
+    "pendingAt": "Message programmé pour {{time}}",
+    "cancelPending": "Annuler",
+    "missed": "Un message programmé n'a pas pu être envoyé à temps",
+    "sendNow": "Envoyer maintenant",
+    "discard": "Supprimer",
+    "dismiss": "Fermer",
+    "error": {
+      "invalid": "Choisissez une date et une heure valides",
+      "past": "Choisissez une heure future",
+      "tooFarAhead": "Choisissez une heure dans les 7 prochains jours",
+      "empty": "Saisissez un message avant de le programmer",
+      "tooLong": "Le message est trop long pour être programmé (10 000 caractères maximum)"
+    }
+  },
   "promptEnhancer": {
     "title": "Prompt Enhancer",
     "tooltip": "Enhance Prompt",

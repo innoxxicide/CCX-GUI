@@ -2,6 +2,7 @@ import { type RefObject, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChatInputBox } from './ChatInputBox';
 import ClaudeAutoResumeBanner from './ClaudeAutoResumeBanner';
+import ScheduledSendBanner from './ScheduledSendBanner';
 import type {
   Attachment,
   ChatInputBoxHandle,
@@ -22,6 +23,7 @@ import { useMessages } from '../contexts/MessagesContext';
 import { useSession } from '../contexts/SessionContext';
 import { useUIState } from '../contexts/UIStateContext';
 import { extractMarkdownContent } from '../utils/copyUtils';
+import { sendToJava } from '../utils/bridge';
 import type { ClaudeMessage, TodoItem, ToolResultBlock } from '../types';
 import type { useMessageProcessing, useFileChanges, useSubagents, useFileChangesManagement, useModelProviderState, useMessageQueue } from '../hooks';
 import type { GetToolResultRawFn } from '../contexts/SubagentContext';
@@ -177,6 +179,22 @@ export const ChatScreen = ({
     onSubmit(content, attachments);
   }, [addToast, currentProvider, onSubmit, petEnabled, setDraftInput, t, togglePet]);
 
+  /**
+   * Hand a scheduled send to the plugin backend, which owns the timer so the
+   * delivery survives a webview reload, a tab switch and an IDE restart. The
+   * input box has already cleared itself, so the draft is cleared here too;
+   * the backend answers on window.updateScheduledSendStatus, which
+   * ScheduledSendBanner renders.
+   */
+  const handleScheduleSend = useCallback((content: string, fireAtMs: number) => {
+    const text = content.replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
+    if (!text) {
+      return;
+    }
+    setDraftInput('');
+    sendToJava('schedule_send', { message: text, fireAt: fireAtMs });
+  }, [setDraftInput]);
+
   // Signal that the search hook can listen to for re-scanning. Combines
   // length + last timestamp + streaming flag + last-message content size.
   //
@@ -312,6 +330,7 @@ export const ChatScreen = ({
 
       <div className="input-area" ref={inputAreaRef}>
         <ClaudeAutoResumeBanner />
+        <ScheduledSendBanner />
         <ChatInputBox
           ref={chatInputRef}
           isLoading={loading}
@@ -333,6 +352,7 @@ export const ChatScreen = ({
           value={draftInput}
           onInput={setDraftInput}
           onSubmit={handleSubmit}
+          onScheduleSend={handleScheduleSend}
           onStop={onInterrupt}
           onModeSelect={onModeSelect}
           onModelSelect={onModelSelect}
