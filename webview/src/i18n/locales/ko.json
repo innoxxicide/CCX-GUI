@@ -1715,6 +1715,9 @@
       "tooLong": "메시지가 너무 길어 예약할 수 없습니다(최대 10,000자)"
     }
   },
+  "sendNow": {
+    "buttonTooltip": "지금 보내기 (에이전트를 중지합니다)"
+  },
   "promptEnhancer": {
     "title": "프롬프트 강화",
     "tooltip": "프롬프트 강화",

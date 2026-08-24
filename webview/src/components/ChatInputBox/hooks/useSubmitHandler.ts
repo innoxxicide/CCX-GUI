@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import type { Attachment } from '../types.js';
+import type { Attachment, SubmitOptions } from '../types.js';
 import type { Dispatch, SetStateAction } from 'react';
 
 interface CompletionLike {
@@ -28,7 +28,7 @@ export interface UseSubmitHandlerOptions {
   promptCompletion: CompletionLike;
   dollarCommandCompletion: CompletionLike;
   recordInputHistory: (text: string) => void;
-  onSubmit?: (content: string, attachmentsToSend?: Attachment[]) => void;
+  onSubmit?: (content: string, attachmentsToSend?: Attachment[], options?: SubmitOptions) => void;
   onInstallSdk?: () => void;
   addToast?: (message: string, type: 'info' | 'warning' | 'error' | 'success') => void;
   t: (key: string, options?: Record<string, unknown>) => string;
@@ -41,6 +41,10 @@ export interface UseSubmitHandlerOptions {
  * - Records input history
  * - Clears input/attachments for responsiveness
  * - Defers onSubmit to allow UI update
+ *
+ * "Send now" reuses this same path with an immediate mode in options, so a
+ * mid-turn correction gets identical validation, history and clearing to an
+ * ordinary send; only the parent's routing of the result differs.
  */
 export function useSubmitHandler({
   getTextContent,
@@ -66,7 +70,7 @@ export function useSubmitHandler({
   addToast,
   t,
 }: UseSubmitHandlerOptions) {
-  return useCallback(() => {
+  return useCallback((options?: SubmitOptions) => {
     // Force fresh DOM read to avoid stale cache (e.g., after paste)
     invalidateCache();
     const content = getTextContent();
@@ -116,7 +120,7 @@ export function useSubmitHandler({
 
     // Call onSubmit even when loading - let parent handle queueing
     setTimeout(() => {
-      onSubmit?.(content, attachmentsToSend);
+      onSubmit?.(content, attachmentsToSend, options);
     }, 10);
   }, [
     getTextContent,

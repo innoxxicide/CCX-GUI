@@ -1596,6 +1596,9 @@
       "tooLong": "संदेश शेड्यूल करने के लिए बहुत लंबा है (अधिकतम 10,000 अक्षर)"
     }
   },
+  "sendNow": {
+    "buttonTooltip": "अभी भेजें (एजेंट को रोक देता है)"
+  },
   "promptEnhancer": {
     "title": "Prompt Enhancer",
     "tooltip": "Enhance Prompt",

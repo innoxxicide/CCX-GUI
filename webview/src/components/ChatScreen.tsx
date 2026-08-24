@@ -7,6 +7,7 @@ import ScheduledSendBanner from './ScheduledSendBanner';
 import type {
   Attachment,
   ChatInputBoxHandle,
+  SubmitOptions,
 } from './ChatInputBox/types';
 import { MessageAnchorRail } from './MessageAnchorRail';
 import { MessageList } from './MessageList';
@@ -80,7 +81,7 @@ export interface ChatScreenProps {
   onKeepAll: FileChangeMgmt['handleKeepAll'];
 
   // Submit / interrupt / nav
-  onSubmit: (content: string, attachments?: Attachment[]) => void;
+  onSubmit: (content: string, attachments?: Attachment[], options?: SubmitOptions) => void;
   onInterrupt: () => void;
   onRewind: () => void;
   onNavigateToProviderSettings: () => void;
@@ -167,7 +168,7 @@ export const ChatScreen = ({
     () => messages.reduce((count, message) => count + (message.type === 'error' ? 1 : 0), 0),
     [messages],
   );
-  const handleSubmit = useCallback((content: string, attachments?: Attachment[]) => {
+  const handleSubmit = useCallback((content: string, attachments?: Attachment[], options?: SubmitOptions) => {
     if (shouldToggleCodexPet(currentProvider, content, attachments?.length ?? 0)) {
       togglePet();
       setDraftInput('');
@@ -177,7 +178,7 @@ export const ChatScreen = ({
       );
       return;
     }
-    onSubmit(content, attachments);
+    onSubmit(content, attachments, options);
   }, [addToast, currentProvider, onSubmit, petEnabled, setDraftInput, t, togglePet]);
 
   /**

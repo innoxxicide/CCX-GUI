@@ -1770,6 +1770,9 @@
       "tooLong": "A mensagem é longa demais para ser agendada (máximo de 10.000 caracteres)"
     }
   },
+  "sendNow": {
+    "buttonTooltip": "Enviar agora (para o agente)"
+  },
   "promptEnhancer": {
     "title": "Melhorador de Prompt",
     "tooltip": "Melhorar Prompt",

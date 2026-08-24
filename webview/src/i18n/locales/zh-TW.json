@@ -1602,6 +1602,9 @@
       "tooLong": "訊息過長，無法定時發送（最多 10000 個字元）"
     }
   },
+  "sendNow": {
+    "buttonTooltip": "立即傳送（會停止代理）"
+  },
   "promptEnhancer": {
     "title": "Prompt Enhancer",
     "tooltip": "Enhance Prompt",

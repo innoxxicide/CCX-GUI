@@ -20,6 +20,8 @@ export interface UseMessageQueueReturn {
   queue: QueuedMessage[];
   /** Add message to queue */
   enqueue: (content: string, attachments?: Attachment[]) => void;
+  /** Add message to the head of the queue, so it is the next one executed */
+  enqueueFront: (content: string, attachments?: Attachment[]) => void;
   /** Remove message from queue by id */
   dequeue: (id: string) => void;
   /** Clear entire queue */
@@ -54,6 +56,23 @@ export function useMessageQueue({
       queuedAt: Date.now(),
     };
     setQueue(prev => [...prev, newItem]);
+  }, [generateId]);
+
+  // Add message to the head of the queue.
+  //
+  // Used by "Send now" when the message cannot be injected into the running turn
+  // (Codex, or an explicit hard interrupt): the turn is stopped and the drain on
+  // the loading edge picks this message up first. Going through the queue rather
+  // than calling onExecute directly means the interrupt and the send cannot race
+  // each other, and anything already queued keeps its relative order behind it.
+  const enqueueFront = useCallback((content: string, attachments?: Attachment[]) => {
+    const newItem: QueuedMessage = {
+      id: generateId(),
+      content,
+      attachments,
+      queuedAt: Date.now(),
+    };
+    setQueue(prev => [newItem, ...prev]);
   }, [generateId]);
 
   // Remove message from queue
@@ -91,6 +110,7 @@ export function useMessageQueue({
   return {
     queue,
     enqueue,
+    enqueueFront,
     dequeue,
     clearQueue,
     hasQueuedMessages: queue.length > 0,

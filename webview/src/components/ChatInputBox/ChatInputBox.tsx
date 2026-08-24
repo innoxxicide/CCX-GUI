@@ -415,6 +415,18 @@ export const ChatInputBox = memo(forwardRef<ChatInputBoxHandle, ChatInputBoxProp
     });
 
     /**
+     * "Send now": stop the running turn and submit straight away, instead of
+     * letting the message sit in the queue until the agent finishes on its own.
+     *
+     * Goes through the ordinary submit path so validation, history, clearing and
+     * attachment handling stay identical to a normal send; only the immediate
+     * flag rides along for the parent to route on.
+     */
+    const handleSendNow = useCallback(() => {
+      handleSubmit({ immediate: true });
+    }, [handleSubmit]);
+
+    /**
      * Hand the current input text to the backend for delivery at fireAtMs.
      *
      * Mirrors handleSubmit's read-then-clear so a scheduled message leaves the
@@ -733,6 +745,7 @@ export const ChatInputBox = memo(forwardRef<ChatInputBoxHandle, ChatInputBoxProp
           codexFastMode={codexFastMode}
           onSubmit={handleSubmit}
           onStop={onStop}
+          onSendNow={handleSendNow}
           onModeSelect={handleModeSelect}
           onModelSelect={handleModelSelect}
           onProviderSelect={onProviderSelect}

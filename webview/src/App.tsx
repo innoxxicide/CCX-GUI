@@ -27,7 +27,7 @@ import {
   CONTEXT_COMMANDS,
 } from './hooks/useMessageSender';
 import { applyDiffTheme, getStoredDiffTheme } from './utils/diffTheme';
-import type { Attachment, ChatInputBoxHandle } from './components/ChatInputBox/types';
+import type { Attachment, ChatInputBoxHandle, SubmitOptions } from './components/ChatInputBox/types';
 import { ToastContainer } from './components/Toast';
 import { ChatHeader } from './components/ChatHeader';
 import { ChatScreen } from './components/ChatScreen';
@@ -367,11 +367,30 @@ const App = () => {
   const {
     queue: messageQueue,
     enqueue: enqueueMessage,
+    enqueueFront: enqueueMessageFront,
     dequeue: dequeueMessage,
   } = useMessageQueue({ isLoading: loading, onExecute: executeMessage });
 
+  /**
+   * "Send now" — intervene in a session that is already working, instead of
+   * queueing the message behind the running turn.
+   *
+   * Stops the turn and puts the message at the head of the queue, where the
+   * existing drain-on-loading-edge picks it up. Going through the queue rather
+   * than calling executeMessage directly is what keeps the interrupt and the
+   * send from racing: one loading edge, one drain, one send. Anything already
+   * queued keeps its order behind this message.
+   *
+   * Stopping first is not a shortcut — handing a message to a live turn without
+   * stopping it is not something the agent CLIs support; see SubmitOptions.
+   */
+  const sendImmediately = useCallback((content: string, attachments?: Attachment[]) => {
+    enqueueMessageFront(content, attachments);
+    interruptSession();
+  }, [enqueueMessageFront, interruptSession]);
+
   // handleSubmit with queue support (new session and local commands bypass loading check)
-  const handleSubmit = useCallback((content: string, attachments?: Attachment[]) => {
+  const handleSubmit = useCallback((content: string, attachments?: Attachment[], options?: SubmitOptions) => {
     const text = content.replace(/[\u200B-\u200D\uFEFF]/g, '').trim();
     const hasAttachments = Array.isArray(attachments) && attachments.length > 0;
     if (!text && !hasAttachments) return;
@@ -400,13 +419,17 @@ const App = () => {
         return;
       }
     }
-    // If loading, add to queue
+    // If loading, either interrupt into the running turn or add to the queue
     if (loading) {
+      if (options?.immediate) {
+        sendImmediately(content, attachments);
+        return;
+      }
       enqueueMessage(content, attachments);
       return;
     }
     hookHandleSubmit(content, attachments);
-  }, [loading, enqueueMessage, hookHandleSubmit, forceCreateNewSession, currentProvider, handleModeSelect, setCurrentView, addToast, t]);
+  }, [loading, enqueueMessage, sendImmediately, hookHandleSubmit, forceCreateNewSession, currentProvider, handleModeSelect, setCurrentView, addToast, t]);
 
   // ── Chat-view computations (stage 5 of TASK-P1-01) ──
   const {

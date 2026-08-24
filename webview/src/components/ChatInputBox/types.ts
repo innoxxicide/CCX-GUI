@@ -603,7 +603,7 @@ export interface ChatInputBoxProps {
 
   // Event callbacks
   /** Submit message */
-  onSubmit?: (content: string, attachments?: Attachment[]) => void;
+  onSubmit?: (content: string, attachments?: Attachment[], options?: SubmitOptions) => void;
   /**
    * Schedule the current input text for delivery at the given epoch millis.
    * Text only — the scheduled message is held by the plugin backend across IDE
@@ -689,6 +689,21 @@ export interface ChatInputBoxProps {
   onLongContextChange?: (enabled: boolean) => void;
 }
 
+export interface SubmitOptions {
+  /**
+   * Deliver to a session that is already working, instead of queueing behind
+   * the running turn: stop that turn and send this message as the next one.
+   *
+   * Handing a message to a live turn without stopping it was measured against
+   * Claude Code CLI 2.1.220 and is not available — a message pushed into the
+   * running query's input stream is queued as its own turn rather than folded
+   * into the current one (it lands in the transcript as a `queue-operation`),
+   * which is what the ordinary queue already does. Interrupting is therefore
+   * the only way to actually intervene mid-flight.
+   */
+  immediate?: boolean;
+}
+
 /**
  * ButtonArea component props
  */
@@ -713,8 +728,19 @@ export interface ButtonAreaProps {
   codexFastMode?: CodexFastMode;
 
   // Event callbacks
-  onSubmit?: () => void;
+  onSubmit?: (options?: SubmitOptions) => void;
   onStop?: () => void;
+  /**
+   * Send the current input into a session that is already working.
+   * Only rendered while isLoading; absent when the session is idle.
+   */
+  onSendNow?: () => void;
+  /**
+   * Whether the input itself is unavailable (no SDK, disposed view…), without
+   * isLoading folded in — `disabled` already carries that, and a button that
+   * only renders while loading needs the raw value to be clickable at all.
+   */
+  sendNowDisabled?: boolean;
   onModeSelect?: (mode: PermissionMode) => void;
   onModelSelect?: (modelId: string) => void;
   onProviderSelect?: (providerId: string) => void;

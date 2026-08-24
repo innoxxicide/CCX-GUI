@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next';
-import type { CodexFastMode, DropdownItemData, DropdownPosition, PermissionMode, ReasoningEffort, SelectedAgent } from './types.js';
+import type { CodexFastMode, DropdownItemData, DropdownPosition, PermissionMode, ReasoningEffort, SelectedAgent, SubmitOptions } from './types.js';
 import type { TooltipState } from './hooks/useTooltip.js';
 import { ButtonArea } from './ButtonArea.js';
 import { CompletionDropdown } from './Dropdown/index.js';
@@ -28,6 +28,7 @@ export function ChatInputBoxFooter({
   codexFastMode,
   onSubmit,
   onStop,
+  onSendNow,
   onModeSelect,
   onModelSelect,
   onProviderSelect,
@@ -64,8 +65,9 @@ export function ChatInputBoxFooter({
   currentProvider: string;
   reasoningEffort: ReasoningEffort;
   codexFastMode?: CodexFastMode;
-  onSubmit: () => void;
+  onSubmit: (options?: SubmitOptions) => void;
   onStop?: () => void;
+  onSendNow?: () => void;
   onModeSelect?: (mode: PermissionMode) => void;
   onModelSelect?: (modelId: string) => void;
   onProviderSelect?: (providerId: string) => void;
@@ -116,6 +118,8 @@ export function ChatInputBoxFooter({
         codexFastMode={codexFastMode}
         onSubmit={onSubmit}
         onStop={onStop}
+        onSendNow={onSendNow}
+        sendNowDisabled={disabled}
         onModeSelect={onModeSelect}
         onModelSelect={onModelSelect}
         onProviderSelect={onProviderSelect}

@@ -153,7 +153,45 @@ describe('useSubmitHandler', () => {
 
     vi.advanceTimersByTime(20);
     expect(onSubmit).toHaveBeenCalledTimes(1);
-    expect(onSubmit).toHaveBeenCalledWith('hello', [createAttachment('a1')]);
+    // Third argument is the submit options; a plain submit carries none.
+    expect(onSubmit).toHaveBeenCalledWith('hello', [createAttachment('a1')], undefined);
+    vi.useRealTimers();
+  });
+
+  // "Send now" reuses this handler, so the immediate flag has to survive the
+  // deferred onSubmit rather than being dropped with the rest of the call.
+  it('forwards submit options through to onSubmit', () => {
+    vi.useFakeTimers();
+    const onSubmit = vi.fn();
+
+    const { result } = renderHook(() =>
+      useSubmitHandler({
+        getTextContent: () => 'stop, do it differently',
+        attachments: [],
+        isLoading: true,
+        sdkStatusLoading: false,
+        sdkInstalled: true,
+        currentProvider: 'claude',
+        clearInput: vi.fn(),
+        cancelPendingInput: vi.fn(),
+        invalidateCache: vi.fn(),
+        externalAttachments: undefined,
+        setInternalAttachments: vi.fn(),
+        fileCompletion: { close: vi.fn() },
+        commandCompletion: { close: vi.fn() },
+        agentCompletion: { close: vi.fn() },
+        promptCompletion: { close: vi.fn() },
+        dollarCommandCompletion: { close: vi.fn() },
+        recordInputHistory: vi.fn(),
+        onSubmit,
+        t: (key) => key,
+      })
+    );
+
+    result.current({ immediate: true });
+    vi.advanceTimersByTime(20);
+
+    expect(onSubmit).toHaveBeenCalledWith('stop, do it differently', undefined, { immediate: true });
     vi.useRealTimers();
   });
 });

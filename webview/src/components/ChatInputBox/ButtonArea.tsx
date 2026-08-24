@@ -79,6 +79,8 @@ export const ButtonArea = ({
   codexFastMode = 'normal',
   onSubmit,
   onStop,
+  onSendNow,
+  sendNowDisabled = false,
   onModeSelect,
   onModelSelect,
   onProviderSelect,
@@ -207,6 +209,14 @@ export const ButtonArea = ({
     e.stopPropagation();
     onSubmit?.();
   }, [onSubmit]);
+
+  /**
+   * Handle "Send now" click — stop the running turn and send straight away.
+   */
+  const handleSendNowClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onSendNow?.();
+  }, [onSendNow]);
 
   /**
    * Handle stop button click
@@ -339,6 +349,21 @@ export const ButtonArea = ({
             <ScheduleSendPopover onSchedule={handleScheduleConfirm} onClose={handleScheduleClose} />
           )}
         </div>
+
+        {/* Send now — only while the agent is working, to correct it mid-flight */}
+        {isLoading && (
+          <button
+            className="send-now-button"
+            onClick={handleSendNowClick}
+            // Deliberately not `disabled`: the footer folds isLoading into that,
+            // and this button exists only while loading, so it would never be
+            // clickable. sendNowDisabled carries the input's real availability.
+            disabled={sendNowDisabled || !hasInputContent}
+            title={t('sendNow.buttonTooltip')}
+          >
+            <span className="codicon codicon-debug-continue" />
+          </button>
+        )}
 
         {/* Send/Stop button */}
         {isLoading ? (

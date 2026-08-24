@@ -1,0 +1,35 @@
+/* ============================================================
+   Send now — interrupt-the-agent button
+
+   Rendered only while the agent is working, immediately left of the stop
+   button, so the pair reads as "redirect it" / "halt it". Styled as a
+   secondary action rather than a second primary: the stop button stays the
+   loud one, since this is the softer of the two interventions.
+   ============================================================ */
+.send-now-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: var(--button-bg);
+  border: none;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.send-now-button:hover:not(:disabled) {
+  background: var(--button-hover);
+  color: var(--button-primary);
+}
+
+.send-now-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.send-now-button .codicon {
+  font-size: 16px;
+}

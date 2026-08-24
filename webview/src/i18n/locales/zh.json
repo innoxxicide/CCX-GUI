@@ -372,7 +372,10 @@
         "disabled": "已关闭",
         "hint": "开启后，在项目树选择文件时会自动将文件路径告诉 AI（注意：只传递文件路径，不传文件内容）。关闭后需要手动操作。"
       },
-      "promptEnhancer": {
+      "sendNow": {
+    "buttonTooltip": "立即发送（会停止代理）"
+  },
+  "promptEnhancer": {
         "label": "增强提示词",
         "modelLabel": "增强模型",
         "resetToDefault": "恢复默认",
