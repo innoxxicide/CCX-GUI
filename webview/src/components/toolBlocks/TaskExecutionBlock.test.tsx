@@ -4,6 +4,7 @@ import TaskExecutionBlock from './TaskExecutionBlock';
 const mockSendBridgeEvent = vi.fn();
 let mockHistories: Record<string, unknown> = {};
 const mockUseSessionId = vi.fn<() => string | null>();
+const mockUseSessionProvider = vi.fn<() => string>();
 const mockGetToolResultRaw = vi.fn<(toolUseId: string) => Record<string, unknown> | null>();
 const mockUseTaskEvent = vi.fn<(toolUseId: string | undefined) => unknown>();
 
@@ -20,6 +21,7 @@ vi.mock('../../utils/bridge', () => ({
 vi.mock('../../contexts/SubagentContext', () => ({
   useSubagentHistories: () => mockHistories,
   useSessionId: () => mockUseSessionId(),
+  useSessionProvider: () => mockUseSessionProvider(),
   useGetToolResultRaw: () => mockGetToolResultRaw,
   useTaskEvent: (toolUseId: string | undefined) => mockUseTaskEvent(toolUseId),
 }));
@@ -30,11 +32,13 @@ describe('TaskExecutionBlock polling', () => {
     mockSendBridgeEvent.mockReset();
     mockGetToolResultRaw.mockReset();
     mockUseSessionId.mockReset();
+    mockUseSessionProvider.mockReset();
     mockUseTaskEvent.mockReset();
 
     mockHistories = {};
     mockGetToolResultRaw.mockReturnValue(null);
     mockUseSessionId.mockReturnValue('session-1');
+    mockUseSessionProvider.mockReturnValue('claude');
     mockUseTaskEvent.mockReturnValue(undefined);
   });
 
@@ -387,5 +391,36 @@ describe('TaskExecutionBlock polling', () => {
     expect(text).toContain('researcher');
     expect(text).toContain('claude-sonnet-4-6');
     expect(text).toContain('high');
+  });
+
+  it('loads Codex spawn_agent history with provider and task path', () => {
+    mockUseSessionProvider.mockReturnValue('codex');
+    const result = {
+      type: 'tool_result',
+      tool_use_id: 'call-1',
+      content: '{"task_name":"/root/reviewer"}',
+    } as any;
+
+    const { container } = render(
+      <TaskExecutionBlock
+        name="spawn_agent"
+        toolId="call-1"
+        result={result}
+        input={{ prompt: 'review' } as any}
+      />,
+    );
+
+    fireEvent.click(container.querySelector('.task-header') as HTMLElement);
+
+    expect(mockSendBridgeEvent).toHaveBeenCalledWith(
+      'load_subagent_session',
+      JSON.stringify({
+        sessionId: 'session-1',
+        provider: 'codex',
+        agentPath: '/root/reviewer',
+        toolUseId: 'call-1',
+      }),
+    );
+    expect(container.querySelector('.tool-status-indicator')?.className).toContain('pending');
   });
 });

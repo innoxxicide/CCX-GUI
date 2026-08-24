@@ -205,8 +205,10 @@ public class SessionHandler extends BaseMessageHandler {
                 .thenRun(() -> {
                     // Claude now triggers success on actual stream_end callback.
                     // Codex has no stream_end event, keep success trigger at completion.
-                    if (project != null && "codex".equals(context.getSession().getProvider())) {
-                        var session = context.getSession();
+                    var session = context.getSession();
+                    if (project != null
+                            && "codex".equals(session.getProvider())
+                            && !session.isManuallyInterrupted()) {
                         ClaudeNotifier.showSuccess(
                             project,
                             ClaudeNotifier.buildTitleFromSession(session),
@@ -365,8 +367,10 @@ public class SessionHandler extends BaseMessageHandler {
                 .thenRun(() -> {
                     // Claude now triggers success on actual stream_end callback.
                     // Codex has no stream_end event, keep success trigger at completion.
-                    if (project != null && "codex".equals(context.getSession().getProvider())) {
-                        var session = context.getSession();
+                    var session = context.getSession();
+                    if (project != null
+                            && "codex".equals(session.getProvider())
+                            && !session.isManuallyInterrupted()) {
                         ClaudeNotifier.showSuccess(
                             project,
                             ClaudeNotifier.buildTitleFromSession(session),

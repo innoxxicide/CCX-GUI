@@ -55,6 +55,10 @@ export const ReasoningSelect = ({ value, onChange, disabled, selectedModel, curr
 
   // Build the list of available levels for the current model
   const availableLevels = REASONING_LEVELS.filter(level => {
+    // Grok CLI only accepts low|medium|high.
+    if (currentProvider === 'grok') {
+      return level.id === 'low' || level.id === 'medium' || level.id === 'high';
+    }
     if (currentProvider === 'codex') {
       return level.id !== 'max' || (selectedModel !== undefined && codexModelSupportsMaxEffort(selectedModel));
     }

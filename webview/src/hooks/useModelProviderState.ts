@@ -10,6 +10,12 @@ import type { PermissionMode } from '../components/ChatInputBox/types';
 import { isSpecialProviderId } from '../types/provider';
 import { useClaudeProvider } from './providers/useClaudeProvider';
 import { useCodexProvider } from './providers/useCodexProvider';
+import { useGrokProvider } from './providers/useGrokProvider';
+import { useKimiProvider } from './providers/useKimiProvider';
+import { useOpenCodeProvider } from './providers/useOpenCodeProvider';
+import { usePiProvider } from './providers/usePiProvider';
+import { useDshProvider } from './providers/useDshProvider';
+import { isCliOnlyProvider, normalizeCliPermissionMode } from './providers/cliProviders';
 import { useUsageTracking } from './providers/useUsageTracking';
 import { useClaudeLimits } from './providers/useClaudeLimits';
 import { useProviderSettings } from './providers/useProviderSettings';
@@ -50,7 +56,12 @@ export function useModelProviderState({ addToast, t }: UseModelProviderStateOpti
   // ── Provider-specific sub-hooks ──
   const claude = useClaudeProvider();
   const codex = useCodexProvider();
-  const { isSdkInstalled, sdkStatus, ...usage } = useUsageTracking();
+  const grok = useGrokProvider();
+  const kimi = useKimiProvider();
+  const openCode = useOpenCodeProvider();
+  const pi = usePiProvider();
+  const dsh = useDshProvider();
+  const { isSdkInstalled, isSdkStatusKnown, sdkStatus, ...usage } = useUsageTracking();
   const claudeLimits = useClaudeLimits();
   const settings = useProviderSettings({ addToast, t });
 
@@ -66,6 +77,26 @@ export function useModelProviderState({ addToast, t }: UseModelProviderStateOpti
     reasoningEffort, setReasoningEffort,
     codexFastMode, setCodexFastMode,
   } = codex;
+  const {
+    selectedGrokModel, setSelectedGrokModel,
+    grokPermissionMode, setGrokPermissionMode,
+  } = grok;
+  const {
+    selectedKimiModel, setSelectedKimiModel,
+    kimiPermissionMode, setKimiPermissionMode,
+  } = kimi;
+  const {
+    selectedOpenCodeModel, setSelectedOpenCodeModel,
+    openCodePermissionMode, setOpenCodePermissionMode,
+  } = openCode;
+  const {
+    selectedPiModel, setSelectedPiModel,
+    piPermissionMode, setPiPermissionMode,
+  } = pi;
+  const {
+    selectedDshModel, setSelectedDshModel,
+    dshPermissionMode, setDshPermissionMode,
+  } = dsh;
 
   // ── Persistence: load on mount + save on change ──
   useModelStatePersistence({
@@ -74,6 +105,16 @@ export function useModelProviderState({ addToast, t }: UseModelProviderStateOpti
     setSelectedCodexModel,
     setClaudePermissionMode,
     setCodexPermissionMode,
+    setSelectedGrokModel,
+    setSelectedKimiModel,
+    setSelectedOpenCodeModel,
+    setSelectedPiModel,
+    setSelectedDshModel,
+    setGrokPermissionMode,
+    setKimiPermissionMode,
+    setOpenCodePermissionMode,
+    setPiPermissionMode,
+    setDshPermissionMode,
     setPermissionMode,
     setLongContextEnabled,
     setReasoningEffort,
@@ -83,16 +124,44 @@ export function useModelProviderState({ addToast, t }: UseModelProviderStateOpti
     selectedCodexModel,
     claudePermissionMode,
     codexPermissionMode,
+    selectedGrokModel,
+    selectedKimiModel,
+    selectedOpenCodeModel,
+    selectedPiModel,
+    selectedDshModel,
+    grokPermissionMode,
+    kimiPermissionMode,
+    openCodePermissionMode,
+    piPermissionMode,
+    dshPermissionMode,
     longContextEnabled,
     reasoningEffort,
     codexFastMode,
   });
 
   // ── Computed values ──
-  const selectedModel = currentProvider === 'codex' ? selectedCodexModel : selectedClaudeModel;
+  const selectedModel = currentProvider === 'codex'
+    ? selectedCodexModel
+    : currentProvider === 'grok'
+      ? selectedGrokModel
+      : currentProvider === 'kimi'
+        ? selectedKimiModel
+        : currentProvider === 'opencode'
+          ? selectedOpenCodeModel
+          : currentProvider === 'pi'
+            ? selectedPiModel
+            : currentProvider === 'dsh'
+              ? selectedDshModel
+            : selectedClaudeModel;
   const currentSdkInstalled = useMemo(
     () => isSdkInstalled(currentProvider),
     [isSdkInstalled, currentProvider],
+  );
+  const currentSdkStatusError = useMemo(
+    () => usage.sdkStatusError !== null && !isSdkStatusKnown(currentProvider)
+      ? usage.sdkStatusError
+      : null,
+    [currentProvider, isSdkStatusKnown, usage.sdkStatusError],
   );
   // Whether the installed Claude SDK meets the minimum version required for the
   // selected model's tier (Fable needs >= 0.3.182). `undefined` means the backend
@@ -109,10 +178,30 @@ export function useModelProviderState({ addToast, t }: UseModelProviderStateOpti
       sendBridgeEvent('set_mode', codexMode);
       return;
     }
+    if (isCliOnlyProvider(currentProvider)) {
+      const cliMode = normalizeCliPermissionMode(mode);
+      setPermissionMode(cliMode);
+      if (currentProvider === 'grok') setGrokPermissionMode(cliMode);
+      if (currentProvider === 'kimi') setKimiPermissionMode(cliMode);
+      if (currentProvider === 'opencode') setOpenCodePermissionMode(cliMode);
+      if (currentProvider === 'pi') setPiPermissionMode(cliMode);
+      if (currentProvider === 'dsh') setDshPermissionMode(cliMode);
+      sendBridgeEvent('set_mode', cliMode);
+      return;
+    }
     setPermissionMode(mode);
     setClaudePermissionMode(mode);
     sendBridgeEvent('set_mode', mode);
-  }, [currentProvider, setCodexPermissionMode, setClaudePermissionMode]);
+  }, [
+    currentProvider,
+    setCodexPermissionMode,
+    setClaudePermissionMode,
+    setGrokPermissionMode,
+    setKimiPermissionMode,
+    setOpenCodePermissionMode,
+    setPiPermissionMode,
+    setDshPermissionMode,
+  ]);
 
   const handleModelSelect = useCallback((modelId: string) => {
     if (currentProvider === 'claude') {
@@ -123,28 +212,78 @@ export function useModelProviderState({ addToast, t }: UseModelProviderStateOpti
     } else if (currentProvider === 'codex') {
       setSelectedCodexModel(modelId);
       sendBridgeEvent('set_model', modelId);
+    } else if (currentProvider === 'grok') {
+      setSelectedGrokModel(modelId);
+      sendBridgeEvent('set_model', modelId);
+    } else if (currentProvider === 'kimi') {
+      setSelectedKimiModel(modelId);
+      sendBridgeEvent('set_model', modelId);
+    } else if (currentProvider === 'opencode') {
+      setSelectedOpenCodeModel(modelId);
+      sendBridgeEvent('set_model', modelId);
+    } else if (currentProvider === 'pi') {
+      setSelectedPiModel(modelId);
+      sendBridgeEvent('set_model', modelId);
+    } else if (currentProvider === 'dsh') {
+      setSelectedDshModel(modelId);
+      sendBridgeEvent('set_model', modelId);
     }
-  }, [currentProvider, longContextEnabled, setSelectedClaudeModel, setSelectedCodexModel]);
+  }, [
+    currentProvider,
+    longContextEnabled,
+    setSelectedClaudeModel,
+    setSelectedCodexModel,
+    setSelectedGrokModel,
+    setSelectedKimiModel,
+    setSelectedOpenCodeModel,
+    setSelectedPiModel,
+    setSelectedDshModel,
+  ]);
 
   const handleProviderSelect = useCallback((providerId: string) => {
     setCurrentProvider(providerId);
     sendBridgeEvent('set_provider', providerId);
 
-    const modeToSet: PermissionMode = providerId === 'codex'
-      ? (codexPermissionMode === 'plan' ? 'default' : codexPermissionMode)
-      : claudePermissionMode;
+    let modeToSet: PermissionMode = claudePermissionMode;
+    if (providerId === 'codex') {
+      modeToSet = normalizeCliPermissionMode(codexPermissionMode);
+    } else if (providerId === 'grok') {
+      modeToSet = normalizeCliPermissionMode(grokPermissionMode);
+    } else if (providerId === 'kimi') {
+      modeToSet = normalizeCliPermissionMode(kimiPermissionMode);
+    } else if (providerId === 'opencode') {
+      modeToSet = normalizeCliPermissionMode(openCodePermissionMode);
+    } else if (providerId === 'pi') {
+      modeToSet = normalizeCliPermissionMode(piPermissionMode);
+    } else if (providerId === 'dsh') {
+      modeToSet = normalizeCliPermissionMode(dshPermissionMode);
+    }
     setPermissionMode(modeToSet);
     sendBridgeEvent('set_mode', modeToSet);
 
-    const newModel = providerId === 'codex'
-      ? selectedCodexModel
-      : apply1MContextSuffix(selectedClaudeModel, longContextEnabled);
+    let newModel = apply1MContextSuffix(selectedClaudeModel, longContextEnabled);
+    if (providerId === 'codex') newModel = selectedCodexModel;
+    else if (providerId === 'grok') newModel = selectedGrokModel;
+    else if (providerId === 'kimi') newModel = selectedKimiModel;
+    else if (providerId === 'opencode') newModel = selectedOpenCodeModel;
+    else if (providerId === 'pi') newModel = selectedPiModel;
+    else if (providerId === 'dsh') newModel = selectedDshModel;
     sendBridgeEvent('set_model', newModel);
   }, [
     claudePermissionMode,
     codexPermissionMode,
+    grokPermissionMode,
+    kimiPermissionMode,
+    openCodePermissionMode,
+    piPermissionMode,
+    dshPermissionMode,
     selectedCodexModel,
     selectedClaudeModel,
+    selectedGrokModel,
+    selectedKimiModel,
+    selectedOpenCodeModel,
+    selectedPiModel,
+    selectedDshModel,
     longContextEnabled,
   ]);
 
@@ -197,10 +336,16 @@ export function useModelProviderState({ addToast, t }: UseModelProviderStateOpti
   return {
     ...claude,
     ...codex,
+    ...grok,
+    ...kimi,
+    ...openCode,
+    ...pi,
+    ...dsh,
     ...usage,
     ...claudeLimits,
     ...settings,
     sdkStatus,
+    sdkStatusError: currentSdkStatusError,
     currentProvider, setCurrentProvider,
     permissionMode, setPermissionMode,
     selectedModel,

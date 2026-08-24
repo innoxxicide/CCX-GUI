@@ -167,9 +167,10 @@ export const drainPendingSettings = (): void => {
 
 /**
  * Drain any dependency-status payload that arrived before the callback was
- * registered, then trigger a fresh fetch.
+ * registered. The startup poller in main.tsx owns the initial request so this
+ * callback registration cannot create a duplicate in-flight query.
  */
-export const drainAndRequestDependencyStatus = (): void => {
+export const drainPendingDependencyStatus = (): void => {
   if (typeof window === 'undefined') {
     return;
   }
@@ -180,9 +181,5 @@ export const drainAndRequestDependencyStatus = (): void => {
     const pending = w.__pendingDependencyStatus as string;
     delete w.__pendingDependencyStatus;
     window.updateDependencyStatus?.(pending);
-  }
-
-  if (window.sendToJava) {
-    window.sendToJava('get_dependency_status:');
   }
 };

@@ -63,6 +63,7 @@
     "removeAttachment": "Remove attachment",
     "closePreview": "Close preview",
     "loadingDropdown": "Loading...",
+    "modelsLoadFailed": "Failed to load models. Click to retry",
     "addAttachment": "Add attachment",
     "stopGeneration": "Stop generation",
     "generatingResponse": "Generating response",
@@ -98,6 +99,8 @@
     "disabled": "Disabled",
     "sdkNotInstalled": "{{provider}} SDK is not installed. Please install the SDK to start chatting.",
     "sdkStatusLoading": "Checking SDK status...",
+    "sdkStatusUnavailable": "Could not check SDK status.",
+    "retrySdkStatus": "Retry",
     "openSourceBanner": "This project is guaranteed to be 100% open source and free (beware of pirated projects)",
     "openSourceBannerStar": "Star",
     "openSourceBannerStarToast": "Repo link copied to clipboard — paste it in your browser to visit ⭐",
@@ -168,8 +171,16 @@
         "global": "Share pet, size, opacity, and bubble settings across all projects."
       },
       "scopePositionHint": "Pet position is always saved separately for each IDE window.",
-      "scopeOptions": { "project": "Project", "global": "Global" },
-      "tabs": { "basic": "Basic", "bubble": "Bubbles", "local": "Custom", "petdex": "Petdex" },
+      "scopeOptions": {
+        "project": "Project",
+        "global": "Global"
+      },
+      "tabs": {
+        "basic": "Basic",
+        "bubble": "Bubbles",
+        "local": "Custom",
+        "petdex": "Petdex"
+      },
       "floatingTitle": "IDE floating pet",
       "floatingDescription": "The pet stays above editors and tool windows and can be dragged anywhere inside the IDE.",
       "enabled": "Enabled",
@@ -193,7 +204,12 @@
       "petDirectoryUnavailable": "The ~/.codex/pets directory could not be created or opened.",
       "hatchTitle": "Create pets with hatch-pet",
       "hatchDescription": "Detect the official curated Skill and place an editable command in the active Codex input. The plugin never runs the Skill in the background.",
-      "hatchStatus": { "loading": "Checking hatch-pet Skill", "missing": "hatch-pet Skill not installed", "broken": "hatch-pet Skill install is broken", "installed": "hatch-pet Skill installed" },
+      "hatchStatus": {
+        "loading": "Checking hatch-pet Skill",
+        "missing": "hatch-pet Skill not installed",
+        "broken": "hatch-pet Skill install is broken",
+        "installed": "hatch-pet Skill installed"
+      },
       "prepareInstallSkill": "Prepare install command",
       "prepareRepairSkill": "Prepare Skill repair command",
       "hatchOfficialSource": "Official Skill source",
@@ -226,10 +242,19 @@
         "model": "Currently selected model name.",
         "duration": "Elapsed time for the current task, for example 12.8s."
       },
-      "bubbleSizes": { "small": "Small", "medium": "Medium", "large": "Large", "xlarge": "Extra large" },
+      "bubbleSizes": {
+        "small": "Small",
+        "medium": "Medium",
+        "large": "Large",
+        "xlarge": "Extra large"
+      },
       "bubbleEvents": {
-        "task_started": "Task started", "thinking": "Thinking", "running": "Running",
-        "task_success": "Task completed", "task_error": "Task failed", "idle": "Idle"
+        "task_started": "Task started",
+        "thinking": "Thinking",
+        "running": "Running",
+        "task_success": "Task completed",
+        "task_error": "Task failed",
+        "idle": "Idle"
       },
       "petdexTitle": "Petdex community",
       "petdexDescription": "Browse and install verified pet packages from the official Petdex repository.",
@@ -252,8 +277,18 @@
       "pageSizeOption": "{{count}} per page",
       "pageJump": "Go to",
       "goToPage": "Go to page",
-      "sort": { "default": "Default order", "name_asc": "Name ascending", "name_desc": "Name descending", "author_asc": "Author ascending", "kind_asc": "Kind ascending", "slug_asc": "Slug ascending" },
-      "columns3": "3 columns", "columns4": "4 columns", "columns5": "5 columns", "columns6": "6 columns",
+      "sort": {
+        "default": "Default order",
+        "name_asc": "Name ascending",
+        "name_desc": "Name descending",
+        "author_asc": "Author ascending",
+        "kind_asc": "Kind ascending",
+        "slug_asc": "Slug ascending"
+      },
+      "columns3": "3 columns",
+      "columns4": "4 columns",
+      "columns5": "5 columns",
+      "columns6": "6 columns",
       "connectTimeoutError": "Connection to Petdex timed out. Check your network or proxy, or increase the connection timeout.",
       "requestTimeoutError": "The Petdex download timed out. Increase the request timeout and try again.",
       "networkError": "Petdex is unreachable. Check your network, proxy, or firewall and try again.",
@@ -383,16 +418,25 @@
         "providerUnavailable": "Currently unavailable",
         "provider": {
           "claude": "Claude Code",
-          "codex": "Codex"
+          "codex": "Codex",
+          "grok": "Grok CLI",
+          "kimi": "Kimi CLI",
+          "opencode": "OpenCode",
+          "pi": "PI CLI"
         },
         "currentProviderAuto": "Currently using automatic selection: {{provider}}",
         "currentProviderManual": "Currently using manually selected provider: {{provider}}",
-        "currentProviderUnavailable": "The selected provider is currently unavailable: {{provider}}"
+        "currentProviderUnavailable": "The selected provider is currently unavailable: {{provider}}",
+        "modeLabel": "Selection mode",
+        "modeAuto": "Auto",
+        "modeManual": "Manual",
+        "autoSummary": "Follows the current chat CLI · currently {{provider}}",
+        "autoUnavailable": "No CLI is available right now. Switch to Manual to pick one."
       },
       "diffExpanded": {
-        "label": "Expand Diffs by Default",
-        "enabled": "Expanded",
-        "disabled": "Collapsed",
+        "label": "Expand diffs by default",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
         "hint": "When enabled, code diffs in chat will be expanded by default. When disabled, diffs start collapsed and can be expanded by clicking."
       },
       "commitGeneration": {
@@ -408,13 +452,13 @@
         "hint": "When enabled, shows current model and mode info in the IDE status bar (e.g. GUI [Opus] {Auto}). When disabled, the widget is hidden."
       },
       "taskCompletionNotification": {
-        "label": "Task Completion Notification",
+        "label": "Task completion system notification",
         "enabled": "Enabled",
         "disabled": "Disabled",
         "hint": "When enabled, shows a system notification when AI task completes. When disabled, no notification appears."
       },
       "askUserQuestionNotification": {
-        "label": "Ask User Question Notification",
+        "label": "Question system notification",
         "enabled": "Enabled",
         "disabled": "Disabled",
         "hint": "When enabled, shows a system notification when Claude asks you a question, so you won't miss it. When disabled, no notification appears."
@@ -459,6 +503,18 @@
         "promptLabel": "Retry message",
         "promptHint": "Sent to the agent automatically after an error. Leave empty for the default."
       },
+      "askUserQuestionSoundNotification": {
+        "label": "Question alert sound",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "hint": "When enabled, plays the configured alert sound when Claude asks you a question. Uses the sound selection and focus rules below."
+      },
+      "systemNotificationOnlyWhenUnfocused": {
+        "label": "Show system notifications only when IDE is unfocused",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "hint": "When enabled, task completion and question system notifications are shown only while the IDE is unfocused."
+      },
       "sendShortcut": {
         "label": "Send Shortcut",
         "enter": "Enter to Send",
@@ -483,6 +539,12 @@
         "reset": "Reset",
         "hint": "Customize the chat area background color. Leave empty to follow the theme default."
       },
+      "chatBarColor": {
+        "label": "Header & Status Bar Color",
+        "custom": "Custom",
+        "reset": "Reset",
+        "hint": "Use one theme color for the session header and task status bar. Leave empty to follow the current UI theme."
+      },
       "diffTheme": {
         "label": "Diff Theme",
         "follow": "Follow UI",
@@ -495,12 +557,12 @@
         "softDarkDesc": "Keep code contrast without the harsh black background"
       },
       "soundNotification": {
-        "label": "Task Completion Sound",
+        "label": "Task completion alert sound",
         "enabled": "Enabled",
         "disabled": "Disabled",
         "hint": "When enabled, a notification sound will play when AI completes a task, so you'll know even when away from the screen.",
-        "onlyWhenUnfocused": "Play only when IDE is not focused",
-        "onlyWhenUnfocusedHint": "When enabled, the sound will only play when the IDE window is not in focus.",
+        "onlyWhenUnfocused": "Play alert sounds only when IDE is unfocused",
+        "onlyWhenUnfocusedHint": "When enabled, task completion and question alert sounds play only while the IDE is unfocused.",
         "selectSound": "Notification Sound",
         "soundDefault": "Default",
         "soundChime": "Chime",
@@ -531,14 +593,85 @@
       }
     },
     "providers": "Provider Management",
-    "providersDesc": "Manage Claude and Codex API provider configurations and switch between different API service providers",
+    "providersDesc": "Manage Claude and Codex API provider configurations, switch API service providers, and check local CLI tool installation status",
     "promptEnhancer": {
       "title": "Prompt Enhancer",
       "description": "Choose which provider and model should be used when enhancing prompts before sending them."
     },
     "providerTab": {
       "claude": "Claude Code",
-      "codex": "Codex"
+      "codex": "Codex",
+      "cli": "CLI"
+    },
+    "cli": {
+      "hint": "These CLIs must be installed and configured in your system terminal. The plugin only detects installation status and version — it will never install them for you. Confirm each CLI works in the terminal before coming back here to use it.",
+      "refresh": "Re-check",
+      "retry": "Retry",
+      "loading": "Checking CLI installation status…",
+      "loadFailed": "Detection failed. Please try again.",
+      "status": {
+        "installed": "Installed",
+        "notInstalled": "Not installed"
+      },
+      "viewInstallGuide": "Install guide",
+      "howToInstall": "View install guide",
+      "copy": "Copy",
+      "copied": "Copied to clipboard",
+      "copyFailed": "Failed to copy",
+      "tools": {
+        "grok": {
+          "name": "Grok CLI",
+          "description": "xAI Grok terminal coding agent"
+        },
+        "kimi": {
+          "name": "Kimi CLI",
+          "description": "Moonshot Kimi Code CLI"
+        },
+        "opencode": {
+          "name": "OpenCode",
+          "description": "Open-source terminal AI coding agent"
+        },
+        "pi": {
+          "name": "PI CLI",
+          "description": "Minimal terminal coding agent with multi-provider model support"
+        },
+        "dsh": {
+          "name": "DeepSeek Harness",
+          "description": "DeepSeek terminal agent harness (persistent dsh web host)"
+        }
+      },
+      "installDialog": {
+        "title": "Install {{name}}",
+        "lead": "Install {{name}} in your system terminal first and make sure `{{binary}}` is available, then come back and click Re-check. This plugin will not run the installer for you.",
+        "stepOpenTerminal": "Open your system terminal (Terminal / iTerm / PowerShell, etc.)",
+        "stepRunCommand": "Copy and run the install command below",
+        "stepVerify": "After install, run `{{binary}} --version` to verify",
+        "stepReturn": "Return here and click Re-check",
+        "primaryCommand": "Recommended install command (macOS / Linux)",
+        "windowsCommand": "Windows (PowerShell)",
+        "altCommand": "Alternative install method",
+        "openDocs": "Open official docs"
+      },
+      "listTitle": "Local CLI tools",
+      "summary": "{{installed}} / {{total}} installed",
+      "moreComingSoon": "More coming soon",
+      "copyPath": "Copy path",
+      "dsh": {
+        "cardTitle": "DeepSeek Harness (DSH)",
+        "hint": "One persistent local dsh web host serves all sessions; the plugin adopts a running host instead of spawning a second one.",
+        "state": {
+          "checking": "Checking…",
+          "notInstalled": "Not installed",
+          "notRunning": "Not running",
+          "connected": "Connected"
+        },
+        "adopted": "adopted",
+        "adoptedHint": "Adopted an already-running host; it is never stopped by the plugin.",
+        "openWebUi": "Open DSH Web UI",
+        "startHost": "Start host",
+        "stopHost": "Stop host (plugin-spawned only)",
+        "autoStart": "Auto-start when needed"
+      }
     },
     "claudeAutoResume": {
       "title": "Auto-resume after usage limit",
@@ -567,6 +700,13 @@
         "cacheReadShort": "Cache read",
         "invalidValue": "Pricing must be a non-negative number",
         "defaultPricing": "Using default pricing"
+      },
+      "contextWindow": {
+        "label": "Maximum context (K tokens)",
+        "placeholder": "e.g. 500",
+        "hint": "Optional. Enter a whole number of thousands of tokens (500 = 500,000 tokens). Used only for the plugin context usage display.",
+        "invalidValue": "Maximum context must be a positive integer in K units",
+        "summary": "Context: {{value}} tokens"
       },
       "configuredSectionTitle": "Configured Claude models",
       "configuredSectionDesc": "Models from the active Claude provider/settings.json are already in the selector. Only pricing can be changed here.",
@@ -640,7 +780,12 @@
         "providerUnavailable": "Unavailable",
         "currentProviderAuto": "Currently using auto selection: {{provider}}",
         "currentProviderManual": "Currently using the manually selected provider: {{provider}}",
-        "currentProviderUnavailable": "The selected provider is currently unavailable: {{provider}}"
+        "currentProviderUnavailable": "The selected provider is currently unavailable: {{provider}}",
+        "modeLabel": "Selection mode",
+        "modeAuto": "Auto",
+        "modeManual": "Manual",
+        "autoSummary": "Follows the current chat CLI · currently {{provider}}",
+        "autoUnavailable": "No CLI is available right now. Switch to Manual to pick one."
       },
       "prompt": {
         "label": "Additional Prompt",
@@ -1175,7 +1320,7 @@
     "loading": "Loading history...",
     "loadFailed": "Load failed",
     "noSessions": "No history sessions",
-    "noSessionsDesc": "No Claude session records found in current project",
+    "noSessionsDesc": "No session records found in current project",
     "totalSessions": "{{count}} sessions · {{total}} messages",
     "messageCount": "{{count}} messages",
     "searchPlaceholder": "Search session titles...",
@@ -1299,6 +1444,7 @@
   },
   "config": {
     "clickToCopy": "Click to copy",
+    "officialDocs": "Official Docs",
     "switch": "Switch",
     "switchProvider": "Switch provider",
     "runtimeProvider": {
@@ -1363,7 +1509,13 @@
   "markdown": {
     "copyCode": "Copy code",
     "copyMessage": "Copy message",
-    "copySuccess": "Copied!"
+    "copySuccess": "Copied!",
+    "quoteMessage": "Quote message",
+    "quoteSuccess": "Quoted!"
+  },
+  "contextMenu": {
+    "copy": "Copy",
+    "quote": "Quote"
   },
   "usage": {
     "checkingLabel": "Checking for tokentracker-cli…",
@@ -1623,6 +1775,7 @@
   "subagent": {
     "process": {
       "title": "Agent process",
+      "prompt": "Prompt",
       "thought": "Thought",
       "filesRead_one": "Read {{count}} file",
       "filesRead_other": "Read {{count}} files",
@@ -1667,7 +1820,9 @@
     "keepAllConfirmMessage": "Accept current changes as baseline. Future changes will be tracked from zero.",
     "discardAllSuccess": "All changes discarded",
     "discardAllFailed": "Discard failed: {{error}}",
-    "keepAllSuccess": "All changes kept, tracking reset"
+    "keepAllSuccess": "All changes kept, tracking reset",
+    "multiAgentBadge": "Multi-agent",
+    "multiAgentEdited": "{{count}} agents edited this file in this session — review carefully"
   },
   "skills": {
     "title": "Skills",
@@ -1836,6 +1991,9 @@
     "searchPlaceholder": "Search models",
     "noModelsFound": "No models found",
     "hiddenModelCount": "+ {{count}} more models. Type to search.",
+    "pinned": "Pinned",
+    "pin": "Pin",
+    "unpin": "Unpin",
     "longContext": {
       "label": "1M",
       "shortLabel": "1M context",
@@ -1849,11 +2007,7 @@
       },
       "sonnet5": {
         "label": "Sonnet 5",
-        "description": "Sonnet 5 · Upgraded Sonnet model"
-      },
-      "sonnet47": {
-        "label": "Sonnet 4.7",
-        "description": "Sonnet 4.7 · Use the default model"
+        "description": "Sonnet 5 · Use the default model"
       },
       "opus46_1m": {
         "label": "Opus 4.6",
@@ -1897,6 +2051,12 @@
         "label": "GPT-5.4",
         "description": "Latest frontier model with enhanced capabilities."
       }
+    },
+    "grok": {
+      "grok46": {
+        "label": "Grok 4.6",
+        "description": "xAI Grok 4.6"
+      }
     }
   },
   "modes": {
@@ -1924,7 +2084,7 @@
   "codexModes": {
     "default": {
       "label": "Suggest (approval)",
-      "tooltip": "Codex approval_policy=untrusted – prompts before editing files or running shell commands.",
+      "tooltip": "Codex approval_policy=on-request – prompts before editing files or running shell commands.",
       "description": "Safest option. Every write or command requires your approval."
     },
     "plan": {
@@ -1950,11 +2110,28 @@
     "codex": {
       "label": "Codex"
     },
+    "grok": {
+      "label": "Grok CLI"
+    },
+    "kimi": {
+      "label": "Kimi CLI"
+    },
     "gemini": {
       "label": "Gemini Cli"
     },
     "opencode": {
       "label": "OpenCode"
+    },
+    "pi": {
+      "label": "PI CLI"
+    },
+    "beta": {
+      "badge": "Beta",
+      "title": "Beta Feature",
+      "message": "This feature is still in Beta. If you encounter any bugs, please report them to the author promptly."
+    },
+    "dsh": {
+      "label": "DeepSeek Harness"
     }
   },
   "scheduledSend": {
@@ -1991,7 +2168,18 @@
     "keepOriginal": "Keep Original",
     "enhanceFailed": "Failed to enhance prompt",
     "emptyPrompt": "Please enter a prompt first",
-    "copyEnhanced": "Copy Enhanced"
+    "copyEnhanced": "Copy Enhanced",
+    "modeLabel": "Mode",
+    "modeAuto": "Auto",
+    "modeManual": "Manual",
+    "modeUnavailable": "Unavailable",
+    "providerLabel": "CLI",
+    "providerUnresolved": "No CLI resolved",
+    "modelLabel": "Model",
+    "modelUnresolved": "Default model",
+    "openSettings": "Configure",
+    "openSettingsTooltip": "Open prompt enhancer settings",
+    "resolvingUsage": "Resolving runtime config…"
   },
   "fileContext": {
     "placeholder": "File Context",

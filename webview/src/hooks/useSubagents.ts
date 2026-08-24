@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import type { ClaudeMessage, ClaudeRawMessage, ClaudeContentBlock, ToolResultBlock, SubagentHistoryResponse, SubagentInfo, SubagentStatus, TaskEvent, TaskEventMap } from '../types';
 import { normalizeToolInput } from '../utils/toolInputNormalization';
 import { normalizeToolName } from '../utils/toolConstants';
-import { extractResultText, isAsyncAgentInput } from '../utils/subagentResult';
+import { extractResultText, isAsyncAgentInput, parseSpawnAgentMeta, readToolUseStatus } from '../utils/subagentResult';
 import { useTaskEvents } from '../contexts/SubagentContext';
 
 type GetToolResultRawFn = (toolUseId: string) => ClaudeRawMessage | null;
@@ -123,10 +123,16 @@ export function extractSubagentsFromMessages(
       const result = findToolResult(toolUseId, messageIndex);
       const taskEvent = taskEvents[toolUseId];
       // isAsync is read via the shared isAsyncAgentInput helper so the
-      // StatusPanel list and the inline Agent cards stay in lockstep.
-      const isAsync = isAsyncAgentInput(input);
+      // StatusPanel list and the inline Agent cards stay in lockstep. The
+      // launch ack text and tool-use status are passed as fallbacks so a
+      // background agent whose input lacks run_in_background is still kept
+      // "running" until its terminal event lands, instead of being marked
+      // completed the instant the ack arrives.
+      const toolUseStatus = readToolUseStatus(getToolResultRaw(toolUseId));
+      const isAsync = isAsyncAgentInput(input, toolName, result, toolUseStatus);
       const status = determineStatus(result, isAsync, taskEvent);
       const resultMetadata = extractResultMetadata(result, getToolResultRaw, toolUseId, taskEvent);
+      const spawnMeta = toolName === 'spawn_agent' ? parseSpawnAgentMeta(input, result) : {};
 
       subagents.push({
         id,
@@ -137,6 +143,8 @@ export function extractSubagentsFromMessages(
         isAsync,
         messageIndex,
         ...resultMetadata,
+        ...(spawnMeta.agentId && { agentId: spawnMeta.agentId }),
+        ...(spawnMeta.agentPath && { agentPath: spawnMeta.agentPath }),
       });
     });
   });
@@ -152,6 +160,7 @@ export function applySubagentHistoryCompletion(
     if (!subagent.isAsync || subagent.status !== 'running') return subagent;
     const history = subagentHistories[subagent.id]
       ?? (subagent.agentId ? subagentHistories[subagent.agentId] : undefined);
+    if (history?.status === 'error') return { ...subagent, status: 'error' as const };
     return history?.completed ? { ...subagent, status: 'completed' as const } : subagent;
   });
 }

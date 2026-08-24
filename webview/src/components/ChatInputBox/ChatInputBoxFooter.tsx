@@ -97,9 +97,15 @@ export function ChatInputBoxFooter({
     isLoading: boolean;
     originalPrompt: string;
     enhancedPrompt: string;
+    usageInfo?: {
+      provider: string | null;
+      model: string | null;
+      resolutionSource: 'manual' | 'auto' | 'unavailable' | null;
+    } | null;
     onUseEnhanced: () => void;
     onKeepOriginal: () => void;
     onClose: () => void;
+    onOpenSettings?: () => void;
   };
   t: TFunction;
 }) {
@@ -237,9 +243,11 @@ export function ChatInputBoxFooter({
         isLoading={promptEnhancer.isLoading}
         originalPrompt={promptEnhancer.originalPrompt}
         enhancedPrompt={promptEnhancer.enhancedPrompt}
+        usageInfo={promptEnhancer.usageInfo}
         onUseEnhanced={promptEnhancer.onUseEnhanced}
         onKeepOriginal={promptEnhancer.onKeepOriginal}
         onClose={promptEnhancer.onClose}
+        onOpenSettings={promptEnhancer.onOpenSettings}
       />
     </>
   );

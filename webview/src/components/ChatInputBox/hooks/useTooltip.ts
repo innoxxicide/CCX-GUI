@@ -22,7 +22,7 @@ interface UseTooltipReturn {
 }
 
 const TOOLTIP_TARGET_SELECTOR =
-  '.file-tag.has-tooltip, .context-tool-btn.has-tooltip, .enhance-prompt-button.has-tooltip';
+  '.file-tag.has-tooltip, .quote-tag.has-tooltip, .context-tool-btn.has-tooltip, .enhance-prompt-button.has-tooltip';
 
 /**
  * useTooltip - Manage tooltip state for hoverable elements

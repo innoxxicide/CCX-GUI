@@ -10,13 +10,19 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonSyntaxException;
 import com.intellij.openapi.diagnostic.Logger;
+import com.intellij.util.concurrency.AppExecutorUtil;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -31,22 +37,42 @@ class SubagentHistoryService {
     private static final int MAX_JSONL_LINES = 50_000;
 
     private final HandlerContext context;
+    private final CodexSubagentHistoryLoader codexLoader;
+    private final Set<String> inFlightCodexRequests = ConcurrentHashMap.newKeySet();
 
     SubagentHistoryService(HandlerContext context) {
         this.context = context;
+        Path codexSessionsDir = Path.of(NodeDetector.resolveHomeForFileOps(), ".codex", "sessions");
+        this.codexLoader = new CodexSubagentHistoryLoader(codexSessionsDir);
     }
 
     void handleLoadSubagentSession(String content) {
         JsonObject request = parseRequest(content);
         String sessionId = getString(request, "sessionId");
         String agentId = getString(request, "agentId");
+        String agentPath = getString(request, "agentPath");
         String toolUseId = getString(request, "toolUseId");
         String description = getString(request, "description");
+        String provider = getString(request, "provider");
 
         JsonObject response = new JsonObject();
         response.addProperty("toolUseId", toolUseId);
         response.addProperty("agentId", agentId);
+        response.addProperty("agentPath", agentPath);
         response.addProperty("sessionId", sessionId);
+        response.addProperty("provider", provider);
+
+        if ("codex".equals(provider)) {
+            loadCodexSubagentAsync(sessionId, toolUseId, agentPath, response);
+            return;
+        }
+        if (provider != null && !"claude".equals(provider)) {
+            response.addProperty("success", false);
+            response.addProperty("status", "error");
+            response.addProperty("error", "Invalid provider");
+            sendResponse(response);
+            return;
+        }
 
         try {
             validateId("sessionId", sessionId);
@@ -56,6 +82,7 @@ class SubagentHistoryService {
                     : resolveSubagentFileByDescription(sessionId, description);
             if (!Files.exists(file) || !Files.isRegularFile(file)) {
                 response.addProperty("success", false);
+                response.addProperty("status", "running");
                 response.addProperty("error", "Subagent log not found");
                 sendResponse(response);
                 return;
@@ -67,14 +94,56 @@ class SubagentHistoryService {
             JsonArray messages = readJsonl(file);
             response.addProperty("success", true);
             response.addProperty("completed", hasCompleted(messages));
+            response.addProperty("status", hasCompleted(messages) ? "completed" : "running");
             response.add("messages", messages);
         } catch (Exception e) {
             LOG.warn("[SubagentHistory] Failed to load subagent log: " + e.getMessage());
             response.addProperty("success", false);
+            response.addProperty("status", "error");
             response.addProperty("error", e.getMessage() != null ? e.getMessage() : "Unknown error");
         }
 
         sendResponse(response);
+    }
+
+    private void loadCodexSubagentAsync(
+            String sessionId,
+            String toolUseId,
+            String agentPath,
+            JsonObject response
+    ) {
+        String requestKey = "codex:" + sessionId + ":" + toolUseId + ":" + agentPath;
+        if (!inFlightCodexRequests.add(requestKey)) {
+            return;
+        }
+        CompletableFuture.runAsync(() -> {
+            try {
+                CodexSubagentHistoryLoader.Result result = codexLoader.load(sessionId, toolUseId, agentPath);
+                response.addProperty("success", true);
+                response.addProperty("completed", result.completed());
+                response.addProperty("status", result.status());
+                response.addProperty("agentId", result.agentThreadId());
+                response.addProperty("agentPath", result.agentPath());
+                response.add("messages", result.messages());
+                if (result.error() != null) {
+                    response.addProperty("error", result.error());
+                }
+            } catch (CodexSubagentHistoryLoader.PendingException e) {
+                response.addProperty("success", false);
+                response.addProperty("completed", false);
+                response.addProperty("status", "running");
+                response.addProperty("error", e.getMessage());
+            } catch (Exception e) {
+                LOG.warn("[SubagentHistory] Failed to load Codex subagent log: " + e.getMessage());
+                response.addProperty("success", false);
+                response.addProperty("completed", false);
+                response.addProperty("status", "error");
+                response.addProperty("error", e.getMessage() != null ? e.getMessage() : "Unknown error");
+            } finally {
+                inFlightCodexRequests.remove(requestKey);
+            }
+            sendResponse(response);
+        }, AppExecutorUtil.getAppExecutorService());
     }
 
     private JsonObject parseRequest(String content) {
@@ -209,7 +278,25 @@ class SubagentHistoryService {
     }
 
     private void sendResponse(JsonObject response) {
-        String payload = JsUtils.escapeJs(GSON.toJson(response));
-        context.callJavaScript("onSubagentHistoryLoaded", payload);
+        if (context.getProject() == null || context.getProject().isDisposed()) {
+            return;
+        }
+        String responseJson = GSON.toJson(response);
+        String payload = JsUtils.escapeJs(responseJson);
+        if (payload.length() <= HistoryMessageInjector.HISTORY_BATCH_TARGET_CHAR_LIMIT) {
+            context.callJavaScript("onSubagentHistoryLoaded", payload);
+            return;
+        }
+
+        String transferId = UUID.randomUUID().toString();
+        List<String> chunks = HistoryMessageInjector.splitHistoryPayload(responseJson);
+        for (int i = 0; i < chunks.size(); i++) {
+            context.callJavaScript(
+                    "onSubagentHistoryChunk",
+                    transferId,
+                    JsUtils.escapeJs(chunks.get(i)),
+                    String.valueOf(i == chunks.size() - 1)
+            );
+        }
     }
 }

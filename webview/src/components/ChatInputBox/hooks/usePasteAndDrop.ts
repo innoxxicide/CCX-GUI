@@ -20,7 +20,7 @@ interface UsePasteAndDropOptions {
   setInternalAttachments: React.Dispatch<React.SetStateAction<Attachment[]>>;
   onInput?: (content: string) => void;
   closeAllCompletions: () => void;
-  handleInput: (isComposingFromEvent?: boolean) => void;
+  handleInput: (inputType?: string) => void;
   /** Immediately flush pending debounced onInput to sync parent state */
   flushInput: () => void;
 }
@@ -140,7 +140,7 @@ export function usePasteAndDrop({
                   // Insert full path using modern Selection API
                   insertTextAtCursor(fullPath, editableRef.current);
                   // Bypass IME guard (isComposingRef may be stale after recent compositionEnd)
-                  handleInput(false);
+                  handleInput();
                   // Immediately sync parent state without waiting for debounce
                   flushInput();
                 }
@@ -162,7 +162,7 @@ export function usePasteAndDrop({
 
           // Trigger input event to update state
           // Pass false to bypass IME guard (isComposingRef may be stale after recent compositionEnd)
-          handleInput(false);
+          handleInput();
           timer.mark('handleInput');
 
           // Immediately sync parent state without waiting for debounce

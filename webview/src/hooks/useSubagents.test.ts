@@ -78,6 +78,35 @@ const getToolResultRaw = (messages: ClaudeMessage[]) => (toolUseId: string) => {
 };
 
 describe('extractSubagentsFromMessages', () => {
+  it('retains Codex spawn_agent path metadata for history requests', () => {
+    const message: ClaudeMessage = {
+      type: 'assistant',
+      content: '',
+      raw: {
+        message: {
+          content: [{
+            type: 'tool_use',
+            id: 'call-spawn',
+            name: 'spawn_agent',
+            input: { task_name: 'audit_ui', message: 'Review anchors' },
+          }],
+        },
+      },
+    };
+
+    const subagents = extractSubagentsFromMessages(
+      [message], getContentBlocks, findToolResult([message]), getToolResultRaw([message]),
+    );
+
+    expect(subagents).toHaveLength(1);
+    expect(subagents[0]).toMatchObject({
+      id: 'call-spawn',
+      agentPath: 'audit_ui',
+      isAsync: true,
+      status: 'running',
+    });
+  });
+
   it('attaches completed Agent result metadata including stable agent id', () => {
     const messages = [assistantWithAgent('tooluse_backend'), toolResultMessage('tooluse_backend')];
 

@@ -45,8 +45,8 @@ export const ModeSelect = ({ value, onChange, provider }: ModeSelectProps) => {
   });
 
   const modeOptions = useMemo(() => {
-    if (provider === 'codex') {
-      // Codex supports default/acceptEdits/bypassPermissions; plan mode is not exposed yet.
+    if (provider === 'codex' || provider === 'grok' || provider === 'kimi' || provider === 'opencode' || provider === 'pi' || provider === 'dsh') {
+      // Codex + headless CLI: plan mode is not exposed (always-approve / auto).
       return AVAILABLE_MODES.filter((mode) => mode.id !== 'plan');
     }
     return AVAILABLE_MODES;

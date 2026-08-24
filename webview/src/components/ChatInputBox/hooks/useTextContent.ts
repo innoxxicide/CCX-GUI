@@ -1,5 +1,6 @@
 import { useCallback, useRef } from 'react';
 import { perfTimer } from '../../../utils/debug.js';
+import { makeQuoteToken } from '../utils/quoteRegistry.js';
 
 interface TextContentCache {
   content: string;
@@ -99,6 +100,11 @@ export function useTextContent({
           textParts.push(`@${filePath}`);
           endsWithNewline = false;
           // Don't traverse file-tag children to avoid duplicate filename and close button text
+        } else if (element.classList.contains('quote-tag')) {
+          const quoteId = element.getAttribute('data-quote-id') || '';
+          textParts.push(makeQuoteToken(quoteId));
+          endsWithNewline = false;
+          // Don't traverse quote-tag children (preview + close button are decorative)
         } else {
           // Continue traversing child nodes
           node.childNodes.forEach(walk);

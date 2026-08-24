@@ -264,6 +264,15 @@ public class SkillHandler extends BaseMessageHandler {
                         } else {
                             result = CodexSkillService.toggleSkill(skillPath, currentEnabled, workspaceRoot);
                         }
+                        // The frontend's skillToggleResult handler clears its in-progress
+                        // set by matching on result.name. CodexSkillService.toggleSkill only
+                        // returns success/enabled and omits name, which would leave the row
+                        // stuck in the spinning state forever. Echo the requested skill name
+                        // so the frontend can clear the in-progress flag (mirrors the Claude
+                        // SkillService.enableSkill/disableSkill contract).
+                        if (!result.has("name") && skillName != null && !skillName.isEmpty()) {
+                            result.addProperty("name", skillName);
+                        }
                     } else {
                         result = SkillService.toggleSkill(skillName, scope, currentEnabled, workspaceRoot);
                     }

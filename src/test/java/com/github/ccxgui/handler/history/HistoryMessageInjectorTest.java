@@ -1,6 +1,8 @@
 package com.github.ccxgui.handler.history;
 
 import com.github.ccxgui.handler.core.HandlerContext;
+import com.github.ccxgui.provider.codex.CodexHistoryReader;
+import com.github.ccxgui.session.ClaudeSession;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -19,6 +21,9 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+/**
+ * Unit tests for provider-aware history loading, pagination, and frontend conversion.
+ */
 public class HistoryMessageInjectorTest {
 
     @Test
@@ -29,7 +34,7 @@ public class HistoryMessageInjectorTest {
         injector.handleLoadSession(
                 "{\"sessionId\":\"hist-codex\",\"provider\":\"codex\"}",
                 "claude",
-                (sessionId, projectPath, provider) -> callbackInvoked[0] = true
+                (sessionId, projectPath, provider, model) -> callbackInvoked[0] = true
         );
 
         assertEquals("hist-codex", injector.loadedCodexSessionId);
@@ -39,15 +44,16 @@ public class HistoryMessageInjectorTest {
     @Test
     public void handleLoadSessionUsesPayloadProviderForClaudeEvenWhenCurrentProviderIsCodex() {
         RecordingHistoryMessageInjector injector = new RecordingHistoryMessageInjector(createContext("D:/project/demo"));
-        String[] callbackArgs = new String[3];
+        String[] callbackArgs = new String[4];
 
         injector.handleLoadSession(
-                "{\"sessionId\":\"hist-claude\",\"provider\":\"claude\"}",
+                "{\"sessionId\":\"hist-claude\",\"provider\":\"claude\",\"model\":\"claude-sonnet-4-6\"}",
                 "codex",
-                (sessionId, projectPath, provider) -> {
+                (sessionId, projectPath, provider, model) -> {
                     callbackArgs[0] = sessionId;
                     callbackArgs[1] = projectPath;
                     callbackArgs[2] = provider;
+                    callbackArgs[3] = model;
                 }
         );
 
@@ -55,6 +61,7 @@ public class HistoryMessageInjectorTest {
         assertEquals("hist-claude", callbackArgs[0]);
         assertEquals("D:/project/demo", callbackArgs[1]);
         assertEquals("claude", callbackArgs[2]);
+        assertEquals("claude-sonnet-4-6", callbackArgs[3]);
     }
 
     @Test
@@ -65,7 +72,7 @@ public class HistoryMessageInjectorTest {
         injector.handleLoadSession(
                 "{\"sessionId\":\"hist-codex\",\"provider\":\"codex\"}",
                 "claude",
-                (sessionId, projectPath, provider) -> callbackInvoked[0] = true
+                (sessionId, projectPath, provider, model) -> callbackInvoked[0] = true
         );
 
         assertNull(injector.loadedCodexSessionId);
@@ -98,6 +105,26 @@ public class HistoryMessageInjectorTest {
         assertEquals(1, result.size());
         assertEquals("user", result.get(0).get("type").getAsString());
         assertEquals("hello", result.get(0).get("content").getAsString());
+    }
+
+    @Test
+    public void restoresIsoTimestampWhenHydratingCodexMessagesIntoSessionState() {
+        JsonObject frontendMessage = frontendMessage("assistant", "done", "text");
+        frontendMessage.addProperty("timestamp", "2026-07-28T12:50:07.123Z");
+
+        ClaudeSession.Message restored = HistoryMessageInjector.toSessionMessage(frontendMessage);
+
+        assertEquals(1785243007123L, restored.timestamp);
+    }
+
+    @Test
+    public void restoresNumericStringTimestampWhenHydratingSessionState() {
+        JsonObject frontendMessage = frontendMessage("user", "hello", "text");
+        frontendMessage.addProperty("timestamp", "1785243007123");
+
+        ClaudeSession.Message restored = HistoryMessageInjector.toSessionMessage(frontendMessage);
+
+        assertEquals(1785243007123L, restored.timestamp);
     }
 
     @Test
@@ -195,6 +222,76 @@ public class HistoryMessageInjectorTest {
         assertEquals(1, result.size());
         assertEquals("assistant", result.get(0).get("type").getAsString());
         assertEquals("visible assistant reply", result.get(0).get("content").getAsString());
+    }
+
+    /**
+     * Verifies that batch history conversion attaches the latest Codex context snapshot
+     * and provider-reported window to the preceding assistant message.
+     */
+    @Test
+    public void convertCodexMessagesPreservesTokenCountContextWindow() {
+        JsonArray messages = new JsonArray();
+        messages.add(responseItemAssistantMessage("2026-05-14T10:00:01.000Z", "visible assistant reply"));
+        messages.add(tokenCountEvent(
+                "2026-05-14T10:00:02.000Z", 500000, 9000, 12000, 345, 258400));
+
+        List<JsonObject> result = HistoryMessageInjector.convertCodexMessagesToFrontendBatch(messages);
+
+        assertEquals(1, result.size());
+        JsonObject usage = result.get(0).getAsJsonObject("raw").getAsJsonObject("usage");
+        assertEquals(12000, usage.get("input_tokens").getAsInt());
+        assertEquals(345, usage.get("output_tokens").getAsInt());
+        assertEquals(258400, usage.get("model_context_window").getAsInt());
+    }
+
+    /**
+     * Verifies history containing only session-cumulative usage leaves the current
+     * context unknown instead of attaching a value that can exceed the model window.
+     */
+    @Test
+    public void convertCodexMessagesIgnoresTotalUsageWithoutLastUsage() {
+        JsonArray messages = new JsonArray();
+        messages.add(responseItemAssistantMessage("2026-05-14T10:00:01.000Z", "visible assistant reply"));
+        messages.add(tokenCountEvent("2026-05-14T10:00:02.000Z", 12000, 345, 258400));
+
+        List<JsonObject> result = HistoryMessageInjector.convertCodexMessagesToFrontendBatch(messages);
+
+        assertFalse(result.get(0).getAsJsonObject("raw").has("usage"));
+    }
+
+    /**
+     * Verifies the production streaming history scanner, rather than only batch
+     * conversion, preserves token_count metadata during real pagination.
+     */
+    @Test
+    public void scanCodexHistoryPagePreservesTokenCountContextWindow() throws Exception {
+        JsonArray messages = new JsonArray();
+        messages.add(eventUserMessage("2026-05-14T10:00:00.000Z", "question"));
+        messages.add(responseItemAssistantMessage("2026-05-14T10:00:01.000Z", "answer"));
+        messages.add(tokenCountEvent(
+                "2026-05-14T10:00:02.000Z", 500000, 9000, 12000, 345, 258400));
+        CodexHistoryReader reader = new CodexHistoryReader() {
+            @Override
+            public int forEachSessionMessage(
+                    String sessionId,
+                    java.util.function.Consumer<JsonObject> consumer
+            ) {
+                for (JsonElement message : messages) {
+                    consumer.accept(message.getAsJsonObject());
+                }
+                return messages.size();
+            }
+        };
+
+        HistoryMessageInjector.CodexHistoryPage page =
+                HistoryMessageInjector.scanCodexHistoryPage(reader, "fixture-session", null, 30);
+
+        assertEquals(2, page.messages.size());
+        JsonObject usage = page.messages.get(1)
+                .getAsJsonObject("raw").getAsJsonObject("usage");
+        assertEquals(12000, usage.get("input_tokens").getAsInt());
+        assertEquals(345, usage.get("output_tokens").getAsInt());
+        assertEquals(258400, usage.get("model_context_window").getAsInt());
     }
 
     @Test
@@ -569,6 +666,49 @@ public class HistoryMessageInjectorTest {
         return line;
     }
 
+    private static JsonObject tokenCountEvent(
+            String timestamp,
+            int inputTokens,
+            int outputTokens,
+            int contextWindow
+    ) {
+        JsonObject line = new JsonObject();
+        line.addProperty("timestamp", timestamp);
+        line.addProperty("type", "event_msg");
+
+        JsonObject totalUsage = new JsonObject();
+        totalUsage.addProperty("input_tokens", inputTokens);
+        totalUsage.addProperty("output_tokens", outputTokens);
+        totalUsage.addProperty("cached_input_tokens", 0);
+
+        JsonObject info = new JsonObject();
+        info.add("total_token_usage", totalUsage);
+        info.addProperty("model_context_window", contextWindow);
+
+        JsonObject payload = new JsonObject();
+        payload.addProperty("type", "token_count");
+        payload.add("info", info);
+        line.add("payload", payload);
+        return line;
+    }
+
+    private static JsonObject tokenCountEvent(
+            String timestamp,
+            int totalInputTokens,
+            int totalOutputTokens,
+            int lastInputTokens,
+            int lastOutputTokens,
+            int contextWindow
+    ) {
+        JsonObject line = tokenCountEvent(timestamp, totalInputTokens, totalOutputTokens, contextWindow);
+        JsonObject lastUsage = new JsonObject();
+        lastUsage.addProperty("input_tokens", lastInputTokens);
+        lastUsage.addProperty("output_tokens", lastOutputTokens);
+        lastUsage.addProperty("cached_input_tokens", 0);
+        line.getAsJsonObject("payload").getAsJsonObject("info").add("last_token_usage", lastUsage);
+        return line;
+    }
+
     private static JsonObject functionCall(
             String timestamp,
             String callId,
@@ -693,6 +833,11 @@ public class HistoryMessageInjectorTest {
 
         @Override
         void loadCodexSession(String sessionId) {
+            loadCodexSession(sessionId, null);
+        }
+
+        @Override
+        void loadCodexSession(String sessionId, String model) {
             this.loadedCodexSessionId = sessionId;
         }
 

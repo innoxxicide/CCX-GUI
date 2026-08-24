@@ -122,6 +122,16 @@ public class EnvironmentConfigurator {
                     userHome + "/.local/bin",
                     // Rust / cargo tool installation directory
                     userHome + "/.cargo/bin",
+                    // Headless CLI providers (IDE PATH often lacks login-shell dirs)
+                    userHome + "/.kimi-code/bin",
+                    userHome + "/.kimi/bin",
+                    userHome + "/.opencode/bin",
+                    userHome + "/.grok/bin",
+                    userHome + "/.pi/bin",
+                    userHome + "/.claude/bin",
+                    // DeepSeek Harness (Hermes installer keeps node + dsh together)
+                    userHome + "/.hermes/node/bin",
+                    userHome + "/.dsh/bin",
             };
             for (String p : unixPaths) {
                 if (!pathContains(currentPath, p)) {

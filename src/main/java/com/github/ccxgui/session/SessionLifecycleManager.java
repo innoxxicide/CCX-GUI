@@ -4,14 +4,13 @@ import com.github.ccxgui.bridge.NodeDetector;
 import com.github.ccxgui.i18n.ClaudeCodeGuiBundle;
 import com.github.ccxgui.model.SessionTemplate;
 import com.github.ccxgui.settings.CodemossSettingsService;
+import com.github.ccxgui.handler.UsagePushService;
 import com.github.ccxgui.handler.core.HandlerContext;
-import com.github.ccxgui.handler.SettingsHandler;
 import com.github.ccxgui.provider.claude.ClaudeSDKBridge;
 import com.github.ccxgui.provider.codex.CodexSDKBridge;
+import com.github.ccxgui.provider.common.MarkerCliBridge;
 import com.github.ccxgui.skill.SlashCommandRegistry;
 import com.github.ccxgui.util.JsUtils;
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
@@ -20,6 +19,7 @@ import com.intellij.ui.jcef.JBCefBrowser;
 
 import java.io.File;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -40,6 +40,8 @@ public class SessionLifecycleManager {
         ClaudeSDKBridge getClaudeSDKBridge();
 
         CodexSDKBridge getCodexSDKBridge();
+
+        Map<String, MarkerCliBridge> getCliBridges();
 
         ClaudeSession getSession();
 
@@ -204,13 +206,22 @@ public class SessionLifecycleManager {
      * Load a history session by ID.
      */
     public void loadHistorySession(String sessionId, String projectPath) {
-        loadHistorySession(sessionId, projectPath, null);
+        loadHistorySession(sessionId, projectPath, null, null);
     }
 
     /**
      * Load a history session by ID and provider.
      */
     public void loadHistorySession(String sessionId, String projectPath, String provider) {
+        loadHistorySession(sessionId, projectPath, provider, null);
+    }
+
+    /**
+     * Load a history session by ID, provider, and optional model from the history row.
+     *
+     * @param model when non-blank, restores that model instead of keeping the previous UI selection
+     */
+    public void loadHistorySession(String sessionId, String projectPath, String provider, String model) {
         LOG.info("Loading history session: " + sessionId + " from project: " + projectPath);
 
         ClaudeSession oldSession = host.getSession();
@@ -227,6 +238,8 @@ public class SessionLifecycleManager {
             previousPermissionMode = (savedMode != null && !savedMode.trim().isEmpty())
                                              ? savedMode.trim() : previousPreferences.getPermissionMode();
         }
+        String modelToRestore = (model != null && !model.trim().isEmpty())
+                ? model.trim() : previousPreferences.getModel();
         LOG.info("Preserving session state when loading history: mode=" + previousPermissionMode
                          + ", provider=" + previousPreferences.getProvider()
                          + ", model=" + previousPreferences.getModel()
@@ -250,7 +263,10 @@ public class SessionLifecycleManager {
             }
 
             ClaudeSession newSession = new ClaudeSession(
-                    host.getProject(), host.getClaudeSDKBridge(), host.getCodexSDKBridge());
+                    host.getProject(),
+                    host.getClaudeSDKBridge(),
+                    host.getCodexSDKBridge(),
+                    host.getCliBridges());
             newSession.getState().copyPreferencesFrom(previousPreferences);
             // Routed through the session (not the state) so the PermissionManager
             // is synced along with the stored mode.
@@ -258,6 +274,9 @@ public class SessionLifecycleManager {
             if (provider != null && !provider.trim().isEmpty()) {
                 newSession.setProvider(provider);
             }
+            // A model carried on the history row outranks the copied preference, so
+            // reopening an old session restores the model it actually ran with.
+            newSession.setModel(modelToRestore);
             LOG.info("Restored session state to loaded session: mode=" + previousPermissionMode
                              + ", provider=" + newSession.getProvider()
                              + ", model=" + newSession.getModel()
@@ -275,7 +294,11 @@ public class SessionLifecycleManager {
             host.getClaudeSDKBridge().prewarmDaemonAsync(workingDir, newSession.getRuntimeSessionEpoch(), sessionId);
 
             newSession.loadFromServer().thenRun(() -> ApplicationManager.getApplication().invokeLater(() -> {
-                host.callJavaScript("historyLoadComplete");
+                // loadFromServer only enqueues updateMessages through the coalescer; if we
+                // call historyLoadComplete immediately the frontend releases the transition
+                // guard before the snapshot arrives (or a reordered clearMessages can wipe a
+                // stashed snapshot). Flush the coalescer first so messages land before complete.
+                completeHistoryLoadAfterCoalescerFlush(newSession);
             })).exceptionally(ex -> {
                 ApplicationManager.getApplication().invokeLater(() -> {
                     // Release transition guard so the frontend is not permanently stuck
@@ -293,6 +316,28 @@ public class SessionLifecycleManager {
                         JsUtils.escapeJs("Failed to load session: " + ex.getMessage()));
             });
             return null;
+        });
+    }
+
+    /**
+     * Push any pending coalesced message snapshot to the webview, then signal
+     * {@code historyLoadComplete} with the message count. Ensures the transcript
+     * is not lost when the frontend holds {@code __sessionTransitioning} until complete.
+     */
+    private void completeHistoryLoadAfterCoalescerFlush(ClaudeSession loadedSession) {
+        if (host.isDisposed()) {
+            return;
+        }
+        int messageCount = loadedSession != null ? loadedSession.getMessages().size() : 0;
+        StreamMessageCoalescer coalescer = host.getStreamCoalescer();
+        if (coalescer == null) {
+            host.callJavaScript("historyLoadComplete", String.valueOf(messageCount));
+            return;
+        }
+        coalescer.flush(seq -> {
+            if (!host.isDisposed()) {
+                host.callJavaScript("historyLoadComplete", String.valueOf(messageCount));
+            }
         });
     }
 
@@ -406,31 +451,11 @@ public class SessionLifecycleManager {
     }
 
     /**
-     * Reset token usage statistics in the frontend (used after new session creation).
+     * Clear transient context usage after creating a new session. The new provider has
+     * not reported a trusted token count yet, so used/max values remain unknown.
      */
     private void resetTokenUsage() {
-        int maxTokens = SettingsHandler.getModelContextLimit(host.getHandlerContext().getCurrentModel());
-        JsonObject usageUpdate = new JsonObject();
-        usageUpdate.addProperty("percentage", 0);
-        usageUpdate.addProperty("totalTokens", 0);
-        usageUpdate.addProperty("limit", maxTokens);
-        usageUpdate.addProperty("usedTokens", 0);
-        usageUpdate.addProperty("maxTokens", maxTokens);
-
-        String usageJson = new Gson().toJson(usageUpdate);
-
-        JBCefBrowser browser = host.getBrowser();
-        if (browser != null && !host.isDisposed()) {
-            String js = "(function() {" +
-                                "  if (typeof window.onUsageUpdate === 'function') {" +
-                                "    window.onUsageUpdate('" + JsUtils.escapeJs(usageJson) + "');" +
-                                "    console.log('[Backend->Frontend] Usage reset for new session');" +
-                                "  } else {" +
-                                "    console.warn('[Backend->Frontend] window.onUsageUpdate not found');" +
-                                "  }" +
-                                "})();";
-            browser.getCefBrowser().executeJavaScript(js, browser.getCefBrowser().getURL(), 0);
-        }
+        new UsagePushService(host.getHandlerContext()).clearUsageDisplay();
     }
 
     private String getCurrentEditorFilePath() {
@@ -438,7 +463,11 @@ public class SessionLifecycleManager {
     }
 
     private ClaudeSession createDefaultSession() {
-        return new ClaudeSession(host.getProject(), host.getClaudeSDKBridge(), host.getCodexSDKBridge());
+        return new ClaudeSession(
+                host.getProject(),
+                host.getClaudeSDKBridge(),
+                host.getCodexSDKBridge(),
+                host.getCliBridges());
     }
 
     private void completeNewSessionBootstrap(ClaudeSession newSession, String workingDirectory, String successLogPrefix) {

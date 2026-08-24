@@ -53,6 +53,7 @@ function renderUseGlobalCallbacks(editable: HTMLDivElement) {
   const setHasContent = vi.fn();
   const adjustHeight = vi.fn();
   const renderFileTags = vi.fn();
+  const renderQuoteTags = vi.fn();
   const onInput = vi.fn();
   const closeAllCompletions = vi.fn();
   const focusInput = vi.fn(() => editable.focus());
@@ -65,6 +66,7 @@ function renderUseGlobalCallbacks(editable: HTMLDivElement) {
       getTextContent,
       adjustHeight,
       renderFileTags,
+      renderQuoteTags,
       setHasContent,
       onInput,
       closeAllCompletions,

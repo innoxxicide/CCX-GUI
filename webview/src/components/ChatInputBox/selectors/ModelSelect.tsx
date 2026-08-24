@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AVAILABLE_MODELS, normalizeClaudeModelId, modelSupports1MContext, strip1MContextSuffix } from '../types';
 import type { ModelInfo } from '../types';
@@ -6,6 +6,14 @@ import { readClaudeModelMapping } from '../../../utils/claudeModelMapping';
 import { ProviderModelIcon } from '../../shared/ProviderModelIcon';
 import { useDropdownPosition } from '../../../hooks/useDropdownPosition';
 import Switch from 'antd/es/switch';
+import {
+  buildModelDropdownSections,
+  MAX_VISIBLE_MODEL_OPTIONS,
+  PINNED_GROUP_ID,
+  readPinnedModelIds,
+  shouldShowModelSearch,
+  togglePinnedModelId,
+} from '../modelSelectUtils';
 
 const RELATIVE_INLINE_BLOCK_STYLE: React.CSSProperties = { position: 'relative', display: 'inline-block' };
 const CHEVRON_ICON_STYLE: React.CSSProperties = { fontSize: '10px', marginLeft: '2px' };
@@ -16,22 +24,39 @@ const DROPDOWN_STYLE: React.CSSProperties = {
   zIndex: 10000,
   maxWidth: 'calc(100vw - 16px)',
   overflowX: 'hidden',
+  display: 'flex',
+  flexDirection: 'column',
 };
 const MODEL_OPTION_INFO_STYLE: React.CSSProperties = { display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, overflow: 'hidden' };
 const MODEL_TEXT_STYLE: React.CSSProperties = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
 const LONG_CONTEXT_OPTION_STYLE: React.CSSProperties = { justifyContent: 'space-between', cursor: 'default' };
 const LONG_CONTEXT_LABEL_STYLE: React.CSSProperties = { fontSize: '12px' };
-const MAX_VISIBLE_MODEL_OPTIONS = 100;
+const DROPDOWN_LIST_STYLE: React.CSSProperties = { overflowY: 'auto', flex: 1, minHeight: 0 };
+/** Cap model dropdown height so long lists scroll instead of filling the panel. */
+const DROPDOWN_MAX_HEIGHT_PX = 300;
 
 interface ModelSelectProps {
   value: string;
   onChange: (modelId: string) => void;
   models?: ModelInfo[];
   currentProvider?: string;
+  /** True while CLI providers (OpenCode / Kimi) are still fetching model catalogs. */
+  loading?: boolean;
+  /** Set when the CLI model catalog fetch failed (or timed out); row offers retry. */
+  error?: string | null;
+  /** Retries the CLI model catalog fetch for the current provider. */
+  onRetry?: () => void;
   onAddModel?: () => void;
   longContextEnabled?: boolean;
   onLongContextChange?: (enabled: boolean) => void;
 }
+
+const LOADING_OPTION_STYLE: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+  cursor: 'default',
+};
 
 const DEFAULT_MODEL_MAP: Record<string, ModelInfo> = AVAILABLE_MODELS.reduce(
   (acc, model) => {
@@ -44,7 +69,6 @@ const DEFAULT_MODEL_MAP: Record<string, ModelInfo> = AVAILABLE_MODELS.reduce(
 const MODEL_LABEL_KEYS: Record<string, string> = {
   'claude-opus-5': 'models.claude.opus5.label',
   'claude-sonnet-5': 'models.claude.sonnet5.label',
-  'claude-sonnet-4-7': 'models.claude.sonnet47.label',
   'claude-sonnet-4-6': 'models.claude.sonnet46.label',
   'claude-fable-5': 'models.claude.fable5.label',
   'claude-opus-4-8': 'models.claude.opus48.label',
@@ -56,12 +80,14 @@ const MODEL_LABEL_KEYS: Record<string, string> = {
   'gpt-5.6-luna': 'models.codex.gpt56luna.label',
   'gpt-5.5': 'models.codex.gpt55.label',
   'gpt-5.4': 'models.codex.gpt54.label',
+  'grok-4.6': 'models.grok.grok46.label',
+  'grok-4.5': 'models.grok.grok46.label',
+  grok: 'models.grok.grok46.label',
 };
 
 const MODEL_DESCRIPTION_KEYS: Record<string, string> = {
   'claude-opus-5': 'models.claude.opus5.description',
   'claude-sonnet-5': 'models.claude.sonnet5.description',
-  'claude-sonnet-4-7': 'models.claude.sonnet47.description',
   'claude-sonnet-4-6': 'models.claude.sonnet46.description',
   'claude-fable-5': 'models.claude.fable5.description',
   'claude-opus-4-8': 'models.claude.opus48.description',
@@ -73,6 +99,9 @@ const MODEL_DESCRIPTION_KEYS: Record<string, string> = {
   'gpt-5.6-luna': 'models.codex.gpt56luna.description',
   'gpt-5.5': 'models.codex.gpt55.description',
   'gpt-5.4': 'models.codex.gpt54.description',
+  'grok-4.6': 'models.grok.grok46.description',
+  'grok-4.5': 'models.grok.grok46.description',
+  grok: 'models.grok.grok46.description',
 };
 
 /**
@@ -131,10 +160,11 @@ const resolveModelIdForIcon = (
  * ModelSelect - Model selector component
  * Supports switching between Sonnet 4.5, Opus 4.5, and other models, including Codex models
  */
-export const ModelSelect = ({ value, onChange, models = AVAILABLE_MODELS, currentProvider = 'claude', onAddModel, longContextEnabled = true, onLongContextChange }: ModelSelectProps) => {
+export const ModelSelect = ({ value, onChange, models = AVAILABLE_MODELS, currentProvider = 'claude', loading = false, error = null, onRetry, onAddModel, longContextEnabled = true, onLongContextChange }: ModelSelectProps) => {
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [pinnedIds, setPinnedIds] = useState<string[]>(() => readPinnedModelIds(currentProvider));
   const deferredSearchQuery = useDeferredValue(searchQuery);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -147,8 +177,20 @@ export const ModelSelect = ({ value, onChange, models = AVAILABLE_MODELS, curren
   // Strip [1m] suffix for finding the model in the list
   const strippedValue = strip1MContextSuffix(value);
   const normalizedValue = currentProvider === 'claude' ? normalizeClaudeModelId(strippedValue) : strippedValue;
-  const currentModel = models.find(m => m.id === normalizedValue) || models.find(m => m.id === strippedValue) || models[0];
+  // Prefer the user's selection even when the catalog is still loading / only a
+  // static fallback is available. Falling back to models[0] made OpenCode (and
+  // other dynamic providers) visually snap back to the first entry after leaving
+  // history and remounting ChatScreen.
+  const currentModel = models.find(m => m.id === normalizedValue)
+    || models.find(m => m.id === strippedValue)
+    || (strippedValue
+      ? { id: strippedValue, label: strippedValue } as ModelInfo
+      : models[0]);
   const modelMapping = readClaudeModelMapping();
+
+  useEffect(() => {
+    setPinnedIds(readPinnedModelIds(currentProvider));
+  }, [currentProvider]);
 
   const isSelectedModel = (modelId: string): boolean => {
     if (currentProvider !== 'claude') {
@@ -202,12 +244,16 @@ export const ModelSelect = ({ value, onChange, models = AVAILABLE_MODELS, curren
     ? models.filter((model) => {
         const label = getModelLabel(model, false);
         const description = getModelDescription(model) ?? '';
-        return [model.id, label, description].some((value) => value.toLowerCase().includes(normalizedSearchQuery));
+        return [model.id, label, description].some((text) => text.toLowerCase().includes(normalizedSearchQuery));
       })
     : models;
-  const visibleModels = filteredModels.slice(0, MAX_VISIBLE_MODEL_OPTIONS);
-  const hiddenModelCount = Math.max(0, filteredModels.length - visibleModels.length);
-  const showSearch = models.length > MAX_VISIBLE_MODEL_OPTIONS || searchQuery.length > 0;
+
+  const { sections, hiddenCount: hiddenModelCount } = buildModelDropdownSections(filteredModels, pinnedIds, {
+    visibleLimit: MAX_VISIBLE_MODEL_OPTIONS,
+  });
+  const visibleModelCount = sections.reduce((n, s) => n + s.models.length, 0);
+  const showSearch = shouldShowModelSearch(models.length, searchQuery);
+  const pinnedSet = useMemo(() => new Set(pinnedIds), [pinnedIds]);
 
   /**
    * Toggle dropdown
@@ -232,6 +278,12 @@ export const ModelSelect = ({ value, onChange, models = AVAILABLE_MODELS, curren
     setIsOpen(false);
     setSearchQuery('');
   }, [onChange]);
+
+  const handleTogglePin = useCallback((e: React.MouseEvent, modelId: string) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setPinnedIds(togglePinnedModelId(currentProvider, modelId));
+  }, [currentProvider]);
 
   /**
    * Close on outside click
@@ -266,7 +318,14 @@ export const ModelSelect = ({ value, onChange, models = AVAILABLE_MODELS, curren
     if (isOpen) {
       recalculate();
     }
-  }, [isOpen, filteredModels.length, recalculate]);
+  }, [isOpen, filteredModels.length, pinnedIds.length, loading, recalculate]);
+
+  const renderSectionLabel = (sectionId: string, sectionLabel: string): string => {
+    if (sectionId === PINNED_GROUP_ID) {
+      return t('models.pinned', { defaultValue: 'Pinned' });
+    }
+    return sectionLabel;
+  };
 
   return (
     <div style={RELATIVE_INLINE_BLOCK_STYLE}>
@@ -289,11 +348,17 @@ export const ModelSelect = ({ value, onChange, models = AVAILABLE_MODELS, curren
       {isOpen && (
         <div
           ref={dropdownRef}
-          className="selector-dropdown"
-          style={{ ...DROPDOWN_STYLE, ...positionedStyle, maxHeight, overflowY: 'auto' }}
+          className="selector-dropdown model-selector-dropdown"
+          style={{
+            ...DROPDOWN_STYLE,
+            ...positionedStyle,
+            maxHeight: maxHeight
+              ? `${Math.min(DROPDOWN_MAX_HEIGHT_PX, maxHeight)}px`
+              : `${DROPDOWN_MAX_HEIGHT_PX}px`,
+          }}
         >
           {showSearch && (
-            <div className="selector-search-row">
+            <div className="selector-search-row selector-search-row--sticky">
               <input
                 className="selector-search-input"
                 data-testid="model-search-input"
@@ -301,75 +366,132 @@ export const ModelSelect = ({ value, onChange, models = AVAILABLE_MODELS, curren
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder={t('models.searchPlaceholder', { defaultValue: 'Search models' })}
                 autoFocus
-              />
-            </div>
-          )}
-          {visibleModels.map((model) => (
-            <div
-              key={model.id}
-              className={`selector-option ${isSelectedModel(model.id) ? 'selected' : ''}`}
-              onClick={() => handleSelect(model.id)}
-            >
-              <ProviderModelIcon
-                providerId={currentProvider}
-                modelId={resolveModelIdForIcon(model.id, modelMapping, MODEL_ID_TO_MAPPING_KEY)}
-                size={16}
-                colored
-              />
-              <div style={MODEL_OPTION_INFO_STYLE}>
-                <span style={MODEL_TEXT_STYLE}>{getModelLabel(model, false)}</span>
-                {getModelDescription(model) && (
-                  <span className="model-description" style={MODEL_TEXT_STYLE}>{getModelDescription(model)}</span>
-                )}
-              </div>
-              {isSelectedModel(model.id) && (
-                <span className="codicon codicon-check check-mark" />
-              )}
-            </div>
-          ))}
-          {visibleModels.length === 0 && (
-            <div className="selector-option selector-option-status">
-              {t('models.noModelsFound', { defaultValue: 'No models found' })}
-            </div>
-          )}
-          {hiddenModelCount > 0 && (
-            <div className="selector-option selector-option-status" data-testid="model-hidden-count">
-              {t('models.hiddenModelCount', {
-                count: hiddenModelCount,
-                defaultValue: `+ ${hiddenModelCount} more models. Type to search.`,
-              })}
-            </div>
-          )}
-          {currentProvider === 'claude' && onLongContextChange && (
-            <>
-              <div className="selector-divider" />
-              <div
-                className="selector-option"
-                style={LONG_CONTEXT_OPTION_STYLE}
                 onClick={(e) => e.stopPropagation()}
-              >
-                <span style={LONG_CONTEXT_LABEL_STYLE}>{t('models.longContext.shortLabel')}</span>
-                <Switch
-                  size="small"
-                  checked={modelSupports1MContext(value) ? longContextEnabled : false}
-                  disabled={!modelSupports1MContext(value)}
-                  onChange={onLongContextChange}
-                />
-              </div>
-            </>
+                onKeyDown={(e) => e.stopPropagation()}
+              />
+            </div>
           )}
-          {onAddModel && (
-            <>
-              <div className="selector-divider" />
+          <div className="model-selector-list" style={DROPDOWN_LIST_STYLE}>
+            {loading && (
               <div
-                className="selector-option selector-option-add"
-                onClick={() => { onAddModel(); setIsOpen(false); setSearchQuery(''); }}
+                className="selector-option selector-option-status"
+                data-testid="model-loading"
+                style={LOADING_OPTION_STYLE}
               >
-                <span className="codicon codicon-add selector-add-icon" />
-                <span>{t('models.addModel')}</span>
+                <span className="codicon codicon-loading codicon-modifier-spin" />
+                <span>{t('chat.loadingDropdown')}</span>
               </div>
-            </>
-          )}
+            )}
+            {!loading && error && (
+              <div
+                className="selector-option selector-option-status"
+                data-testid="model-load-error"
+                style={{ ...LOADING_OPTION_STYLE, cursor: onRetry ? 'pointer' : 'default' }}
+                title={error}
+                onClick={() => onRetry?.()}
+              >
+                <span className="codicon codicon-warning" />
+                <span style={{ flex: 1, minWidth: 0 }}>{t('chat.modelsLoadFailed')}</span>
+                <span className="codicon codicon-refresh" />
+              </div>
+            )}
+            {sections.map((section) => (
+              <div key={section.id} className="model-selector-section" data-testid={`model-section-${section.id}`}>
+                {section.label !== '' || section.id === PINNED_GROUP_ID ? (
+                  <div className="model-selector-group-header" data-testid={`model-group-${section.id}`}>
+                    {section.id === PINNED_GROUP_ID && (
+                      <span className="codicon codicon-pinned model-selector-group-icon" />
+                    )}
+                    <span>{renderSectionLabel(section.id, section.label)}</span>
+                  </div>
+                ) : null}
+                {section.models.map((model) => {
+                  const isPinned = pinnedSet.has(model.id);
+                  return (
+                    <div
+                      key={model.id}
+                      className={`selector-option ${isSelectedModel(model.id) ? 'selected' : ''}`}
+                      onClick={() => handleSelect(model.id)}
+                      data-testid={`model-option-${model.id}`}
+                    >
+                      <ProviderModelIcon
+                        providerId={currentProvider}
+                        modelId={resolveModelIdForIcon(model.id, modelMapping, MODEL_ID_TO_MAPPING_KEY)}
+                        size={16}
+                        colored
+                      />
+                      <div style={MODEL_OPTION_INFO_STYLE}>
+                        <span style={MODEL_TEXT_STYLE}>{getModelLabel(model, false)}</span>
+                        {getModelDescription(model) && (
+                          <span className="model-description" style={MODEL_TEXT_STYLE}>{getModelDescription(model)}</span>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        className={`model-pin-button ${isPinned ? 'is-pinned' : ''}`}
+                        data-testid={`model-pin-${model.id}`}
+                        title={isPinned
+                          ? t('models.unpin', { defaultValue: 'Unpin' })
+                          : t('models.pin', { defaultValue: 'Pin' })}
+                        aria-label={isPinned
+                          ? t('models.unpin', { defaultValue: 'Unpin' })
+                          : t('models.pin', { defaultValue: 'Pin' })}
+                        onClick={(e) => handleTogglePin(e, model.id)}
+                      >
+                        <span className={`codicon ${isPinned ? 'codicon-pinned' : 'codicon-pin'}`} />
+                      </button>
+                      {isSelectedModel(model.id) && (
+                        <span className="codicon codicon-check check-mark" />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+            {visibleModelCount === 0 && !loading && (
+              <div className="selector-option selector-option-status">
+                {t('models.noModelsFound', { defaultValue: 'No models found' })}
+              </div>
+            )}
+            {hiddenModelCount > 0 && (
+              <div className="selector-option selector-option-status" data-testid="model-hidden-count">
+                {t('models.hiddenModelCount', {
+                  count: hiddenModelCount,
+                  defaultValue: `+ ${hiddenModelCount} more models. Type to search.`,
+                })}
+              </div>
+            )}
+            {currentProvider === 'claude' && onLongContextChange && (
+              <>
+                <div className="selector-divider" />
+                <div
+                  className="selector-option"
+                  style={LONG_CONTEXT_OPTION_STYLE}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <span style={LONG_CONTEXT_LABEL_STYLE}>{t('models.longContext.shortLabel')}</span>
+                  <Switch
+                    size="small"
+                    checked={modelSupports1MContext(value) ? longContextEnabled : false}
+                    disabled={!modelSupports1MContext(value)}
+                    onChange={onLongContextChange}
+                  />
+                </div>
+              </>
+            )}
+            {onAddModel && (
+              <>
+                <div className="selector-divider" />
+                <div
+                  className="selector-option selector-option-add"
+                  onClick={() => { onAddModel(); setIsOpen(false); setSearchQuery(''); }}
+                >
+                  <span className="codicon codicon-add selector-add-icon" />
+                  <span>{t('models.addModel')}</span>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -89,33 +89,6 @@ public class StreamMessageCoalescerStreamEndHookTest {
     }
 
     @Test
-    public void staleFinalSnapshotIsForcePushedWhenNoNewerFrameWasDispatched() {
-        // The onStreamEnd flush captured sequence 5, a late enqueue bumped the
-        // sequence to 6 but its scheduled push was cancelled before dispatching.
-        // Nothing newer will compensate, so this frame must still go out.
-        assertTrue(StreamMessageCoalescer.shouldForcePushStaleFinalSnapshot(false, true, 5L, 5L));
-    }
-
-    @Test
-    public void staleFinalSnapshotStandsDownWhenANewerFrameIsAlreadyOnItsWay() {
-        // Regression: a turn ending in an error appends the ERROR message and only
-        // then signals stream-end, so the flush's snapshot predates the error and the
-        // error travels in a higher-sequence frame. Force-pushing the older snapshot
-        // over it wiped the error bubble (and bumped the sequence past any in-flight
-        // frame, so the webview's sequence barrier rejected it outright).
-        assertFalse(StreamMessageCoalescer.shouldForcePushStaleFinalSnapshot(false, true, 5L, 6L));
-    }
-
-    @Test
-    public void staleSnapshotIsNeverForcePushedOffTheFlushPathOrMidStream() {
-        // The alarm path holds a possibly outdated snapshot; forcing it through would
-        // let a stale frame overwrite the final one.
-        assertFalse(StreamMessageCoalescer.shouldForcePushStaleFinalSnapshot(false, false, 5L, 5L));
-        // Mid-stream a newer snapshot always follows, so a stale frame is just noise.
-        assertFalse(StreamMessageCoalescer.shouldForcePushStaleFinalSnapshot(true, true, 5L, 5L));
-    }
-
-    @Test
     public void firstLongConversationSnapshotKeepsTheFullPrefix() {
         List<ClaudeSession.Message> messages = messages(400);
 

@@ -163,6 +163,14 @@ public class ClaudeSDKToolWindow implements ToolWindowFactory, DumbAware {
             if (window.getCodexSDKBridge() != null) {
                 window.getCodexSDKBridge().cleanupAllProcesses();
             }
+            if (window.getCliBridges() != null) {
+                for (com.github.ccxgui.provider.common.MarkerCliBridge bridge
+                        : window.getCliBridges().values()) {
+                    if (bridge != null) {
+                        bridge.cleanupAllProcesses();
+                    }
+                }
+            }
         } catch (Exception e) {
             LOG.error("[ShutdownHook] Error cleaning up processes: " + e.getMessage(), e);
         }

@@ -3,7 +3,6 @@ package com.github.ccxgui.settings;
 import com.github.ccxgui.bridge.NodeDetector;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.intellij.openapi.diagnostic.Logger;
@@ -30,7 +29,7 @@ public class ClaudeSettingsManager {
      * System-protected fields - these should never be overridden by provider configs
      * and are always preserved from the existing configuration.
      */
-    private static final Set<String> PROTECTED_SYSTEM_FIELDS = Set.of(
+    static final Set<String> PROTECTED_SYSTEM_FIELDS = Set.of(
             "mcpServers",           // MCP server configuration
             "disabledMcpServers",   // Disabled MCP servers
             "plugins",              // Skills/Plugins configuration
@@ -42,8 +41,8 @@ public class ClaudeSettingsManager {
      * Provider-managed fields - only these fields will be overridden by provider configs.
      * All other user-customized fields are preserved.
      */
-    private static final Set<String> PROVIDER_MANAGED_FIELDS = Set.of(
-            "env",                      // Environment variables
+    static final Set<String> PROVIDER_MANAGED_FIELDS = Set.of(
+            "env",                      // Environment variables (key-level merge; see ClaudeSettingsSyncPlan)
             "model",                    // Model selection
             "alwaysThinkingEnabled",    // Thinking mode
             "codemossProviderId",       // Codemoss provider identifier
@@ -400,61 +399,35 @@ public class ClaudeSettingsManager {
 
     /**
      * Apply provider configuration to Claude settings.json.
-     * Uses an incremental merge strategy:
-     * - User-customized fields are preserved
-     * - Provider-managed fields (env, model, etc.) are fully overwritten
-     * - System-protected fields (mcpServers, plugins, etc.) are not affected
+     * <p>
+     * Aligned with vscode-cc-gui {@code planClaudeSettingsSync}:
+     * <ul>
+     *   <li>Skip when active provider has no env payload (prevents wiping credentials)</li>
+     *   <li>Merge env at key level: only clear plugin-managed keys, keep user/custom env</li>
+     *   <li>Preserve system-protected fields (mcpServers, plugins, …)</li>
+     * </ul>
      */
     public void applyProviderToClaudeSettings(JsonObject provider) throws IOException {
         if (provider == null) {
             throw new IllegalArgumentException("Provider cannot be null");
         }
 
-        if (!provider.has("settingsConfig") || provider.get("settingsConfig").isJsonNull()) {
-            throw new IllegalArgumentException("Provider is missing settingsConfig");
-        }
-
-        JsonObject settingsConfig = provider.getAsJsonObject("settingsConfig");
         JsonObject oldClaudeSettings = readClaudeSettings();
+        ClaudeSettingsSyncPlan.Decision decision =
+                ClaudeSettingsSyncPlan.plan(oldClaudeSettings, provider);
 
-        // ========== Incremental merge strategy ==========
-        // Start from existing config to preserve all user customizations
-        JsonObject claudeSettings = oldClaudeSettings.deepCopy();
+        if (decision.action == ClaudeSettingsSyncPlan.Action.SKIP) {
+            LOG.info("[ClaudeSettingsManager] Skip settings.json sync: " + decision.reason
+                    + (provider.has("id") && !provider.get("id").isJsonNull()
+                    ? " (active=" + provider.get("id").getAsString() + ")"
+                    : ""));
+            return;
+        }
 
-        LOG.info("[ClaudeSettingsManager] Applying provider config with incremental merge strategy");
+        LOG.info("[ClaudeSettingsManager] Applying provider config (managed-env merge, empty-env protected)");
         LOG.info("[ClaudeSettingsManager] Original settings keys: " + oldClaudeSettings.keySet());
-
-        // 1. Only overwrite fields managed by the provider
-        for (String key : settingsConfig.keySet()) {
-            JsonElement value = settingsConfig.get(key);
-
-            // Skip null values
-            if (value == null || value.isJsonNull()) {
-                continue;
-            }
-
-            // Skip system-protected fields (managed by the system, providers should not override)
-            if (PROTECTED_SYSTEM_FIELDS.contains(key)) {
-                LOG.debug("[ClaudeSettingsManager] Skipping protected system field: " + key);
-                continue;
-            }
-
-            // Only process provider-managed fields
-            if (PROVIDER_MANAGED_FIELDS.contains(key)) {
-                // All provider fields (including env) are fully overwritten
-                claudeSettings.add(key, value);
-                LOG.debug("[ClaudeSettingsManager] Set provider field: " + key);
-            }
-            // Note: fields not in PROVIDER_MANAGED_FIELDS are ignored and won't override user config
-        }
-
-        // 2. Add provider ID identifier
-        if (provider.has("id") && !provider.get("id").isJsonNull()) {
-            claudeSettings.addProperty("codemossProviderId", provider.get("id").getAsString());
-        }
-
-        LOG.info("[ClaudeSettingsManager] Final settings keys: " + claudeSettings.keySet());
-        writeClaudeSettings(claudeSettings);
+        LOG.info("[ClaudeSettingsManager] Final settings keys: " + decision.nextSettings.keySet());
+        writeClaudeSettings(decision.nextSettings);
     }
 
     /**

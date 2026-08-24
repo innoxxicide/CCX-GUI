@@ -2,6 +2,7 @@ package com.github.ccxgui.service;
 
 import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
+import com.github.ccxgui.service.commit.CommitMessageCallback;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vcs.FilePath;
 import com.intellij.openapi.vcs.LocalFilePath;
@@ -55,6 +56,34 @@ public class GitCommitMessageServiceCommitAiConfigTest {
         assertEquals("gpt-5.4", service.lastCodexModel);
         assertNull(service.lastClaudeModel);
         assertEquals("fix: use codex routing", callback.success);
+    }
+
+    @Test
+    public void shouldRouteToResolvedGrokCliProvider() {
+        TestableGitCommitMessageService service = new TestableGitCommitMessageService(
+                buildConfigWithModels("grok", "claude-sonnet-4-6", "gpt-5.5", "grok-4", null, null, null));
+        ResultCapture callback = new ResultCapture();
+
+        service.generateCommitMessage(Collections.<Change>emptyList(), callback);
+
+        assertEquals("grok", service.lastCliProvider);
+        assertEquals("grok-4", service.lastCliModel);
+        assertNull(service.lastClaudeModel);
+        assertNull(service.lastCodexModel);
+        assertEquals("fix: use cli routing", callback.success);
+    }
+
+    @Test
+    public void shouldRouteToResolvedKimiCliProvider() {
+        TestableGitCommitMessageService service = new TestableGitCommitMessageService(
+                buildConfigWithModels("kimi", "claude-sonnet-4-6", "gpt-5.5", null, "kimi-k2", null, null));
+        ResultCapture callback = new ResultCapture();
+
+        service.generateCommitMessage(Collections.<Change>emptyList(), callback);
+
+        assertEquals("kimi", service.lastCliProvider);
+        assertEquals("kimi-k2", service.lastCliModel);
+        assertEquals("fix: use cli routing", callback.success);
     }
 
     @Test
@@ -116,6 +145,18 @@ public class GitCommitMessageServiceCommitAiConfigTest {
     }
 
     private JsonObject buildConfig(String effectiveProvider, String claudeModel, String codexModel) {
+        return buildConfigWithModels(effectiveProvider, claudeModel, codexModel, null, null, null, null);
+    }
+
+    private JsonObject buildConfigWithModels(
+            String effectiveProvider,
+            String claudeModel,
+            String codexModel,
+            String grokModel,
+            String kimiModel,
+            String opencodeModel,
+            String piModel
+    ) {
         JsonObject config = new JsonObject();
         config.add("provider", JsonNull.INSTANCE);
         if (effectiveProvider == null) {
@@ -128,16 +169,24 @@ public class GitCommitMessageServiceCommitAiConfigTest {
         JsonObject models = new JsonObject();
         models.addProperty("claude", claudeModel);
         models.addProperty("codex", codexModel);
+        if (grokModel != null) models.addProperty("grok", grokModel);
+        if (kimiModel != null) models.addProperty("kimi", kimiModel);
+        if (opencodeModel != null) models.addProperty("opencode", opencodeModel);
+        if (piModel != null) models.addProperty("pi", piModel);
         config.add("models", models);
 
         JsonObject availability = new JsonObject();
         availability.addProperty("claude", true);
         availability.addProperty("codex", true);
+        availability.addProperty("grok", true);
+        availability.addProperty("kimi", true);
+        availability.addProperty("opencode", true);
+        availability.addProperty("pi", true);
         config.add("availability", availability);
         return config;
     }
 
-    private static class ResultCapture implements GitCommitMessageService.CommitMessageCallback {
+    private static class ResultCapture implements CommitMessageCallback {
         private String success;
         private String error;
 
@@ -156,6 +205,8 @@ public class GitCommitMessageServiceCommitAiConfigTest {
         private final JsonObject config;
         private String lastClaudeModel;
         private String lastCodexModel;
+        private String lastCliProvider;
+        private String lastCliModel;
 
         private TestableGitCommitMessageService(JsonObject config) {
             super((Project) null);
@@ -182,6 +233,18 @@ public class GitCommitMessageServiceCommitAiConfigTest {
         protected void callCodexAPI(String prompt, String model, CommitMessageCallback callback) {
             this.lastCodexModel = model;
             callback.onSuccess("fix: use codex routing");
+        }
+
+        @Override
+        protected void callCliProviderAPI(
+                String prompt,
+                String provider,
+                String model,
+                CommitMessageCallback callback
+        ) {
+            this.lastCliProvider = provider;
+            this.lastCliModel = model;
+            callback.onSuccess("fix: use cli routing");
         }
 
         private String exposeGeneratedDiff(java.util.Collection<Change> changes) {

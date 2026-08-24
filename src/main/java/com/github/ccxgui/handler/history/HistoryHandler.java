@@ -31,7 +31,10 @@ public class HistoryHandler extends BaseMessageHandler {
 
     // Session load callback interface
     public interface SessionLoadCallback {
-        void onLoadSession(String sessionId, String projectPath, String provider);
+        /**
+         * @param model optional model id from the history row; null/blank keeps previous UI model
+         */
+        void onLoadSession(String sessionId, String projectPath, String provider, String model);
     }
 
     private SessionLoadCallback sessionLoadCallback;

@@ -44,7 +44,10 @@ export interface SubagentHistoryResponse {
   completed?: boolean;
   toolUseId?: string;
   agentId?: string;
+  agentPath?: string;
   sessionId?: string;
+  provider?: string;
+  status?: SubagentStatus;
   error?: string;
   messages?: unknown[];
 }
@@ -73,6 +76,8 @@ export interface SubagentInfo {
   messageIndex: number;
   /** Stable runtime agent id returned by Claude Code, used to locate sidechain logs */
   agentId?: string;
+  /** Codex agent path derived from spawn_agent task_name. */
+  agentPath?: string;
   /** Total runtime in milliseconds */
   totalDurationMs?: number;
   /** Total tokens reported by the Agent tool */

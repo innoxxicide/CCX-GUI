@@ -1,5 +1,5 @@
 <idea-plugin>
     <extensions defaultExtensionNs="com.intellij">
-        <applicationService serviceImplementation="com.github.claudecodegui.util.JcefModuleAvailability"/>
+        <applicationService serviceImplementation="com.github.ccxgui.util.JcefModuleAvailability"/>
     </extensions>
 </idea-plugin>

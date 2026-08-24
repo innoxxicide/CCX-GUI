@@ -48,6 +48,36 @@ public class CodemossSettingsServiceCommitAiConfigTest {
     }
 
     @Test
+    public void shouldPreferCurrentChatProviderInAutoModeWhenAvailable() throws Exception {
+        Path tempHome = Files.createTempDirectory("commit-ai-prefer-chat-home");
+        useTemporaryHomeDirectory(tempHome);
+        writeConfig(tempHome, "claude-a", "codex-a");
+        installSdk(tempHome, "claude-sdk", "@anthropic-ai/claude-agent-sdk", "0.2.88");
+        installSdk(tempHome, "codex-sdk", "@openai/codex-sdk", "0.117.0");
+
+        CodemossSettingsService service = new CodemossSettingsService();
+
+        // Preferred Claude is installed → follow chat provider over Codex
+        JsonObject preferClaude = invokeGetCommitAiConfig(service, "claude");
+        assertTrue(preferClaude.get("provider").isJsonNull());
+        assertEquals("claude", preferClaude.get("effectiveProvider").getAsString());
+        assertEquals("auto", preferClaude.get("resolutionSource").getAsString());
+
+        // Preferred Codex still works
+        JsonObject preferCodex = invokeGetCommitAiConfig(service, "codex");
+        assertEquals("codex", preferCodex.get("effectiveProvider").getAsString());
+
+        // Unavailable preferred (e.g. grok not installed) → fall back to Codex
+        JsonObject preferGrok = invokeGetCommitAiConfig(service, "grok");
+        assertTrue(preferGrok.get("provider").isJsonNull());
+        if (!preferGrok.getAsJsonObject("availability").get("grok").getAsBoolean()) {
+            assertEquals("codex", preferGrok.get("effectiveProvider").getAsString());
+        } else {
+            assertEquals("grok", preferGrok.get("effectiveProvider").getAsString());
+        }
+    }
+
+    @Test
     public void shouldDefaultCommitAiToClaudeWhenOnlyClaudeIsAvailable() throws Exception {
         Path tempHome = Files.createTempDirectory("commit-ai-default-claude-home");
         useTemporaryHomeDirectory(tempHome);
@@ -137,6 +167,20 @@ public class CodemossSettingsServiceCommitAiConfigTest {
             throw e;
         }
         return (JsonObject) method.invoke(service);
+    }
+
+    private JsonObject invokeGetCommitAiConfig(
+            CodemossSettingsService service,
+            String preferredProvider
+    ) throws Exception {
+        Method method;
+        try {
+            method = CodemossSettingsService.class.getMethod("getCommitAiConfig", String.class);
+        } catch (NoSuchMethodException e) {
+            fail("CodemossSettingsService should expose getCommitAiConfig(String preferredProvider)");
+            throw e;
+        }
+        return (JsonObject) method.invoke(service, preferredProvider);
     }
 
     private void invokeSetCommitAiConfig(

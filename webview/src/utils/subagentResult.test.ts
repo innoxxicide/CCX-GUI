@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { isAsyncAgentInput, extractResultText, parseAgentToolMeta } from './subagentResult';
+import type { ToolResultBlock } from '../types';
+import {
+  isAsyncAgentInput,
+  extractResultText,
+  parseAgentToolMeta,
+  parseSpawnAgentMeta,
+  readToolUseStatus,
+} from './subagentResult';
 
 describe('isAsyncAgentInput', () => {
   it('returns true for run_in_background: true (snake_case)', () => {
@@ -31,6 +38,79 @@ describe('isAsyncAgentInput', () => {
     expect(isAsyncAgentInput(undefined)).toBe(false);
     expect(isAsyncAgentInput('not-an-object')).toBe(false);
     expect(isAsyncAgentInput(42)).toBe(false);
+  });
+
+  it('treats Codex spawn_agent as asynchronous without a background flag', () => {
+    expect(isAsyncAgentInput({ task_name: 'audit_ui' }, 'spawn_agent')).toBe(true);
+    expect(isAsyncAgentInput({ task_name: 'audit_ui' }, 'functions.spawn_agent')).toBe(true);
+  });
+
+  it('returns true when the launch ack text indicates async', () => {
+    // Claude stamps the async launch ack with a fixed "Async agent launched"
+    // text; matching it keeps a background agent (whose input may lack
+    // run_in_background) from being marked completed the instant the ack lands.
+    const result: ToolResultBlock = { type: 'tool_result', content: 'Async agent launched successfully. (internal metadata)' };
+    expect(isAsyncAgentInput({ prompt: 'do stuff' }, 'agent', result)).toBe(true);
+  });
+
+  it('returns true for launch ack text supplied as content blocks', () => {
+    const result: ToolResultBlock = { type: 'tool_result', content: [{ type: 'text', text: 'Async agent launched successfully.' }] };
+    expect(isAsyncAgentInput({ description: 'x' }, 'agent', result)).toBe(true);
+  });
+
+  it('does not false-positive on a sync result that merely mentions async', () => {
+    const result: ToolResultBlock = { type: 'tool_result', content: 'Refactored the async handler and landed the fix.' };
+    expect(isAsyncAgentInput({ prompt: 'x' }, 'agent', result)).toBe(false);
+  });
+
+  it('returns true for an async tool-use status even without run_in_background', () => {
+    expect(isAsyncAgentInput({ prompt: 'x' }, 'agent', null, 'async_launched')).toBe(true);
+    expect(isAsyncAgentInput({ prompt: 'x' }, 'agent', null, 'remote_launched')).toBe(true);
+    expect(isAsyncAgentInput({ prompt: 'x' }, 'agent', null, 'teammate_spawned')).toBe(true);
+  });
+
+  it('returns false for a completed tool-use status (sync agent)', () => {
+    expect(isAsyncAgentInput({ prompt: 'x' }, 'agent', null, 'completed')).toBe(false);
+    expect(isAsyncAgentInput({ prompt: 'x' }, 'agent', null, 'running')).toBe(false);
+  });
+});
+
+describe('readToolUseStatus', () => {
+  it('reads status from toolUseResult metadata', () => {
+    expect(readToolUseStatus({ toolUseResult: { status: 'async_launched', agentId: 'x' } })).toBe('async_launched');
+  });
+
+  it('returns undefined when toolUseResult is missing or non-object', () => {
+    expect(readToolUseStatus({ content: 'x' })).toBeUndefined();
+    expect(readToolUseStatus(null)).toBeUndefined();
+    expect(readToolUseStatus(undefined)).toBeUndefined();
+    expect(readToolUseStatus({ toolUseResult: 'error string' })).toBeUndefined();
+    expect(readToolUseStatus({ toolUseResult: null })).toBeUndefined();
+    expect(readToolUseStatus({ toolUseResult: [] })).toBeUndefined();
+  });
+});
+
+describe('parseSpawnAgentMeta', () => {
+  it('uses Codex task_name as the stable agent path', () => {
+    expect(parseSpawnAgentMeta({
+      task_name: 'audit_ui',
+      model: 'gpt-5.6-terra',
+      reasoning_effort: 'high',
+    })).toEqual({
+      agentPath: 'audit_ui',
+      model: 'gpt-5.6-terra',
+      reasoningEffort: 'high',
+    });
+  });
+
+  it('keeps Claude agent_id and description metadata', () => {
+    expect(parseSpawnAgentMeta({
+      agent_id: 'agent-123',
+      description: 'Review the bridge',
+    })).toEqual({
+      agentId: 'agent-123',
+      description: 'Review the bridge',
+    });
   });
 });
 

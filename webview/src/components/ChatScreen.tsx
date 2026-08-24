@@ -1,4 +1,4 @@
-import { type RefObject, useCallback, useMemo } from 'react';
+import { type RefObject, useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChatInputBox } from './ChatInputBox';
 import ClaudeAutoResumeBanner from './ClaudeAutoResumeBanner';
@@ -32,6 +32,7 @@ import type { GetToolResultRawFn } from '../contexts/SubagentContext';
 import { CodexPetStatusBridge } from './codexPet/CodexPetStatusBridge';
 import { shouldToggleCodexPet } from './codexPet/petState';
 import { useCodexPetPreference } from './codexPet/useCodexPetPreference';
+import { reconcileMessageKeys, type MessageKeySnapshot } from '../utils/messageUtils';
 
 type SubagentHistoryMap = ReturnType<typeof useMessages>['subagentHistories'];
 type ProviderState = ReturnType<typeof useModelProviderState>;
@@ -54,7 +55,7 @@ export interface ChatScreenProps {
   globalTodos: TodoItem[];
   filteredFileChanges: FileChangeList;
   subagentHistoryCtxValue: SubagentHistoryMap;
-  sessionIdCtxValue: { currentSessionId: string | null };
+  sessionIdCtxValue: { currentSessionId: string | null; currentProvider: string };
 
   // Refs
   chatInputRef: RefObject<ChatInputBoxHandle | null>;
@@ -92,7 +93,9 @@ export interface ChatScreenProps {
   selectedModel: ProviderState['selectedModel'];
   permissionMode: ProviderState['permissionMode'];
   selectedAgent: ProviderState['selectedAgent'];
-  sdkStatusLoaded: ProviderState['sdkStatusLoaded'];
+  sdkStatusLoading: ProviderState['sdkStatusLoading'];
+  sdkStatusError: ProviderState['sdkStatusError'];
+  onRetrySdkStatus: ProviderState['retrySdkStatus'];
   currentSdkInstalled: ProviderState['currentSdkInstalled'];
   activeProviderConfig: ProviderState['activeProviderConfig'];
   claudeSettingsAlwaysThinkingEnabled: ProviderState['claudeSettingsAlwaysThinkingEnabled'];
@@ -142,7 +145,7 @@ export const ChatScreen = ({
   onSubmit, onInterrupt, onRewind,
   onNavigateToProviderSettings, onProviderSelect,
   currentProvider, selectedModel, permissionMode, selectedAgent,
-  sdkStatusLoaded, currentSdkInstalled,
+  sdkStatusLoading, sdkStatusError, onRetrySdkStatus, currentSdkInstalled,
   activeProviderConfig, claudeSettingsAlwaysThinkingEnabled,
   reasoningEffort, codexFastMode, streamingEnabledSetting, sendShortcut, autoOpenFileEnabled,
   longContextEnabled, usagePercentage, usageUsedTokens, usageMaxTokens,
@@ -154,6 +157,18 @@ export const ChatScreen = ({
   const { t } = useTranslation();
   const { messages, status, loading, isThinking, streamingActive, loadingStartTime, subagentHistories } = useMessages();
   const { currentSessionId } = useSession();
+  const previousMessageKeySnapshotRef = useRef<MessageKeySnapshot | undefined>(undefined);
+  const messageKeySnapshot = useMemo(
+    () => reconcileMessageKeys(
+      mergedMessages,
+      previousMessageKeySnapshotRef.current,
+      `${currentProvider}:${currentSessionId ?? 'active-session'}`,
+    ),
+    [currentProvider, currentSessionId, mergedMessages],
+  );
+  useLayoutEffect(() => {
+    previousMessageKeySnapshotRef.current = messageKeySnapshot;
+  }, [messageKeySnapshot]);
   const {
     setSettingsInitialTab, setCurrentView,
     contextInfo, setContextInfo,
@@ -242,11 +257,17 @@ export const ChatScreen = ({
     setSearchOpen(false);
   }, [setSearchOpen]);
 
+  const handleNavigateToDependencySettings = useCallback(() => {
+    setSettingsInitialTab('dependencies');
+    setCurrentView('settings');
+  }, [setCurrentView, setSettingsInitialTab]);
+
   return (
     <>
       <div className="messages-shell">
         <MessageAnchorRail
           messages={mergedMessages}
+          messageKeys={messageKeySnapshot.keys}
           collapsedCount={anchorCollapsedCount}
           containerRef={messagesContainerRef}
           messageNodeMap={messageNodeMapRef}
@@ -263,7 +284,6 @@ export const ChatScreen = ({
           {messages.length === 0 && (
             <WelcomeScreen
               currentProvider={currentProvider}
-              currentModelId={selectedModel}
               t={t}
               onProviderChange={onProviderSelect}
               onVersionClick={openChangelogDialog}
@@ -276,6 +296,7 @@ export const ChatScreen = ({
                 <MessageList
                   ref={messageListRef}
                   messages={mergedMessages}
+                  messageKeys={messageKeySnapshot.keys}
                   streamingActive={streamingActive}
                   isThinking={isThinking}
                   loading={loading}
@@ -289,10 +310,7 @@ export const ChatScreen = ({
                   onMessageNodeRef={onMessageNodeRef}
                   onCollapsedCountChange={setAnchorCollapsedCount}
                   onNavigateToProviderSettings={onNavigateToProviderSettings}
-                  onNavigateToDependencySettings={() => {
-                    setSettingsInitialTab('dependencies');
-                    setCurrentView('settings');
-                  }}
+                  onNavigateToDependencySettings={handleNavigateToDependencySettings}
                   currentProvider={currentProvider}
                   currentSessionId={currentSessionId}
                 />
@@ -322,6 +340,7 @@ export const ChatScreen = ({
           subagents={subagents}
           subagentHistories={subagentHistories}
           currentSessionId={currentSessionId}
+          currentProvider={currentProvider}
           expanded={statusPanelExpanded}
           isStreaming={streamingActive}
           onUndoFile={onUndoFile}
@@ -347,7 +366,9 @@ export const ChatScreen = ({
           alwaysThinkingEnabled={activeProviderConfig?.settingsConfig?.alwaysThinkingEnabled ?? claudeSettingsAlwaysThinkingEnabled}
           placeholder={sendShortcut === 'cmdEnter' ? t('chat.inputPlaceholderCmdEnter') : t('chat.inputPlaceholderEnter')}
           sdkInstalled={currentSdkInstalled}
-          sdkStatusLoading={!sdkStatusLoaded}
+          sdkStatusLoading={sdkStatusLoading}
+          sdkStatusError={sdkStatusError !== null}
+          onRetrySdkStatus={onRetrySdkStatus}
           onInstallSdk={() => {
             setSettingsInitialTab('dependencies');
             setCurrentView('settings');

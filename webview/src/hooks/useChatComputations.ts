@@ -24,7 +24,7 @@ import {
   resolveStatusScopeStart,
 } from '../utils/turnScope';
 import { FILE_MODIFY_TOOL_NAMES, isToolName } from '../utils/toolConstants';
-import { useSubagents } from './useSubagents';
+import { extractSubagentsFromMessages, useSubagents } from './useSubagents';
 import { useFileChanges } from './useFileChanges';
 import { useFileChangesManagement } from './useFileChangesManagement';
 import type { useMessageProcessing } from './useMessageProcessing';
@@ -184,6 +184,9 @@ export function useChatComputations({
   const fileChanges = useFileChanges({
     messages, getContentBlocks, findToolResult,
     startFromIndex: fileChangeMgmt.baseMessageIndex,
+    // Sidechain Edit/Write from Agent/Task tools must appear in the Edits tab too
+    subagentHistories,
+    currentSessionId,
   });
 
   const filteredFileChanges = useMemo(() => {
@@ -210,6 +213,22 @@ export function useChatComputations({
     subagentHistories,
   });
 
+  // A run_in_background agent outlives the turn that launched it: the main turn
+  // settles while the sidechain keeps running, and its terminal report arrives
+  // as a later turn's task-notification user message. The turn-scoped narrowing
+  // below exists to focus sync tool progress on the current turn; if the
+  // session contains any async agent, narrowing would drop the agent's card
+  // from StatusPanel while the user waits for it to return — the reported
+  // "subagent list disappears after the session ends" symptom. Keep the full
+  // conversation in scope in that case. The check reuses the same extraction
+  // as the list itself (isAsyncAgentInput on the raw tool input) so the two
+  // can never disagree.
+  const asyncAgentPresence = useMemo(
+    () => extractSubagentsFromMessages(messages, getContentBlocks, findToolResult, getToolResultRaw, {})
+      .some((subagent) => subagent.isAsync === true),
+    [messages, getContentBlocks, findToolResult, getToolResultRaw],
+  );
+
   // While streaming, focus on the current turn's task progress; once settled
   // (history replay or idle), widen the scope to the whole conversation -
   // otherwise a multi-turn history session whose last turn has no task tool
@@ -222,11 +241,14 @@ export function useChatComputations({
   // reload's message refresh lands at the frontend a moment before the
   // stream-end signal flips streamingActive back to false. Widening only adds
   // content (earlier turns' settled items) - it never drops the current turn's.
+  // A session with any async agent likewise never narrows (see asyncAgentPresence):
+  // a run_in_background agent's card must survive the turn that launched it.
   const narrowStatusScope = useMemo(
     () => streamingActive
+      && !asyncAgentPresence
       && latestTurnMessages.length > 0
       && sliceHasToolUse(latestTurnMessages, getContentBlocks),
-    [streamingActive, latestTurnMessages, getContentBlocks],
+    [streamingActive, asyncAgentPresence, latestTurnMessages, getContentBlocks],
   );
 
   // 0 means "no narrowing" - the scope is the full transcript.

@@ -63,6 +63,7 @@
     "removeAttachment": "移除附件",
     "closePreview": "关闭预览",
     "loadingDropdown": "加载中...",
+    "modelsLoadFailed": "模型列表加载失败，点击重试",
     "addAttachment": "添加附件",
     "stopGeneration": "停止生成",
     "generatingResponse": "正在生成响应",
@@ -98,6 +99,8 @@
     "disabled": "已停用",
     "sdkNotInstalled": "{{provider}} SDK 尚未安装，请先安装 SDK 才能开始对话",
     "sdkStatusLoading": "正在检查 SDK 状态...",
+    "sdkStatusUnavailable": "无法检查 SDK 状态。",
+    "retrySdkStatus": "重试",
     "openSourceBanner": "本项目保证100%开源和免费（谨防盗版项目）",
     "openSourceBannerStar": "点个 Star",
     "openSourceBannerStarToast": "已复制仓库地址到剪切板，复制到浏览器即可访问 ⭐",
@@ -121,7 +124,7 @@
     "attachmentFile": "[附件: {{fileName}}]",
     "unknownFile": "未知文件",
     "attachmentsUploaded": "[已上传附件]",
-    "streamingConnected": "{{provider}} 已成功连接，正在理解问题",
+    "streamingConnected": "AI 已成功连接，正在理解问题",
     "showEarlierMessages": "显示之前的 {{count}} 条消息",
     "showEarlierTurns": "显示更早的 {{count}} 轮对话（当前已加载还剩 {{remaining}} 轮）",
     "loadEarlierTurns": "从磁盘加载更早的 {{count}} 轮（共 {{total}} 轮，尚有 {{remaining}} 轮）",
@@ -168,8 +171,16 @@
         "global": "在所有项目之间共享宠物、大小、透明度和气泡设置。"
       },
       "scopePositionHint": "宠物位置始终按每个 IDE 窗口单独保存。",
-      "scopeOptions": { "project": "项目", "global": "全局" },
-      "tabs": { "basic": "基础", "bubble": "气泡", "local": "自定义", "petdex": "Petdex" },
+      "scopeOptions": {
+        "project": "项目",
+        "global": "全局"
+      },
+      "tabs": {
+        "basic": "基础",
+        "bubble": "气泡",
+        "local": "自定义",
+        "petdex": "Petdex"
+      },
       "floatingTitle": "IDE 悬浮宠物",
       "floatingDescription": "宠物会显示在编辑器和工具窗口上方，可拖动到 IDE 内的任意位置。",
       "enabled": "已启用",
@@ -193,7 +204,12 @@
       "petDirectoryUnavailable": "无法创建或打开 ~/.codex/pets 目录。",
       "hatchTitle": "使用 hatch-pet 创建宠物",
       "hatchDescription": "检测官方精选 Skill，并将可编辑命令放入当前 Codex 输入框。插件不会在后台运行该 Skill。",
-      "hatchStatus": { "loading": "正在检查 hatch-pet Skill", "missing": "未安装 hatch-pet Skill", "broken": "hatch-pet Skill 安装不完整", "installed": "已安装 hatch-pet Skill" },
+      "hatchStatus": {
+        "loading": "正在检查 hatch-pet Skill",
+        "missing": "未安装 hatch-pet Skill",
+        "broken": "hatch-pet Skill 安装不完整",
+        "installed": "已安装 hatch-pet Skill"
+      },
       "prepareInstallSkill": "准备安装命令",
       "prepareRepairSkill": "准备 Skill 修复命令",
       "hatchOfficialSource": "官方 Skill 来源",
@@ -226,10 +242,19 @@
         "model": "当前选择的模型名称。",
         "duration": "当前任务已用时间，例如 12.8 秒。"
       },
-      "bubbleSizes": { "small": "小", "medium": "中", "large": "大", "xlarge": "超大" },
+      "bubbleSizes": {
+        "small": "小",
+        "medium": "中",
+        "large": "大",
+        "xlarge": "超大"
+      },
       "bubbleEvents": {
-        "task_started": "任务已开始", "thinking": "思考中", "running": "运行中",
-        "task_success": "任务已完成", "task_error": "任务失败", "idle": "空闲"
+        "task_started": "任务已开始",
+        "thinking": "思考中",
+        "running": "运行中",
+        "task_success": "任务已完成",
+        "task_error": "任务失败",
+        "idle": "空闲"
       },
       "petdexTitle": "Petdex 社区",
       "petdexDescription": "从官方 Petdex 仓库浏览并安装经过验证的宠物包。",
@@ -252,8 +277,18 @@
       "pageSizeOption": "每页 {{count}} 个",
       "pageJump": "跳转到",
       "goToPage": "跳转到页面",
-      "sort": { "default": "默认顺序", "name_asc": "名称升序", "name_desc": "名称降序", "author_asc": "作者升序", "kind_asc": "类型升序", "slug_asc": "Slug 升序" },
-      "columns3": "3 列", "columns4": "4 列", "columns5": "5 列", "columns6": "6 列",
+      "sort": {
+        "default": "默认顺序",
+        "name_asc": "名称升序",
+        "name_desc": "名称降序",
+        "author_asc": "作者升序",
+        "kind_asc": "类型升序",
+        "slug_asc": "Slug 升序"
+      },
+      "columns3": "3 列",
+      "columns4": "4 列",
+      "columns5": "5 列",
+      "columns6": "6 列",
       "connectTimeoutError": "连接 Petdex 超时，请检查网络或代理，或者增加连接超时时间。",
       "requestTimeoutError": "Petdex 下载超时，请增加请求超时时间后重试。",
       "networkError": "无法访问 Petdex，请检查网络、代理或防火墙后重试。",
@@ -383,16 +418,25 @@
         "providerUnavailable": "当前不可用",
         "provider": {
           "claude": "Claude Code",
-          "codex": "Codex"
+          "codex": "Codex",
+          "grok": "Grok CLI",
+          "kimi": "Kimi CLI",
+          "opencode": "OpenCode",
+          "pi": "PI CLI"
         },
         "currentProviderAuto": "当前使用自动选择：{{provider}}",
         "currentProviderManual": "当前使用手动选择的 provider：{{provider}}",
-        "currentProviderUnavailable": "当前所选 provider 不可用：{{provider}}"
+        "currentProviderUnavailable": "当前所选 provider 不可用：{{provider}}",
+        "modeLabel": "使用方式",
+        "modeAuto": "自动",
+        "modeManual": "手动",
+        "autoSummary": "自动跟随当前聊天 CLI · 现在解析为 {{provider}}",
+        "autoUnavailable": "当前没有可用的 CLI，请切换到手动并选择。"
       },
       "diffExpanded": {
         "label": "默认展开差异",
-        "enabled": "已展开",
-        "disabled": "已折叠",
+        "enabled": "已开启",
+        "disabled": "已关闭",
         "hint": "开启后，聊天中的代码差异将默认展开显示。关闭后，差异默认折叠，可点击展开。"
       },
       "commitGeneration": {
@@ -408,13 +452,13 @@
         "hint": "开启后，在 IDE 右下角状态栏显示当前模型和模式信息（如 GUI [Opus] {自动}）。关闭后隐藏。"
       },
       "taskCompletionNotification": {
-        "label": "任务完成通知",
+        "label": "任务完成系统通知",
         "enabled": "已开启",
         "disabled": "已关闭",
         "hint": "开启后，当 AI 任务完成时显示系统通知。关闭后不显示系统通知。"
       },
       "askUserQuestionNotification": {
-        "label": "询问用户提醒通知",
+        "label": "提问系统通知",
         "enabled": "已开启",
         "disabled": "已关闭",
         "hint": "开启后，当 Claude 向你提问时显示系统通知提醒，避免错过。关闭后不显示通知。"
@@ -459,6 +503,18 @@
         "promptLabel": "重试消息",
         "promptHint": "出错后自动发送给智能体。留空则使用默认内容。"
       },
+      "askUserQuestionSoundNotification": {
+        "label": "提问提示音",
+        "enabled": "已开启",
+        "disabled": "已关闭",
+        "hint": "开启后，当 Claude 向你提问时播放已配置的提示音。会使用下方的音效选择和焦点规则。"
+      },
+      "systemNotificationOnlyWhenUnfocused": {
+        "label": "仅在 IDE 未聚焦时显示系统通知",
+        "enabled": "已开启",
+        "disabled": "已关闭",
+        "hint": "开启后，仅在 IDE 窗口未聚焦时显示任务完成和提问系统通知。"
+      },
       "sendShortcut": {
         "label": "发送快捷键",
         "enter": "Enter 发送",
@@ -483,6 +539,12 @@
         "reset": "恢复默认",
         "hint": "自定义聊天区域的背景颜色，留空则跟随主题默认颜色"
       },
+      "chatBarColor": {
+        "label": "标题栏与状态栏颜色",
+        "custom": "自定义",
+        "reset": "恢复默认",
+        "hint": "统一设置会话标题栏和任务状态栏的主题颜色，留空则跟随当前界面主题"
+      },
       "diffTheme": {
         "label": "Diff 主题",
         "follow": "跟随界面",
@@ -499,8 +561,8 @@
         "enabled": "已开启",
         "disabled": "已关闭",
         "hint": "开启后，AI 完成任务时会播放提示音，方便您离开屏幕时也能知道任务已完成。",
-        "onlyWhenUnfocused": "仅在 IDE 未聚焦时播放",
-        "onlyWhenUnfocusedHint": "开启后，仅在 IDE 窗口未聚焦时播放提示音。",
+        "onlyWhenUnfocused": "仅在 IDE 未聚焦时播放提示音",
+        "onlyWhenUnfocusedHint": "开启后，仅在 IDE 窗口未聚焦时播放任务完成和提问提示音。",
         "selectSound": "提示音",
         "soundDefault": "默认",
         "soundChime": "清脆铃声",
@@ -531,14 +593,85 @@
       }
     },
     "providers": "供应商管理",
-    "providersDesc": "管理 Claude 和 Codex API 供应商配置，切换不同的 API 服务提供商",
+    "providersDesc": "管理 Claude 和 Codex API 供应商配置，切换不同的 API 服务提供商；以及检测本地 CLI 工具的安装状态",
     "promptEnhancer": {
       "title": "增强提示词",
       "description": "配置增强提示词功能使用的 provider 与模型，在消息发送前对输入内容进行重写增强。"
     },
     "providerTab": {
       "claude": "Claude Code",
-      "codex": "Codex"
+      "codex": "Codex",
+      "cli": "CLI"
+    },
+    "cli": {
+      "hint": "以下 CLI 需在系统终端自行安装并完成配置。插件只负责检测是否已安装及版本号，不会替你自动安装。请先在终端确认可正常使用，再回到此处使用。",
+      "refresh": "重新检测",
+      "retry": "重试",
+      "loading": "正在检测 CLI 安装状态…",
+      "loadFailed": "检测失败，请重试",
+      "status": {
+        "installed": "已安装",
+        "notInstalled": "未安装"
+      },
+      "viewInstallGuide": "查看安装方式",
+      "howToInstall": "查看安装说明",
+      "copy": "复制",
+      "copied": "已复制到剪贴板",
+      "copyFailed": "复制失败",
+      "tools": {
+        "grok": {
+          "name": "Grok CLI",
+          "description": "xAI Grok 终端编码助手"
+        },
+        "kimi": {
+          "name": "Kimi CLI",
+          "description": "月之暗面 Kimi Code CLI"
+        },
+        "opencode": {
+          "name": "OpenCode",
+          "description": "开源终端 AI 编码代理"
+        },
+        "pi": {
+          "name": "PI CLI",
+          "description": "极简终端编码代理，支持多提供商模型"
+        },
+        "dsh": {
+          "name": "DeepSeek Harness",
+          "description": "DeepSeek 终端智能体宿主（常驻 dsh web）"
+        }
+      },
+      "installDialog": {
+        "title": "安装 {{name}}",
+        "lead": "请先在系统终端中安装 {{name}}，确保命令 `{{binary}}` 可用后，再回到这里点击「重新检测」。本插件不会替你执行安装。",
+        "stepOpenTerminal": "打开系统终端（Terminal / iTerm / PowerShell 等）",
+        "stepRunCommand": "复制并运行下方安装命令",
+        "stepVerify": "安装完成后执行 `{{binary}} --version` 确认成功",
+        "stepReturn": "回到本页点击「重新检测」",
+        "primaryCommand": "推荐安装命令（macOS / Linux）",
+        "windowsCommand": "Windows（PowerShell）",
+        "altCommand": "备选安装方式",
+        "openDocs": "打开官方文档"
+      },
+      "listTitle": "本地 CLI 工具",
+      "summary": "{{installed}} / {{total}} 已安装",
+      "moreComingSoon": "即将支持更多",
+      "copyPath": "复制路径",
+      "dsh": {
+        "cardTitle": "DeepSeek Harness (DSH)",
+        "hint": "DSH 由本机一个常驻 dsh web 宿主承载所有会话；插件会接管已在运行的宿主，而不会重复启动。",
+        "state": {
+          "checking": "检测中…",
+          "notInstalled": "未安装",
+          "notRunning": "未运行",
+          "connected": "已连接"
+        },
+        "adopted": "已接管",
+        "adoptedHint": "已接管正在运行的宿主；插件不会停止它。",
+        "openWebUi": "打开 DSH Web UI",
+        "startHost": "立即启动",
+        "stopHost": "关闭（仅限插件启动的宿主）",
+        "autoStart": "需要时自动启动"
+      }
     },
     "claudeAutoResume": {
       "title": "用量上限后自动继续",
@@ -567,6 +700,13 @@
         "cacheReadShort": "缓存读取",
         "invalidValue": "价格必须是非负数字",
         "defaultPricing": "使用默认价格"
+      },
+      "contextWindow": {
+        "label": "最大上下文（K tokens）",
+        "placeholder": "例如 500",
+        "hint": "可选。请输入整数 K 值（500 = 500,000 tokens），仅用于插件显示上下文用量。",
+        "invalidValue": "最大上下文必须是正整数（单位 K）",
+        "summary": "上下文：{{value}} tokens"
       },
       "configuredSectionTitle": "已配置的 Claude 模型",
       "configuredSectionDesc": "这些模型来自当前 Claude 供应商或 settings.json，已经会显示在模型选择器中。这里仅可修改价格。",
@@ -640,7 +780,12 @@
         "providerUnavailable": "当前不可用",
         "currentProviderAuto": "当前使用自动选择：{{provider}}",
         "currentProviderManual": "当前使用手动选择的 provider：{{provider}}",
-        "currentProviderUnavailable": "当前所选 provider 不可用：{{provider}}"
+        "currentProviderUnavailable": "当前所选 provider 不可用：{{provider}}",
+        "modeLabel": "使用方式",
+        "modeAuto": "自动",
+        "modeManual": "手动",
+        "autoSummary": "自动跟随当前聊天 CLI · 现在解析为 {{provider}}",
+        "autoUnavailable": "当前没有可用的 CLI，请切换到手动并选择。"
       },
       "prompt": {
         "label": "附加提示词",
@@ -1180,7 +1325,7 @@
     "loading": "加载历史记录中...",
     "loadFailed": "加载失败",
     "noSessions": "暂无历史会话",
-    "noSessionsDesc": "当前项目下没有找到 Claude 会话记录",
+    "noSessionsDesc": "当前项目下没有找到会话记录",
     "totalSessions": "共 {{count}} 个会话 · {{total}} 条消息",
     "messageCount": "{{count}} 条消息",
     "searchPlaceholder": "搜索会话标题...",
@@ -1304,6 +1449,7 @@
   },
   "config": {
     "clickToCopy": "点击复制",
+    "officialDocs": "官方文档",
     "switch": "切换",
     "switchProvider": "切换供应商",
     "runtimeProvider": {
@@ -1368,7 +1514,13 @@
   "markdown": {
     "copyCode": "复制代码",
     "copyMessage": "复制消息",
-    "copySuccess": "复制成功"
+    "copySuccess": "复制成功",
+    "quoteMessage": "引用消息",
+    "quoteSuccess": "已引用！"
+  },
+  "contextMenu": {
+    "copy": "复制",
+    "quote": "引用"
   },
   "usage": {
     "checkingLabel": "正在检测 tokentracker-cli…",
@@ -1628,6 +1780,7 @@
   "subagent": {
     "process": {
       "title": "Agent 进程",
+      "prompt": "提示词",
       "thought": "思考",
       "filesRead_one": "读取 {{count}} 个文件",
       "filesRead_other": "读取 {{count}} 个文件",
@@ -1672,7 +1825,9 @@
     "keepAllConfirmMessage": "将当前改动作为新基准，后续改动从零开始记录。",
     "discardAllSuccess": "已撤销所有文件更改",
     "discardAllFailed": "撤销失败: {{error}}",
-    "keepAllSuccess": "已保存全部，改动记录已重置"
+    "keepAllSuccess": "已保存全部，改动记录已重置",
+    "multiAgentBadge": "多 Agent",
+    "multiAgentEdited": "本会话有 {{count}} 个 Agent 修改过此文件，请留意合并冲突"
   },
   "skills": {
     "title": "Skills",
@@ -1841,6 +1996,9 @@
     "searchPlaceholder": "搜索模型",
     "noModelsFound": "未找到模型",
     "hiddenModelCount": "+ 还有 {{count}} 个模型。输入以搜索。",
+    "pinned": "置顶",
+    "pin": "置顶",
+    "unpin": "取消置顶",
     "longContext": {
       "label": "1M",
       "shortLabel": "1M上下文",
@@ -1854,11 +2012,7 @@
       },
       "sonnet5": {
         "label": "Sonnet 5",
-        "description": "Sonnet 5 · Sonnet 4.6 升级模型"
-      },
-      "sonnet47": {
-        "label": "Sonnet 4.7",
-        "description": "Sonnet 4.7 · 默认推荐模型"
+        "description": "Sonnet 5 · 默认推荐模型"
       },
       "opus46_1m": {
         "label": "Opus 4.6",
@@ -1902,6 +2056,12 @@
         "label": "GPT-5.4",
         "description": "最新前沿模型，能力进一步增强"
       }
+    },
+    "grok": {
+      "grok46": {
+        "label": "Grok 4.6",
+        "description": "xAI Grok 4.6"
+      }
     }
   },
   "modes": {
@@ -1929,7 +2089,7 @@
   "codexModes": {
     "default": {
       "label": "建议模式",
-      "tooltip": "Codex approval_policy=untrusted：执行命令或写文件前都会弹窗确认。",
+      "tooltip": "Codex approval_policy=on-request：执行命令或写文件前都会弹窗确认。",
       "description": "最安全的选择，每一步都需要你亲自批准。"
     },
     "plan": {
@@ -1955,11 +2115,28 @@
     "codex": {
       "label": "Codex"
     },
+    "grok": {
+      "label": "Grok CLI"
+    },
+    "kimi": {
+      "label": "Kimi CLI"
+    },
     "gemini": {
       "label": "Gemini Cli"
     },
     "opencode": {
       "label": "OpenCode"
+    },
+    "pi": {
+      "label": "PI CLI"
+    },
+    "beta": {
+      "badge": "Beta",
+      "title": "Beta 功能",
+      "message": "此功能仍处于 Beta 阶段。如果遇到使用 Bug，请及时反馈给作者。"
+    },
+    "dsh": {
+      "label": "DeepSeek Harness"
     }
   },
   "scheduledSend": {
@@ -1996,7 +2173,18 @@
     "keepOriginal": "保留原始版本",
     "enhanceFailed": "增强提示词失败",
     "emptyPrompt": "请先输入提示词",
-    "copyEnhanced": "复制增强版本"
+    "copyEnhanced": "复制增强版本",
+    "modeLabel": "模式",
+    "modeAuto": "自动",
+    "modeManual": "手动",
+    "modeUnavailable": "不可用",
+    "providerLabel": "CLI",
+    "providerUnresolved": "未解析 CLI",
+    "modelLabel": "模型",
+    "modelUnresolved": "默认模型",
+    "openSettings": "配置",
+    "openSettingsTooltip": "打开增强提示词设置",
+    "resolvingUsage": "正在解析运行配置…"
   },
   "fileContext": {
     "placeholder": "文件上下文",

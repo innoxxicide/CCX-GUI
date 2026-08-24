@@ -3,7 +3,10 @@ import { useState, useEffect, useCallback } from 'react';
 export type { UiFontConfig, CodeFontConfig } from '../../../types/uiFontConfig';
 import type { UiFontConfig, CodeFontConfig } from '../../../types/uiFontConfig';
 import type { CommitAiConfig, CommitAiProvider } from '../../../types/aiFeatureConfig';
-import { DEFAULT_COMMIT_AI_CONFIG } from '../../../types/aiFeatureConfig';
+import {
+  DEFAULT_COMMIT_AI_CONFIG,
+  pickAutoAiFeatureProvider,
+} from '../../../types/aiFeatureConfig';
 import type { PromptEnhancerConfig, PromptEnhancerProvider } from '../../../types/promptEnhancer';
 import { DEFAULT_PROMPT_ENHANCER_CONFIG } from '../../../types/promptEnhancer';
 import {
@@ -39,6 +42,8 @@ export interface UseSettingsBasicActionsProps {
   onPermissionDialogTimeoutChangeProp?: (seconds: number) => void;
   autoCloseDialogOnTimeoutProp?: boolean;
   onAutoCloseDialogOnTimeoutChangeProp?: (enabled: boolean) => void;
+  /** Current chat CLI — prompt enhancer auto mode follows this when available. */
+  currentProvider?: string;
 }
 
 export interface UseSettingsBasicActionsReturn {
@@ -96,6 +101,8 @@ export interface UseSettingsBasicActionsReturn {
   questionSoundEnabled: boolean;
   questionSelectedSound: string;
   detailedOutputEnabled: boolean;
+  systemNotificationOnlyWhenUnfocused: boolean;
+  askUserQuestionSoundNotificationEnabled: boolean;
   commitAiConfig: CommitAiConfig;
   promptEnhancerConfig: PromptEnhancerConfig;
 
@@ -138,6 +145,8 @@ export interface UseSettingsBasicActionsReturn {
   handleQuestionSelectedSoundChange: (soundId: string) => void;
   handleTestQuestionSound: () => void;
   handleDetailedOutputEnabledChange: (enabled: boolean) => void;
+  handleSystemNotificationOnlyWhenUnfocusedChange: (enabled: boolean) => void;
+  handleAskUserQuestionSoundNotificationEnabledChange: (enabled: boolean) => void;
   permissionDialogTimeoutSeconds: number;
   handlePermissionDialogTimeoutChange: (seconds: number) => void;
   autoCloseDialogOnTimeout: boolean;
@@ -198,6 +207,8 @@ export interface UseSettingsBasicActionsReturn {
   /** @internal */ setErrorSelectedSound: (soundId: string) => void;
   /** @internal */ setQuestionSoundEnabled: (enabled: boolean) => void;
   /** @internal */ setQuestionSelectedSound: (soundId: string) => void;
+  /** @internal */ setSystemNotificationOnlyWhenUnfocused: (enabled: boolean) => void;
+  /** @internal */ setAskUserQuestionSoundNotificationEnabled: (enabled: boolean) => void;
   /** @internal */ setCommitAiConfig: (config: CommitAiConfig) => void;
   /** @internal */ setPromptEnhancerConfig: (config: PromptEnhancerConfig) => void;
 }
@@ -213,6 +224,7 @@ export function useSettingsBasicActions({
   onPermissionDialogTimeoutChangeProp,
   autoCloseDialogOnTimeoutProp,
   onAutoCloseDialogOnTimeoutChangeProp,
+  currentProvider,
 }: UseSettingsBasicActionsProps): UseSettingsBasicActionsReturn {
   // Node.js path
   const [nodePath, setNodePath] = useState('');
@@ -328,6 +340,8 @@ export function useSettingsBasicActions({
 
   // AskUserQuestion reminder notification toggle (default: false, opt-in feature)
   const [askUserQuestionNotificationEnabled, setAskUserQuestionNotificationEnabled] = useState<boolean>(false);
+  const [systemNotificationOnlyWhenUnfocused, setSystemNotificationOnlyWhenUnfocused] = useState<boolean>(false);
+  const [askUserQuestionSoundNotificationEnabled, setAskUserQuestionSoundNotificationEnabled] = useState<boolean>(false);
 
   // Detailed message footer output (localStorage-only, default: false to preserve original footer style)
   const [detailedOutputEnabled, setDetailedOutputEnabledState] = useState<boolean>(() =>
@@ -624,6 +638,18 @@ export function useSettingsBasicActions({
     setDetailedOutputEnabled(enabled);
   }, []);
 
+  const handleSystemNotificationOnlyWhenUnfocusedChange = useCallback((enabled: boolean) => {
+    setSystemNotificationOnlyWhenUnfocused(enabled);
+    const payload = { systemNotificationOnlyWhenUnfocused: enabled };
+    sendToJava(`set_system_notification_only_when_unfocused:${JSON.stringify(payload)}`);
+  }, []);
+
+  const handleAskUserQuestionSoundNotificationEnabledChange = useCallback((enabled: boolean) => {
+    setAskUserQuestionSoundNotificationEnabled(enabled);
+    const payload = { askUserQuestionSoundNotificationEnabled: enabled };
+    sendToJava(`set_ask_user_question_sound_notification_enabled:${JSON.stringify(payload)}`);
+  }, []);
+
   // Permission dialog timeout change handler
   const handlePermissionDialogTimeoutChange = useCallback((seconds: number) => {
     const clamped = clampPermissionDialogTimeoutSeconds(seconds);
@@ -673,22 +699,23 @@ export function useSettingsBasicActions({
   }, [commitAiConfig]);
 
   const handleCommitAiResetToDefault = useCallback(() => {
+    // Auto mode follows the current chat provider when that CLI is available.
+    const autoProvider = pickAutoAiFeatureProvider(
+      commitAiConfig.availability,
+      currentProvider,
+    );
     const nextConfig: CommitAiConfig = {
       ...commitAiConfig,
       provider: null,
-      effectiveProvider: commitAiConfig.availability.codex
-        ? 'codex'
-        : (commitAiConfig.availability.claude ? 'claude' : null),
-      resolutionSource: commitAiConfig.availability.codex || commitAiConfig.availability.claude
-        ? 'auto'
-        : 'unavailable',
+      effectiveProvider: autoProvider,
+      resolutionSource: autoProvider ? 'auto' : 'unavailable',
     };
     setCommitAiConfig(nextConfig);
     sendToJava(`set_commit_ai_config:${JSON.stringify({
       provider: null,
       models: nextConfig.models,
     })}`);
-  }, [commitAiConfig]);
+  }, [commitAiConfig, currentProvider]);
 
   const handlePromptEnhancerProviderChange = useCallback((provider: PromptEnhancerProvider) => {
     const providerAvailable = promptEnhancerConfig.availability[provider];
@@ -722,22 +749,89 @@ export function useSettingsBasicActions({
   }, [promptEnhancerConfig]);
 
   const handlePromptEnhancerResetToDefault = useCallback(() => {
+    // Auto mode follows the current chat provider when that CLI is available.
+    const autoProvider = pickAutoAiFeatureProvider(
+      promptEnhancerConfig.availability,
+      currentProvider,
+    );
     const nextConfig: PromptEnhancerConfig = {
       ...promptEnhancerConfig,
       provider: null,
-      effectiveProvider: promptEnhancerConfig.availability.codex
-        ? 'codex'
-        : (promptEnhancerConfig.availability.claude ? 'claude' : null),
-      resolutionSource: promptEnhancerConfig.availability.codex || promptEnhancerConfig.availability.claude
-        ? 'auto'
-        : 'unavailable',
+      effectiveProvider: autoProvider,
+      resolutionSource: autoProvider ? 'auto' : 'unavailable',
     };
     setPromptEnhancerConfig(nextConfig);
     sendToJava(`set_prompt_enhancer_config:${JSON.stringify({
       provider: null,
       models: nextConfig.models,
     })}`);
-  }, [promptEnhancerConfig]);
+  }, [promptEnhancerConfig, currentProvider]);
+
+  // Keep auto-mode effectiveProvider in sync when the chat CLI changes.
+  useEffect(() => {
+    if (promptEnhancerConfig.provider !== null) {
+      return;
+    }
+    const nextEffective = pickAutoAiFeatureProvider(
+      promptEnhancerConfig.availability,
+      currentProvider,
+    );
+    if (nextEffective === promptEnhancerConfig.effectiveProvider) {
+      return;
+    }
+    setPromptEnhancerConfig((prev) => {
+      if (prev.provider !== null) {
+        return prev;
+      }
+      const resolved = pickAutoAiFeatureProvider(prev.availability, currentProvider);
+      if (resolved === prev.effectiveProvider) {
+        return prev;
+      }
+      return {
+        ...prev,
+        effectiveProvider: resolved,
+        resolutionSource: resolved ? 'auto' : 'unavailable',
+      };
+    });
+  }, [
+    currentProvider,
+    promptEnhancerConfig.provider,
+    promptEnhancerConfig.availability,
+    promptEnhancerConfig.effectiveProvider,
+  ]);
+
+  // Keep commit AI auto-mode effectiveProvider in sync when the chat CLI changes.
+  useEffect(() => {
+    if (commitAiConfig.provider !== null) {
+      return;
+    }
+    const nextEffective = pickAutoAiFeatureProvider(
+      commitAiConfig.availability,
+      currentProvider,
+    );
+    if (nextEffective === commitAiConfig.effectiveProvider) {
+      return;
+    }
+    setCommitAiConfig((prev) => {
+      if (prev.provider !== null) {
+        return prev;
+      }
+      const resolved = pickAutoAiFeatureProvider(prev.availability, currentProvider);
+      if (resolved === prev.effectiveProvider) {
+        return prev;
+      }
+      return {
+        ...prev,
+        effectiveProvider: resolved,
+        resolutionSource: resolved ? 'auto' : 'unavailable',
+      };
+    });
+  }, [
+    currentProvider,
+    commitAiConfig.provider,
+    commitAiConfig.availability,
+    commitAiConfig.effectiveProvider,
+  ]);
 
   // Commit AI prompt save handler
   const handleSaveCommitPrompt = useCallback(() => {
@@ -868,6 +962,12 @@ export function useSettingsBasicActions({
     handleTestQuestionSound,
     detailedOutputEnabled,
     handleDetailedOutputEnabledChange,
+    systemNotificationOnlyWhenUnfocused,
+    setSystemNotificationOnlyWhenUnfocused,
+    handleSystemNotificationOnlyWhenUnfocusedChange,
+    askUserQuestionSoundNotificationEnabled,
+    setAskUserQuestionSoundNotificationEnabled,
+    handleAskUserQuestionSoundNotificationEnabledChange,
     permissionDialogTimeoutSeconds,
     handlePermissionDialogTimeoutChange,
     autoCloseDialogOnTimeout,

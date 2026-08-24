@@ -32,7 +32,8 @@ import {
   truncateString,
   truncateErrorContent,
   emitUsageTag,
-  buildConfigErrorPayload
+  buildConfigErrorPayload,
+  extractResultError
 } from './message-utils.js';
 import { createPreToolUseHook } from './permission-mode.js';
 import { loadMcpServersConfigAsRecord } from './mcp-status/config-loader.js';
@@ -83,7 +84,7 @@ function buildQueryOptions({ workingDirectory, permissionMode, sdkModelName, max
     cwd: workingDirectory,
     permissionMode,
     model: sdkModelName,
-    maxTurns: 100,
+    maxTurns: 1000,
     enableFileCheckpointing: true,
     env: buildCliEnv(),
     settings: buildWebviewControlledSettingsOverride(modelId),
@@ -317,7 +318,9 @@ function processStreamMessage(msg, state, logPrefix) {
   // Error result detection
   if (msg.type === 'result' && msg.is_error) {
     console.error(`[DEBUG]${logPrefix ? ` ${logPrefix}` : ''} Received error result:`, JSON.stringify(msg));
-    throw new Error(msg.result || msg.message || 'API request failed');
+    // The SDK reports the real error text in msg.errors (array); extractResultError
+    // reads it so the actual failure surfaces instead of a generic fallback.
+    throw new Error(extractResultError(msg));
   }
 }
 

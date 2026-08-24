@@ -12,6 +12,9 @@
     ]]></description>
 
     <depends>com.intellij.modules.platform</depends>
+    <!-- Git support — required for Commit AI to run a real `git diff`.
+         Git4Idea is bundled in all JetBrains IDEs that support Git. -->
+    <depends>Git4Idea</depends>
     <!-- JCEF is a separate platform module in IntelliJ IDEA 2026.2+, but older
          IDEs may provide JCEF from the platform without exposing this module. -->
     <depends optional="true" config-file="jcef-features.xml">com.intellij.modules.jcef</depends>

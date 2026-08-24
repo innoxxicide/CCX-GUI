@@ -203,6 +203,11 @@
     }
 }
 
+/* Quote button sits to the left of the absolute copy button on assistant messages */
+.message-quote-btn {
+    right: 44px;
+}
+
 /* Inline copy button for user messages (in header row) */
 .message-copy-btn-inline {
     position: relative;
@@ -596,6 +601,8 @@
 .text-block {
     white-space: pre-wrap;
     word-wrap: break-word;
+    word-break: break-word;
+    overflow-wrap: break-word;
 }
 
 /* Markdown Content */
@@ -604,6 +611,7 @@
     line-height: 1.6;
     color: var(--text-primary);
     word-wrap: break-word;
+    word-break: break-word;
     overflow-wrap: break-word;
     cursor: text;
 }
@@ -618,11 +626,28 @@
 .markdown-content p {
     margin-bottom: 10px;
     word-wrap: break-word;
+    word-break: break-word;
     overflow-wrap: break-word;
     max-width: 100%;
 }
 
 .markdown-content p:last-child {
+    margin-bottom: 0;
+}
+
+/* Block-memoized streaming render: each top-level markdown block is wrapped
+   in .md-block. Keep paragraph spacing between blocks identical to the old
+   single-document render — only the message's final paragraph drops its
+   bottom margin. */
+.markdown-content .md-block > p:last-child {
+    margin-bottom: 10px;
+}
+
+.markdown-content > .md-block:last-child > p:last-child {
+    margin-bottom: 0;
+}
+
+.thinking-content .markdown-content .md-block > p:last-child {
     margin-bottom: 0;
 }
 
@@ -900,6 +925,20 @@
 
 .message.user .markdown-content a {
     color: inherit;
+}
+
+/* @ file-reference links rendered by CollapsibleTextBlock live in
+   .plain-text-content, not .markdown-content — give them the same
+   treatment: inherit the bubble text color, dotted underline, pointer. */
+.message.user .plain-text-content a.file-link {
+    color: inherit;
+    text-decoration-style: dotted;
+    cursor: pointer;
+}
+
+.message.user .plain-text-content a.file-link:hover {
+    text-decoration-thickness: 2px;
+    opacity: 0.95;
 }
 
 /* 表格容器 - 处理溢出 */

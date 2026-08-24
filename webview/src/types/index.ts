@@ -121,7 +121,11 @@ export interface HistorySessionSummary {
   lastTimestamp?: string;
   isFavorited?: boolean;
   favoritedAt?: number;
-  provider?: string; // 'claude' or 'codex'
+  provider?: string; // 'claude' | 'codex' | 'grok' | 'opencode' | …
+  /** Model used by this session when known (restored on open). */
+  model?: string;
+  /** Agent name when known (OpenCode / Claude). */
+  agent?: string;
   fileSize?: number;
   entrypoint?: string; // Session entrypoint: 'cli', 'sdk-cli', 'claude-vscode', etc.
 }

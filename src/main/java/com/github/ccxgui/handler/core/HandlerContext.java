@@ -17,7 +17,7 @@ import java.util.function.Supplier;
  */
 public class HandlerContext {
 
-    public static final String DEFAULT_MODEL = "claude-sonnet-4-7";
+    public static final String DEFAULT_MODEL = "claude-sonnet-5";
     public static final String DEFAULT_PROVIDER = "claude";
 
     private final Project project;

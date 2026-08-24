@@ -1,8 +1,13 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { TFunction } from 'i18next';
 import type { MutableRefObject, RefObject } from 'react';
 import type { ClaudeMessage, ClaudeRawMessage, HistoryData, SubagentHistoryResponse, TaskEventMap } from '../types';
-import type { PermissionMode, SelectedAgent } from '../components/ChatInputBox/types';
+import type {
+  CodexFastMode,
+  PermissionMode,
+  ReasoningEffort,
+  SelectedAgent,
+} from '../components/ChatInputBox/types';
 import type { ProviderConfig } from '../types/provider';
 import type { PermissionRequest } from '../components/PermissionDialog';
 import type { AskUserQuestionRequest } from '../components/AskUserQuestionDialog';
@@ -10,6 +15,7 @@ import type { PlanApprovalRequest } from '../components/PlanApprovalDialog';
 import type { RewindRequest } from '../components/RewindDialog';
 import type { ClaudeLimitsState } from '../types/usageLimits';
 import { registerWindowCallbacks } from './windowCallbacks/registerCallbacks';
+import { sendBridgeEvent } from '../utils/bridge';
 
 // Re-export from messageSync to avoid duplicate definition
 export { OPTIMISTIC_MESSAGE_TIME_WINDOW } from './windowCallbacks/messageSync';
@@ -41,10 +47,14 @@ export interface UseWindowCallbacksOptions {
   setUsageMaxTokens: React.Dispatch<React.SetStateAction<number | undefined>>;
   setClaudeLimits: React.Dispatch<React.SetStateAction<ClaudeLimitsState | null>>;
   setPermissionMode: React.Dispatch<React.SetStateAction<PermissionMode>>;
+  setCurrentProvider: React.Dispatch<React.SetStateAction<string>>;
   setClaudePermissionMode: React.Dispatch<React.SetStateAction<PermissionMode>>;
   setCodexPermissionMode: React.Dispatch<React.SetStateAction<PermissionMode>>;
   setSelectedClaudeModel: React.Dispatch<React.SetStateAction<string>>;
   setSelectedCodexModel: React.Dispatch<React.SetStateAction<string>>;
+  setLongContextEnabled: React.Dispatch<React.SetStateAction<boolean>>;
+  setReasoningEffort: React.Dispatch<React.SetStateAction<ReasoningEffort>>;
+  setCodexFastMode: React.Dispatch<React.SetStateAction<CodexFastMode>>;
   setProviderConfigVersion: React.Dispatch<React.SetStateAction<number>>;
   setActiveProviderConfig: React.Dispatch<React.SetStateAction<ProviderConfig | null>>;
   setClaudeSettingsAlwaysThinkingEnabled: React.Dispatch<React.SetStateAction<boolean>>;
@@ -55,6 +65,7 @@ export interface UseWindowCallbacksOptions {
   setAutoCloseDialogOnTimeout: React.Dispatch<React.SetStateAction<boolean>>;
   setSdkStatus: React.Dispatch<React.SetStateAction<Record<string, { installed?: boolean; status?: string }>>>;
   setSdkStatusLoaded: React.Dispatch<React.SetStateAction<boolean>>;
+  setSdkStatusError: React.Dispatch<React.SetStateAction<string | null>>;
   setIsRewinding: (loading: boolean) => void;
   setRewindDialogOpen: (open: boolean) => void;
   setCurrentRewindRequest: (request: RewindRequest | null) => void;
@@ -119,6 +130,7 @@ export interface UseWindowCallbacksOptions {
 
 export function useWindowCallbacks(options: UseWindowCallbacksOptions): void {
   const { t } = options;
+  const [historyRenderCommitEpoch, setHistoryRenderCommitEpoch] = useState(0);
 
   // Store t in ref to avoid stale closures
   const tRef = useRef(t);
@@ -127,8 +139,20 @@ export function useWindowCallbacks(options: UseWindowCallbacksOptions): void {
   }, [t]);
 
   useEffect(() => {
-    registerWindowCallbacks(options, tRef);
+    registerWindowCallbacks(options, tRef, setHistoryRenderCommitEpoch);
     // Callbacks are registered once on mount; re-registration would cause duplicate handlers.
     // Options object reference is intentionally excluded from deps.
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // This signal means only that React committed the restored message tree. Native OSR
+  // publication is fenced separately by Java using real OnPaint callbacks.
+  useLayoutEffect(() => {
+    if (
+      historyRenderCommitEpoch > 0
+      && window.__historySurfaceRefreshEpoch === historyRenderCommitEpoch
+    ) {
+      sendBridgeEvent('history_dom_committed', String(historyRenderCommitEpoch));
+    }
+    return undefined;
+  }, [historyRenderCommitEpoch]);
 }

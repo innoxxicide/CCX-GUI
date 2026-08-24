@@ -461,6 +461,10 @@ public class ProviderManager {
 
     /**
      * Apply the active provider to Claude settings.json.
+     * <p>
+     * Uses {@link ClaudeSettingsSyncPlan} (same rules as vscode-cc-gui): skips
+     * local/CLI-login/null providers and empty env payloads so incomplete state
+     * cannot wipe credentials.
      */
     public void applyActiveProviderToClaudeSettings() throws IOException {
         JsonObject config = configReader.apply(null);
@@ -468,7 +472,9 @@ public class ProviderManager {
         if (config.has("claude") &&
                 config.getAsJsonObject("claude").has("current")) {
             String currentId = config.getAsJsonObject("claude").get("current").getAsString();
-            if (LOCAL_SETTINGS_PROVIDER_ID.equals(currentId) || CLI_LOGIN_PROVIDER_ID.equals(currentId)) {
+            if (LOCAL_SETTINGS_PROVIDER_ID.equals(currentId)
+                    || CLI_LOGIN_PROVIDER_ID.equals(currentId)
+                    || DISABLED_PROVIDER_ID.equals(currentId)) {
                 LOG.info("[ProviderManager] " + currentId + " provider active, skipping sync to settings.json");
                 return;
             }

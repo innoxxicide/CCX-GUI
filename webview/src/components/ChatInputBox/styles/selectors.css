@@ -71,111 +71,28 @@
   transition: max-width 0.2s ease, opacity 0.2s ease, margin 0.2s ease;
 }
 
-/* Container query for Claude: hide text when narrow (< 400px) */
-@container button-area (max-width: 400px) {
-  .button-area[data-provider="claude"] .selector-button-text {
-    max-width: 0;
-    opacity: 0;
-    overflow: hidden;
-    margin: 0;
-  }
-
-  .button-area[data-provider="claude"] .selector-button {
-    gap: 2px;
-    padding: 4px 6px;
-    min-width: 28px;
-  }
-
-  .button-area[data-provider="claude"] .selector-button > .codicon-chevron-up,
-  .button-area[data-provider="claude"] .selector-button > .codicon-chevron-down {
-    display: none;
-  }
+/*
+ * Proximity compact mode (all CLI providers).
+ * Applied by useToolbarSelectorCompact when left selectors would get within 10px
+ * of the send cluster. `data-measuring` forces expanded layout during measure so
+ * we can compare full label widths without a collapse/expand loop.
+ */
+.button-area--compact:not([data-measuring]) .selector-button-text {
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  margin: 0;
 }
 
-@media (max-width: 450px) {
-  .button-area[data-provider="claude"] .selector-button-text {
-    max-width: 0;
-    opacity: 0;
-    overflow: hidden;
-    margin: 0;
-  }
-
-  .button-area[data-provider="claude"] .selector-button {
-    gap: 2px;
-    padding: 4px 6px;
-    min-width: 28px;
-  }
-
-  .button-area[data-provider="claude"] .selector-button > .codicon-chevron-up,
-  .button-area[data-provider="claude"] .selector-button > .codicon-chevron-down {
-    display: none;
-  }
+.button-area--compact:not([data-measuring]) .selector-button {
+  gap: 2px;
+  padding: 4px 6px;
+  min-width: 28px;
 }
 
-/* Container query for Codex: hide text when narrow (< 350px) */
-@container button-area (max-width: 380px) {
-  .button-area[data-provider="codex"] .selector-button-text {
-    max-width: 0;
-    opacity: 0;
-    overflow: hidden;
-    margin: 0;
-  }
-
-  .button-area[data-provider="codex"] .selector-button {
-    gap: 2px;
-    padding: 4px 6px;
-    min-width: 28px;
-  }
-
-  .button-area[data-provider="codex"] .selector-button > .codicon-chevron-up,
-  .button-area[data-provider="codex"] .selector-button > .codicon-chevron-down {
-    display: none;
-  }
-}
-
-/* Fallback for browsers without container query support */
-@supports not (container-type: inline-size) {
-  /* Claude fallback: 550px */
-  @media (max-width: 500px) {
-    .button-area[data-provider="claude"] .selector-button-text {
-      max-width: 0;
-      opacity: 0;
-      overflow: hidden;
-      margin: 0;
-    }
-
-    .button-area[data-provider="claude"] .selector-button {
-      gap: 2px;
-      padding: 4px 6px;
-      min-width: 28px;
-    }
-
-    .button-area[data-provider="claude"] .selector-button > .codicon-chevron-up,
-    .button-area[data-provider="claude"] .selector-button > .codicon-chevron-down {
-      display: none;
-    }
-  }
-
-  /* Codex fallback: 500px */
-  @media (max-width: 550px) {
-    .button-area[data-provider="codex"] .selector-button-text {
-      max-width: 0;
-      opacity: 0;
-      overflow: hidden;
-      margin: 0;
-    }
-
-    .button-area[data-provider="codex"] .selector-button {
-      gap: 2px;
-      padding: 4px 6px;
-      min-width: 28px;
-    }
-
-    .button-area[data-provider="codex"] .selector-button > .codicon-chevron-up,
-    .button-area[data-provider="codex"] .selector-button > .codicon-chevron-down {
-      display: none;
-    }
-  }
+.button-area--compact:not([data-measuring]) .selector-button > .codicon-chevron-up,
+.button-area--compact:not([data-measuring]) .selector-button > .codicon-chevron-down {
+  display: none;
 }
 
 .selector-dropdown {
@@ -220,6 +137,34 @@
   color: var(--success-color);
 }
 
+/* Trailing cluster: Beta badge + check / chevron, right-aligned */
+.provider-option-trailing {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.provider-option-trailing .check-mark {
+  margin-left: 0;
+}
+
+/* Beta tag for experimental CLI providers (Grok / Kimi / OpenCode / PI) */
+.provider-beta-badge {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: #c4b5fd;
+  background: rgba(139, 92, 246, 0.18);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  flex-shrink: 0;
+  user-select: none;
+}
+
 .selector-option .model-description {
   font-size: 11px;
   color: var(--text-secondary);
@@ -229,6 +174,15 @@
 
 .selector-search-row {
   padding: 4px 8px;
+}
+
+.selector-search-row--sticky {
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--dropdown-bg);
+  border-bottom: 1px solid var(--dropdown-border);
 }
 
 .selector-search-input {
@@ -247,6 +201,73 @@
 
 .selector-search-input:focus {
   border-color: var(--accent-color);
+}
+
+/* Model dropdown: group headers + pin controls (OpenCode long catalogs) */
+.model-selector-dropdown {
+  min-width: 220px;
+}
+
+.model-selector-group-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px 2px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  user-select: none;
+  cursor: default;
+}
+
+.model-selector-group-icon {
+  font-size: 11px;
+  width: 12px;
+  opacity: 0.85;
+}
+
+.model-pin-button {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-left: auto;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-secondary);
+  opacity: 0;
+  cursor: pointer;
+  transition: opacity 0.12s, background 0.12s, color 0.12s;
+}
+
+.selector-option:hover .model-pin-button,
+.model-pin-button.is-pinned,
+.model-pin-button:focus-visible {
+  opacity: 1;
+}
+
+.model-pin-button:hover {
+  background: var(--button-hover);
+  color: var(--text-primary);
+}
+
+.model-pin-button.is-pinned {
+  color: var(--accent-color, #6c9eff);
+}
+
+.model-pin-button .codicon {
+  font-size: 12px;
+  width: 12px;
+}
+
+.model-selector-dropdown .selector-option .check-mark {
+  margin-left: 0;
 }
 
 .selector-option-status {

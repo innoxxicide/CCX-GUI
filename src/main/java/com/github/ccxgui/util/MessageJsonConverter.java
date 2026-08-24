@@ -332,15 +332,17 @@ public class MessageJsonConverter {
         try {
             LOG.debug("pushUsageUpdateFromMessages called with " + messages.size() + " messages");
 
-            JsonObject lastUsage = TokenUsageUtils.findLastUsageFromSessionMessages(messages);
+            String currentProvider = handlerContext.getCurrentProvider();
+            JsonObject lastUsage = TokenUsageUtils.findLastUsageFromSessionMessages(messages, currentProvider);
             if (lastUsage == null) {
                 LOG.debug("No usage info found in messages");
                 return;
             }
 
-            String currentProvider = handlerContext.getCurrentProvider();
-            int usedTokens = TokenUsageUtils.extractUsedTokens(lastUsage, currentProvider);
-            int maxTokens = SettingsHandler.getModelContextLimit(handlerContext.getCurrentModel());
+            int usedTokens = TokenUsageUtils.extractContextTokens(lastUsage, currentProvider);
+            int fallbackMaxTokens = SettingsHandler.getModelContextLimit(
+                    currentProvider, handlerContext.getCurrentModel());
+            int maxTokens = TokenUsageUtils.extractMaxTokens(lastUsage, fallbackMaxTokens);
             int percentage = Math.min(100, maxTokens > 0 ? (int) ((usedTokens * 100.0) / maxTokens) : 0);
 
             LOG.debug("Pushing usage update: provider=" + currentProvider + ", usedTokens=" + usedTokens + ", max=" + maxTokens + ", percentage=" + percentage + "%");

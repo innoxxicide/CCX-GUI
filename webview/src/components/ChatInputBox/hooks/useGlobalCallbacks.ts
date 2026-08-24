@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { createTextFragment } from '../utils/selectionUtils.js';
+import { makeQuoteToken, registerQuote } from '../utils/quoteRegistry.js';
 
 interface UseGlobalCallbacksOptions {
   editableRef: React.RefObject<HTMLDivElement | null>;
@@ -7,6 +8,7 @@ interface UseGlobalCallbacksOptions {
   getTextContent: () => string;
   adjustHeight: () => void;
   renderFileTags: () => void;
+  renderQuoteTags: () => void;
   setHasContent: (hasContent: boolean) => void;
   onInput?: (content: string) => void;
   closeAllCompletions: () => void;
@@ -26,6 +28,7 @@ export function useGlobalCallbacks({
   getTextContent,
   adjustHeight,
   renderFileTags,
+  renderQuoteTags,
   setHasContent,
   onInput,
   closeAllCompletions,
@@ -250,9 +253,71 @@ export function useGlobalCallbacks({
       focusInput();
     };
 
+    // Insert an inline quote chip. Payload: JSON { text }.
+    // The chip renders a compact preview; the full Markdown blockquote is
+    // expanded from the registry only when the message is sent.
+    window.addQuotedSnippet = (payload: string) => {
+      try {
+        if (!editableRef.current) return;
+
+        let quoteText = '';
+        try {
+          const parsed = JSON.parse(payload) as { text?: unknown };
+          quoteText = typeof parsed.text === 'string' ? parsed.text : '';
+        } catch {
+          quoteText = payload;
+        }
+        if (!quoteText.trim()) return;
+
+        const token = makeQuoteToken(registerQuote(quoteText));
+
+        const selection = window.getSelection();
+        const insertAtCaret =
+          selection &&
+          selection.rangeCount > 0 &&
+          editableRef.current.contains(selection.anchorNode);
+
+        if (insertAtCaret) {
+          const range = selection.getRangeAt(0);
+          range.deleteContents();
+          const tokenNode = document.createTextNode(token);
+          range.insertNode(tokenNode);
+          range.setStartAfter(tokenNode);
+          range.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(range);
+        } else {
+          editableRef.current.focus();
+          const tokenNode = document.createTextNode(token);
+          editableRef.current.appendChild(tokenNode);
+          const range = document.createRange();
+          range.setStartAfter(tokenNode);
+          range.collapse(true);
+          const endSelection = window.getSelection();
+          endSelection?.removeAllRanges();
+          endSelection?.addRange(range);
+        }
+
+        // Turn the freshly inserted token into a chip, then sync input state.
+        renderQuoteTags();
+
+        const newText = getTextContent();
+        setHasContent(!!newText.trim());
+        adjustHeight();
+        onInput?.(newText);
+
+        requestAnimationFrame(() => {
+          editableRef.current?.focus();
+        });
+      } catch (error) {
+        console.error('[useGlobalCallbacks] addQuotedSnippet failed:', error);
+      }
+    };
+
     return () => {
       delete window.insertCodeSnippetAtCursor;
       delete window.focusChatInput;
+      delete window.addQuotedSnippet;
     };
-  }, [editableRef, getTextContent, renderFileTags, adjustHeight, onInput, setHasContent, focusInput]);
+  }, [editableRef, getTextContent, renderFileTags, renderQuoteTags, adjustHeight, onInput, setHasContent, focusInput]);
 }

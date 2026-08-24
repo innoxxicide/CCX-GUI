@@ -279,6 +279,17 @@ class ClaudeSessionQueryService {
                     "no complete JSON document in bridge stdout", null);
         }
 
+        // A well-formed JSON object must end with '}'. If it doesn't, the Node child
+        // exited before its stdout buffer fully drained (a known race for large
+        // getSession payloads) and the JSON was truncated mid-stream. Log the lengths
+        // so the failure is diagnosable instead of leaving only a cryptic Gson error.
+        // extractLastJsonLine already trims its return value, so no trim is needed here
+        // (avoiding an O(n) copy of the multi-megabyte payload on every getSession).
+        if (!jsonStr.endsWith("}")) {
+            log.warn("[" + logPrefix + "] Extracted JSON appears truncated: jsonLength="
+                    + jsonStr.length() + ", rawOutputLength=" + outputStr.length());
+        }
+
         if (log.isDebugEnabled()) {
             log.debug("[" + logPrefix + "] Extracted JSON: "
                     + (jsonStr.length() > 500 ? jsonStr.substring(0, 500) + "..." : jsonStr));

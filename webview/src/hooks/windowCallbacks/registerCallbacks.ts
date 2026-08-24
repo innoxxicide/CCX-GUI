@@ -39,9 +39,29 @@ function areSubagentMessagesEquivalent(previousMessages: unknown[] | undefined, 
   return deepEqual(previousMessages, nextMessages);
 }
 
+const pendingSubagentHistoryChunks = new Map<string, string[]>();
+const MAX_PENDING_SUBAGENT_HISTORY_TRANSFERS = 16;
+
+function appendSubagentHistoryChunk(transferId: string, chunk: string, isFinal: string | boolean): void {
+  if (!transferId) return;
+  const chunks = pendingSubagentHistoryChunks.get(transferId) ?? [];
+  chunks.push(chunk);
+  if (isFinal === true || isFinal === 'true') {
+    pendingSubagentHistoryChunks.delete(transferId);
+    window.onSubagentHistoryLoaded?.(chunks.join(''));
+    return;
+  }
+  if (pendingSubagentHistoryChunks.size >= MAX_PENDING_SUBAGENT_HISTORY_TRANSFERS) {
+    const oldestTransferId = pendingSubagentHistoryChunks.keys().next().value;
+    if (oldestTransferId) pendingSubagentHistoryChunks.delete(oldestTransferId);
+  }
+  pendingSubagentHistoryChunks.set(transferId, chunks);
+}
+
 export function registerWindowCallbacks(
   options: UseWindowCallbacksOptions,
   tRef: MutableRefObject<UseWindowCallbacksOptions['t']>,
+  requestHistoryRenderCommit: (refreshEpoch: number) => void,
 ): void {
   // -------------------------------------------------------------------------
   // Session transition helpers
@@ -74,12 +94,14 @@ export function registerWindowCallbacks(
   // Register callback groups
   // =========================================================================
 
-  registerMessageCallbacks(options, resetTransientUiState);
+  registerMessageCallbacks(options, resetTransientUiState, requestHistoryRenderCommit);
   registerStreamingCallbacks(options);
   registerSessionAndSdkCallbacks(options, tRef);
   registerUsageModeCallbacks(options);
   registerPermissionCallbacks(options);
   registerAgentAndSelectionCallbacks(options);
+
+  window.onSubagentHistoryChunk = appendSubagentHistoryChunk;
 
   window.onSubagentHistoryLoaded = (json: string) => {
     try {
@@ -93,10 +115,14 @@ export function registerWindowCallbacks(
         // This prevents cascading re-renders and scroll jumps caused by
         // periodic subagent polling (every 2 s) returning unchanged data.
         if (existing && existing.success === result.success
+          && existing.completed === result.completed
+          && existing.status === result.status
           && existing.error === result.error
           && existing.sessionId === result.sessionId
+          && existing.provider === result.provider
           && existing.toolUseId === result.toolUseId
           && existing.agentId === result.agentId
+          && existing.agentPath === result.agentPath
           && areSubagentMessagesEquivalent(existing.messages, result.messages)) {
           return prev;
         }

@@ -10,6 +10,7 @@ interface SubagentListProps {
   subagents: SubagentInfo[];
   histories?: Record<string, SubagentHistoryResponse>;
   currentSessionId?: string | null;
+  currentProvider: string;
   isStreaming?: boolean;
 }
 
@@ -54,6 +55,7 @@ const SubagentRow = memo(({ subagent, isExpanded, history, canLoad, onToggle, t 
           totalTokens={subagent.totalTokens}
           totalToolUseCount={subagent.totalToolUseCount}
           resultText={subagent.resultText}
+          prompt={subagent.prompt}
           history={history}
           canLoad={canLoad}
         />
@@ -64,7 +66,7 @@ const SubagentRow = memo(({ subagent, isExpanded, history, canLoad, onToggle, t 
 
 SubagentRow.displayName = 'SubagentRow';
 
-const SubagentList = memo(({ subagents, histories = {}, currentSessionId }: SubagentListProps) => {
+const SubagentList = memo(({ subagents, histories = {}, currentSessionId, currentProvider }: SubagentListProps) => {
   const { t } = useTranslation();
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -79,11 +81,13 @@ const SubagentList = memo(({ subagents, histories = {}, currentSessionId }: Suba
     if (!currentSessionId) return;
     sendBridgeEvent('load_subagent_session', JSON.stringify({
       sessionId: currentSessionId,
+      provider: currentProvider,
       agentId: subagent.agentId,
+      agentPath: subagent.agentPath,
       description: subagent.description,
       toolUseId: subagent.id,
     }));
-  }, [currentSessionId]);
+  }, [currentProvider, currentSessionId]);
 
   // Track the expanded row's status so the polling effect re-runs (and clears
   // its interval) when it transitions out of "running", instead of leaving a

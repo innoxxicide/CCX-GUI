@@ -62,6 +62,9 @@ interface BasicConfigSectionProps {
   // User message bubble color configuration
   userMsgColor?: string;
   onUserMsgColorChange?: (color: string) => void;
+  // Shared chat header and status bar color configuration
+  chatBarColor?: string;
+  onChatBarColorChange?: (color: string) => void;
   // Diff theme configuration
   diffTheme?: DiffThemeMode;
   onDiffThemeChange?: (theme: DiffThemeMode) => void;
@@ -118,6 +121,10 @@ interface BasicConfigSectionProps {
   // Detailed output information configuration
   detailedOutputEnabled?: boolean;
   onDetailedOutputEnabledChange?: (enabled: boolean) => void;
+  systemNotificationOnlyWhenUnfocused?: boolean;
+  onSystemNotificationOnlyWhenUnfocusedChange?: (enabled: boolean) => void;
+  askUserQuestionSoundNotificationEnabled?: boolean;
+  onAskUserQuestionSoundNotificationEnabledChange?: (enabled: boolean) => void;
   // Permission dialog timeout configuration
   permissionDialogTimeoutSeconds?: number;
   onPermissionDialogTimeoutChange?: (seconds: number) => void;
@@ -169,6 +176,8 @@ const BasicConfigSection = (props: BasicConfigSectionProps) => {
           onChatBgColorChange={props.onChatBgColorChange}
           userMsgColor={props.userMsgColor}
           onUserMsgColorChange={props.onUserMsgColorChange}
+          chatBarColor={props.chatBarColor}
+          onChatBarColorChange={props.onChatBarColorChange}
           diffTheme={props.diffTheme}
           onDiffThemeChange={props.onDiffThemeChange}
         />
@@ -223,6 +232,10 @@ const BasicConfigSection = (props: BasicConfigSectionProps) => {
           onTestQuestionSound={props.onTestQuestionSound}
           detailedOutputEnabled={props.detailedOutputEnabled}
           onDetailedOutputEnabledChange={props.onDetailedOutputEnabledChange}
+          systemNotificationOnlyWhenUnfocused={props.systemNotificationOnlyWhenUnfocused}
+          onSystemNotificationOnlyWhenUnfocusedChange={props.onSystemNotificationOnlyWhenUnfocusedChange}
+          askUserQuestionSoundNotificationEnabled={props.askUserQuestionSoundNotificationEnabled}
+          onAskUserQuestionSoundNotificationEnabledChange={props.onAskUserQuestionSoundNotificationEnabledChange}
           permissionDialogTimeoutSeconds={props.permissionDialogTimeoutSeconds}
           onPermissionDialogTimeoutChange={props.onPermissionDialogTimeoutChange}
           autoCloseDialogOnTimeout={props.autoCloseDialogOnTimeout}

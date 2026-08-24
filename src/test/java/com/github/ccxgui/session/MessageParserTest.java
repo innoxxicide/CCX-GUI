@@ -7,6 +7,7 @@ import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 
 public class MessageParserTest {
 
@@ -151,6 +152,27 @@ public class MessageParserTest {
 
         assertNotNull(parsed);
         assertEquals(ClaudeSession.Message.Type.ASSISTANT, parsed.type);
+    }
+
+    @Test
+    public void parseServerMessageDropsNoResponseRequestedAssistantPlaceholder() {
+        MessageParser parser = new MessageParser();
+
+        JsonObject contentBlock = new JsonObject();
+        contentBlock.addProperty("type", "text");
+        contentBlock.addProperty("text", "No response requested.");
+
+        JsonArray content = new JsonArray();
+        content.add(contentBlock);
+
+        JsonObject message = new JsonObject();
+        message.add("content", content);
+
+        JsonObject raw = new JsonObject();
+        raw.addProperty("type", "assistant");
+        raw.add("message", message);
+
+        assertNull(parser.parseServerMessage(raw));
     }
 
     /** The shape Claude Code writes to JSONL when an API error ends a turn. */

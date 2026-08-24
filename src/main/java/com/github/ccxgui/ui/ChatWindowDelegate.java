@@ -9,6 +9,9 @@ import com.github.ccxgui.handler.ClipboardHandler;
 import com.github.ccxgui.handler.ContextHandler;
 import com.github.ccxgui.handler.CodexMcpServerHandler;
 import com.github.ccxgui.handler.CodexPetHandler;
+import com.github.ccxgui.handler.CliModelsHandler;
+import com.github.ccxgui.handler.CliStatusHandler;
+import com.github.ccxgui.handler.DshHostHandler;
 import com.github.ccxgui.handler.DependencyHandler;
 import com.github.ccxgui.handler.DiffHandler;
 import com.github.ccxgui.handler.core.HandlerContext;
@@ -22,12 +25,14 @@ import com.github.ccxgui.handler.PermissionHandler;
 import com.github.ccxgui.handler.PromptEnhancerHandler;
 import com.github.ccxgui.handler.PromptHandler;
 import com.github.ccxgui.handler.provider.CustomModelPricingHandler;
+import com.github.ccxgui.handler.provider.ModelProviderHandler;
 import com.github.ccxgui.handler.provider.ProviderHandler;
 import com.github.ccxgui.handler.RewindHandler;
 import com.github.ccxgui.handler.SessionHandler;
 import com.github.ccxgui.handler.SettingsHandler;
 import com.github.ccxgui.handler.SkillHandler;
 import com.github.ccxgui.handler.TabHandler;
+import com.github.ccxgui.handler.UsagePushService;
 import com.github.ccxgui.handler.WindowEventHandler;
 import com.github.ccxgui.handler.file.FileExportHandler;
 import com.github.ccxgui.handler.file.FileHandler;
@@ -36,6 +41,8 @@ import com.github.ccxgui.handler.file.UndoFileHandler;
 import com.github.ccxgui.permission.PermissionService;
 import com.github.ccxgui.provider.claude.ClaudeSDKBridge;
 import com.github.ccxgui.provider.codex.CodexSDKBridge;
+import com.github.ccxgui.provider.common.MarkerCliBridge;
+import java.util.Map;
 import com.github.ccxgui.provider.common.MessageCallback;
 import com.github.ccxgui.provider.common.SDKResult;
 import com.github.ccxgui.session.SessionLifecycleManager;
@@ -77,6 +84,7 @@ public class ChatWindowDelegate {
         Project getProject();
         ClaudeSDKBridge getClaudeSDKBridge();
         CodexSDKBridge getCodexSDKBridge();
+        Map<String, MarkerCliBridge> getCliBridges();
         ClaudeSession getSession();
         CodemossSettingsService getSettingsService();
         JPanel getMainPanel();
@@ -100,7 +108,10 @@ public class ChatWindowDelegate {
         PermissionHandler getPermissionHandler();
         void interruptDueToPermissionDenial();
         boolean isFrontendReady();
+        boolean isRuntimeRecoveryPage();
         void setFrontendReady(boolean ready);
+        void onHistoryRenderComplete(long commitEpoch);
+        void onSurfaceDamageApplied(String token, String phase, boolean applied);
         void setSlashCommandsFetched(boolean fetched);
         void setFetchedSlashCommandsCount(int count);
         void persistTabSessionState();
@@ -141,22 +152,60 @@ public class ChatWindowDelegate {
     private volatile String pendingQuickFixPrompt = null;
     private volatile MessageCallback pendingQuickFixCallback = null;
     private volatile ClaudeLimitsHandler claudeLimitsHandler;
+    // Reference to the SettingsHandler for clean theme-callback unregistration on dispose.
+    private com.github.ccxgui.handler.SettingsHandler settingsHandler;
 
     public ChatWindowDelegate(DelegateHost host) {
         this.host = host;
     }
 
-    public void loadNodePathFromSettings() {
+    private void applyNodePathToBridges(String path) {
         ClaudeSDKBridge claudeSDKBridge = host.getClaudeSDKBridge();
         CodexSDKBridge codexSDKBridge = host.getCodexSDKBridge();
+        if (claudeSDKBridge != null) {
+            claudeSDKBridge.setNodeExecutable(path);
+        }
+        if (codexSDKBridge != null) {
+            codexSDKBridge.setNodeExecutable(path);
+        }
+        Map<String, MarkerCliBridge> cliBridges = host.getCliBridges();
+        if (cliBridges != null) {
+            for (MarkerCliBridge bridge : cliBridges.values()) {
+                if (bridge != null) {
+                    bridge.setNodeExecutable(path);
+                }
+            }
+        }
+    }
+
+    private void applySessionIdToBridges(String sessionId) {
+        ClaudeSDKBridge claudeSDKBridge = host.getClaudeSDKBridge();
+        CodexSDKBridge codexSDKBridge = host.getCodexSDKBridge();
+        if (claudeSDKBridge != null) {
+            claudeSDKBridge.setSessionId(sessionId);
+        }
+        if (codexSDKBridge != null) {
+            codexSDKBridge.setSessionId(sessionId);
+        }
+        Map<String, MarkerCliBridge> cliBridges = host.getCliBridges();
+        if (cliBridges != null) {
+            for (MarkerCliBridge bridge : cliBridges.values()) {
+                if (bridge != null) {
+                    bridge.setSessionId(sessionId);
+                }
+            }
+        }
+    }
+
+    public void loadNodePathFromSettings() {
+        ClaudeSDKBridge claudeSDKBridge = host.getClaudeSDKBridge();
         try {
             PropertiesComponent props = PropertiesComponent.getInstance();
             String savedNodePath = props.getValue(NODE_PATH_PROPERTY_KEY);
 
             if (savedNodePath != null && !savedNodePath.trim().isEmpty()) {
                 String path = savedNodePath.trim();
-                claudeSDKBridge.setNodeExecutable(path);
-                codexSDKBridge.setNodeExecutable(path);
+                applyNodePathToBridges(path);
                 claudeSDKBridge.verifyAndCacheNodePath(path);
                 LOG.info("Using manually configured Node.js path: " + path);
             } else {
@@ -169,8 +218,7 @@ public class ChatWindowDelegate {
                     String detectedVersion = detected.getNodeVersion();
 
                     props.setValue(NODE_PATH_PROPERTY_KEY, detectedPath);
-                    claudeSDKBridge.setNodeExecutable(detectedPath);
-                    codexSDKBridge.setNodeExecutable(detectedPath);
+                    applyNodePathToBridges(detectedPath);
                     claudeSDKBridge.verifyAndCacheNodePath(detectedPath);
 
                     LOG.info("Auto-detected Node.js: " + detectedPath + " (" + detectedVersion + ")");
@@ -213,17 +261,17 @@ public class ChatWindowDelegate {
         }
     }
 
+    /**
+     * Intentionally a no-op for startup.
+     * <p>
+     * vscode-cc-gui only writes {@code ~/.claude/settings.json} when the user
+     * switches/saves a provider — never when the chat window opens. Auto-sync on
+     * open risked overwriting user/cc-switch credentials with an incomplete
+     * (empty env) provider payload. Provider switch still calls
+     * {@link CodemossSettingsService#applyActiveProviderToClaudeSettings()}.
+     */
     public void syncActiveProvider() {
-        try {
-            CodemossSettingsService settingsService = host.getSettingsService();
-            if (settingsService.isLocalProviderActive()) {
-                LOG.info("[ClaudeSDKToolWindow] Local provider active, skipping startup sync");
-                return;
-            }
-            settingsService.applyActiveProviderToClaudeSettings();
-        } catch (Exception e) {
-            LOG.warn("Failed to sync active provider on startup: " + e.getMessage());
-        }
+        LOG.info("[ClaudeSDKToolWindow] Skip startup settings.json sync (provider switch/save only; empty-env protected)");
     }
 
     public String setupPermissionService() {
@@ -235,16 +283,28 @@ public class ChatWindowDelegate {
         if ((sessionId == null || sessionId.isEmpty()) && codexSDKBridge != null) {
             sessionId = codexSDKBridge.getSessionId();
         }
+        if (sessionId == null || sessionId.isEmpty()) {
+            Map<String, MarkerCliBridge> cliBridges = host.getCliBridges();
+            if (cliBridges != null) {
+                for (MarkerCliBridge bridge : cliBridges.values()) {
+                    if (bridge == null) {
+                        continue;
+                    }
+                    String candidate = bridge.getSessionId();
+                    if (candidate != null && !candidate.isEmpty()) {
+                        sessionId = candidate;
+                        break;
+                    }
+                }
+            }
+        }
 
         if (sessionId == null || sessionId.isEmpty()) {
             LOG.warn("Failed to get session ID from bridges, generating fallback UUID");
             sessionId = java.util.UUID.randomUUID().toString();
         }
 
-        claudeSDKBridge.setSessionId(sessionId);
-        if (codexSDKBridge != null) {
-            codexSDKBridge.setSessionId(sessionId);
-        }
+        applySessionIdToBridges(sessionId);
         LOG.info("Unified bridge sessionId for PermissionService routing: " + sessionId);
 
         PermissionService permissionService = PermissionService.getInstance(project, sessionId);
@@ -307,7 +367,6 @@ public class ChatWindowDelegate {
         messageDispatcher.registerHandler(new CodexPetHandler(handlerContext));
         messageDispatcher.registerHandler(new SkillHandler(handlerContext));
         messageDispatcher.registerHandler(new FileHandler(handlerContext));
-        messageDispatcher.registerHandler(new SettingsHandler(handlerContext));
         ClaudeLimitsHandler limitsHandler = new ClaudeLimitsHandler(handlerContext);
         // Owns the idle refresh of the header battery indicators (once-a-minute
         // poll + IDE-window activation), so it is held for the dispose path.
@@ -318,6 +377,8 @@ public class ChatWindowDelegate {
         this.claudeLimitsHandler = limitsHandler;
         limitsHandler.startAutoRefresh();
         messageDispatcher.registerHandler(limitsHandler);
+        this.settingsHandler = new SettingsHandler(handlerContext);
+        messageDispatcher.registerHandler(this.settingsHandler);
         messageDispatcher.registerHandler(new SessionHandler(handlerContext));
         messageDispatcher.registerHandler(new ContextHandler(handlerContext));
         messageDispatcher.registerHandler(new FileExportHandler(handlerContext));
@@ -329,6 +390,9 @@ public class ChatWindowDelegate {
         messageDispatcher.registerHandler(new RewindHandler(handlerContext));
         messageDispatcher.registerHandler(new UndoFileHandler(handlerContext));
         messageDispatcher.registerHandler(new DependencyHandler(handlerContext));
+        messageDispatcher.registerHandler(new CliModelsHandler(handlerContext));
+        messageDispatcher.registerHandler(new CliStatusHandler(handlerContext));
+        messageDispatcher.registerHandler(new DshHostHandler(handlerContext));
         messageDispatcher.registerHandler(new ClipboardHandler(handlerContext));
         messageDispatcher.registerHandler(new NodeProcessHandler(handlerContext));
 
@@ -354,6 +418,16 @@ public class ChatWindowDelegate {
                 host.getSessionLifecycleManager().createNewSession();
             }
             @Override public void onFrontendReady() { handleFrontendReady(); }
+            @Override public void onHistoryRenderComplete(long commitEpoch) {
+                host.onHistoryRenderComplete(commitEpoch);
+            }
+            @Override public void onSurfaceDamageApplied(
+                    String token,
+                    String phase,
+                    boolean applied
+            ) {
+                host.onSurfaceDamageApplied(token, phase, applied);
+            }
             @Override public void onRefreshSlashCommands() {
                 host.getSessionLifecycleManager().fetchSlashCommandsOnStartup();
             }
@@ -372,7 +446,7 @@ public class ChatWindowDelegate {
         messageDispatcher.registerHandler(permissionHandler);
 
         HistoryHandler historyHandler = new HistoryHandler(handlerContext);
-        historyHandler.setSessionLoadCallback((sessionId, projectPath, provider) -> {
+        historyHandler.setSessionLoadCallback((sessionId, projectPath, provider, model) -> {
             ClaudeSession current = host.getSession();
             boolean sameSession = current != null
                     && sessionId != null
@@ -383,9 +457,12 @@ public class ChatWindowDelegate {
                 // Re-opening the very session already active: soft-reload its transcript
                 // instead of interrupting the in-flight turn.
                 LOG.info("[HistoryHandler] Same-session resume, soft-reloading transcript: " + sessionId);
+                if (model != null && !model.trim().isEmpty()) {
+                    current.setModel(model.trim());
+                }
                 host.reloadActiveSessionMessages();
             } else {
-                host.getSessionLifecycleManager().loadHistorySession(sessionId, projectPath, provider);
+                host.getSessionLifecycleManager().loadHistorySession(sessionId, projectPath, provider, model);
             }
         });
         host.setHistoryHandler(historyHandler);
@@ -403,7 +480,7 @@ public class ChatWindowDelegate {
             String mode = session != null ? session.getPermissionMode() : "default";
             com.github.ccxgui.notifications.ClaudeNotifier.setMode(project, mode);
 
-            String model = session != null ? session.getModel() : "claude-sonnet-4-7";
+            String model = session != null ? session.getModel() : "claude-sonnet-5";
             com.github.ccxgui.notifications.ClaudeNotifier.setModel(project, model);
 
             try {
@@ -543,6 +620,7 @@ public class ChatWindowDelegate {
 
     public void handleFrontendReady() {
         LOG.info("Received frontend_ready signal, frontend is now ready to receive data");
+        boolean runtimeRecovery = host.isRuntimeRecoveryPage();
         host.setFrontendReady(true);
         host.getWebviewWatchdog().markFrontendReady();
 
@@ -550,8 +628,14 @@ public class ChatWindowDelegate {
             "window.updateLinkifyCapabilities",
             JsUtils.escapeJs(OpenClassHandler.buildCapabilitiesJson())
         );
+        if (runtimeRecovery) {
+            pushCurrentTabStateToFrontend();
+        }
         host.getSessionLifecycleManager().sendCurrentPermissionMode();
         replayCurrentSessionStateToFrontend();
+        if (runtimeRecovery) {
+            refreshFrontendDerivedState();
+        }
         host.persistTabSessionState();
 
         if (pendingQuickFixPrompt != null && pendingQuickFixCallback != null) {
@@ -566,6 +650,99 @@ public class ChatWindowDelegate {
         }
 
         host.getStreamCoalescer().flush(null);
+    }
+
+    /**
+     * Pushes the current Java session configuration before replaying its transcript.
+     * A native JCEF reload reuses the tab's original HTML snapshot, so Java remains
+     * authoritative for provider and model selection during watchdog recovery.
+     */
+    private void pushCurrentTabStateToFrontend() {
+        ClaudeSession session = host.getSession();
+        if (session == null || host.isDisposed()) {
+            return;
+        }
+
+        String payload = buildBackendTabStateJson(
+                session.getProvider(),
+                session.getModel(),
+                session.getPermissionMode(),
+                session.getReasoningEffort(),
+                session.getCodexServiceTier()
+        );
+        host.callJavaScript("window.applyBackendTabState", JsUtils.escapeJs(payload));
+    }
+
+    /**
+     * Builds the authoritative tab-state snapshot consumed by the frontend recovery callback.
+     * Package-private visibility keeps serialization independently testable without JCEF.
+     */
+    static String buildBackendTabStateJson(
+            String provider,
+            String model,
+            String permissionMode,
+            String reasoningEffort,
+            String codexServiceTier
+    ) {
+        JsonObject state = new JsonObject();
+        state.addProperty("provider", provider);
+        state.addProperty("model", model);
+        state.addProperty("permissionMode", permissionMode);
+        state.addProperty("reasoningEffort", reasoningEffort);
+        state.addProperty("codexFastMode", "fast".equals(codexServiceTier) ? "fast" : "normal");
+        return state.toString();
+    }
+
+    /**
+     * Replays the non-mutating UI refreshes formerly triggered by boot-time provider/model sync.
+     * Usage is restored only from an existing provider snapshot. Empty sessions may still be
+     * loading history and must not overwrite a valid frontend value with a synthetic zero.
+     */
+    private void refreshFrontendDerivedState() {
+        ClaudeSession session = host.getSession();
+        HandlerContext context = host.getHandlerContext();
+        if (session == null || context == null || host.isDisposed()) {
+            return;
+        }
+
+        UsagePushService usagePushService = new UsagePushService(context);
+        usagePushService.pushCurrentUsageIfAvailable(resolveModelContextLimitForRecovery(
+                session.getProvider(),
+                session.getModel(),
+                context.getSettingsService()
+        ));
+        usagePushService.refreshContextBar();
+    }
+
+    /**
+     * Resolves the same configured Claude model mapping used by an explicit model selection,
+     * while retaining v0.5's provider-aware Codex/static context-window behavior.
+     */
+    static int resolveModelContextLimitForRecovery(
+            String provider,
+            String model,
+            CodemossSettingsService settingsService
+    ) {
+        if ("codex".equalsIgnoreCase(provider)) {
+            return SettingsHandler.getModelContextLimit(provider, model);
+        }
+
+        String resolvedModel = model;
+        if (settingsService != null) {
+            try {
+                JsonObject settings = settingsService.readClaudeSettings();
+                if (settings != null && settings.has("env") && settings.get("env").isJsonObject()) {
+                    resolvedModel = ModelProviderHandler.resolveConfiguredClaudeModel(
+                            model,
+                            settings.getAsJsonObject("env")
+                    );
+                }
+            } catch (Exception e) {
+                LOG.warn("Failed to resolve configured Claude model during WebView recovery: "
+                        + e.getMessage());
+            }
+        }
+        return SettingsHandler.getModelContextLimit(resolvedModel);
     }
 
     private void replayCurrentSessionStateToFrontend() {
@@ -624,6 +801,13 @@ public class ChatWindowDelegate {
         if (claudeLimitsHandler != null) {
             claudeLimitsHandler.dispose();
             claudeLimitsHandler = null;
+        }
+        // Unregister the theme-change callback to prevent notifications to the disposed webview.
+        // This fixes the "Cannot call JS function window.onIdeThemeChanged: disposed=true" warning
+        // and ensures stale sessions don't interfere with theme updates for remaining windows.
+        if (settingsHandler != null) {
+            settingsHandler.dispose();
+            settingsHandler = null;
         }
     }
 }

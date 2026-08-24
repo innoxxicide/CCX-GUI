@@ -46,6 +46,7 @@
     "removeAttachment": "添付ファイルを削除",
     "closePreview": "プレビューを閉じる",
     "loadingDropdown": "読み込み中...",
+    "modelsLoadFailed": "モデルの読み込みに失敗しました。クリックして再試行",
     "addAttachment": "添付ファイルを追加",
     "stopGeneration": "生成を停止",
     "generatingResponse": "応答を生成中",
@@ -81,6 +82,8 @@
     "disabled": "無効",
     "sdkNotInstalled": "{{provider}} SDKがインストールされていません。チャットを開始するにはSDKをインストールしてください。",
     "sdkStatusLoading": "Checking SDK status...",
+    "sdkStatusUnavailable": "SDK の状態を確認できませんでした。",
+    "retrySdkStatus": "再試行",
     "openSourceBanner": "このプロジェクトは100%オープンソースかつ無料を保証します（海賊版プロジェクトにご注意ください）",
     "openSourceBannerStar": "Star",
     "openSourceBannerStarToast": "リポジトリのURLをクリップボードにコピーしました。ブラウザに貼り付けてアクセスできます ⭐",
@@ -241,26 +244,35 @@
         "providerUnavailable": "Currently unavailable",
         "provider": {
           "claude": "Claude Code",
-          "codex": "Codex"
+          "codex": "Codex",
+          "grok": "Grok CLI",
+          "kimi": "Kimi CLI",
+          "opencode": "OpenCode",
+          "pi": "PI CLI"
         },
         "currentProviderAuto": "Currently using automatic selection: {{provider}}",
         "currentProviderManual": "Currently using manually selected provider: {{provider}}",
-        "currentProviderUnavailable": "The selected provider is currently unavailable: {{provider}}"
+        "currentProviderUnavailable": "The selected provider is currently unavailable: {{provider}}",
+        "modeLabel": "選択モード",
+        "modeAuto": "自動",
+        "modeManual": "手動",
+        "autoSummary": "現在のチャット CLI に追従 · 現在は {{provider}}",
+        "autoUnavailable": "利用可能な CLI がありません。手動に切り替えて選択してください。"
       },
       "diffExpanded": {
         "label": "差分をデフォルトで展開",
-        "enabled": "展開",
-        "disabled": "折りたたみ",
+        "enabled": "有効",
+        "disabled": "無効",
         "hint": "有効にすると、チャット内のコード差分がデフォルトで展開表示されます。無効の場合、差分は折りたたまれた状態で表示されます。"
       },
       "taskCompletionNotification": {
-        "label": "タスク完了通知",
+        "label": "タスク完了システム通知",
         "enabled": "有効",
         "disabled": "無効",
         "hint": "有効にすると、AIタスクが完了した時にシステム通知を表示します。無効の場合、通知は表示されません。"
       },
       "askUserQuestionNotification": {
-        "label": "ユーザー質問通知",
+        "label": "質問システム通知",
         "enabled": "有効",
         "disabled": "無効",
         "hint": "有効にすると、Claude が質問した時にシステム通知を表示し、見逃しを防ぎます。無効の場合、通知は表示されません。"
@@ -305,6 +317,40 @@
         "promptLabel": "再試行メッセージ",
         "promptHint": "エラー後にエージェントへ自動的に送信されます。空欄の場合はデフォルトが使われます。"
       },
+      "askUserQuestionSoundNotification": {
+        "label": "質問アラート音",
+        "enabled": "有効",
+        "disabled": "無効",
+        "hint": "有効にすると、Claude が質問した時に設定済みのアラート音を再生します。下のサウンド選択とフォーカス規則を使用します。"
+      },
+      "systemNotificationOnlyWhenUnfocused": {
+        "label": "IDE がフォーカスされていない時だけシステム通知を表示",
+        "enabled": "有効",
+        "disabled": "無効",
+        "hint": "有効にすると、タスク完了と質問のシステム通知は IDE がフォーカスされていない時だけ表示されます。"
+      },
+      "soundNotification": {
+        "label": "タスク完了アラート音",
+        "enabled": "有効",
+        "disabled": "無効",
+        "hint": "有効にすると、AI タスクが完了した時に通知音を再生します。画面から離れていても完了に気づけます。",
+        "onlyWhenUnfocused": "IDE がフォーカスされていない時だけアラート音を再生",
+        "onlyWhenUnfocusedHint": "有効にすると、タスク完了と質問のアラート音は IDE がフォーカスされていない時だけ再生されます。",
+        "selectSound": "通知音",
+        "soundDefault": "デフォルト",
+        "soundChime": "チャイム",
+        "soundBell": "ベル",
+        "soundDing": "ディン",
+        "soundSuccess": "成功",
+        "soundCustom": "カスタム...",
+        "customSound": "カスタム音声ファイル",
+        "customSoundPlaceholder": "音声ファイルのパスを選択または入力",
+        "customSoundHint": "WAV、MP3、AIFF 形式に対応",
+        "testSound": "テスト",
+        "browse": "参照",
+        "useDefault": "デフォルトを使用",
+        "customSoundSaved": "カスタム音声を保存しました"
+      },
       "sendShortcut": {
         "label": "送信ショートカット",
         "enter": "Enterで送信",
@@ -329,6 +375,12 @@
         "reset": "デフォルトに戻す",
         "hint": "チャットエリアの背景色をカスタマイズします。空欄の場合はテーマのデフォルト色に従います。"
       },
+      "chatBarColor": {
+        "label": "ヘッダーとステータスバーの色",
+        "custom": "カスタム",
+        "reset": "リセット",
+        "hint": "セッションヘッダーとタスクステータスバーに共通のテーマ色を設定します。空欄の場合は現在のUIテーマに従います。"
+      },
       "userMsgColor": {
         "label": "ユーザーメッセージの色",
         "custom": "カスタム",
@@ -346,7 +398,8 @@
     "providersDesc": "ClaudeとCodex APIプロバイダー設定を管理し、異なるAPIサービスプロバイダー間で切り替え",
     "providerTab": {
       "claude": "Claude Code",
-      "codex": "Codex"
+      "codex": "Codex",
+      "cli": "CLI"
     },
     "claudeAutoResume": {
       "title": "使用制限後に自動再開",
@@ -375,6 +428,13 @@
         "cacheReadShort": "キャッシュ読み取り",
         "invalidValue": "料金は0以上の数値で入力してください",
         "defaultPricing": "既定料金を使用中"
+      },
+      "contextWindow": {
+        "label": "最大コンテキスト（Kトークン）",
+        "placeholder": "例: 500",
+        "hint": "任意。トークン数を千単位の整数で入力します（500 = 500,000トークン）。プラグインの使用量表示にのみ使用されます。",
+        "invalidValue": "最大コンテキストはK単位の正の整数で入力してください",
+        "summary": "コンテキスト: {{value}} トークン"
       },
       "configuredSectionTitle": "設定済みの Claude モデル",
       "configuredSectionDesc": "現在の Claude プロバイダーまたは settings.json のモデルは既にモデル選択リストに表示されています。ここでは料金のみ変更できます。",
@@ -430,7 +490,12 @@
         "providerUnavailable": "利用不可",
         "currentProviderAuto": "現在自動選択を使用中：{{provider}}",
         "currentProviderManual": "現在手動選択したプロバイダーを使用中：{{provider}}",
-        "currentProviderUnavailable": "選択したプロバイダーは現在利用できません：{{provider}}"
+        "currentProviderUnavailable": "選択したプロバイダーは現在利用できません：{{provider}}",
+        "modeLabel": "選択モード",
+        "modeAuto": "自動",
+        "modeManual": "手動",
+        "autoSummary": "現在のチャット CLI に追従 · 現在は {{provider}}",
+        "autoUnavailable": "利用可能な CLI がありません。手動に切り替えて選択してください。"
       },
       "prompt": {
         "label": "Additional Prompt",
@@ -830,6 +895,56 @@
         "confirmAdd": "Create",
         "saveChanges": "Save"
       }
+    },
+    "cli": {
+      "hint": "These CLIs must be installed and configured in your system terminal. The plugin only detects installation status and version — it will never install them for you. Confirm each CLI works in the terminal before coming back here to use it.",
+      "refresh": "Re-check",
+      "retry": "Retry",
+      "loading": "Checking CLI installation status…",
+      "loadFailed": "Detection failed. Please try again.",
+      "status": {
+        "installed": "Installed",
+        "notInstalled": "Not installed"
+      },
+      "viewInstallGuide": "Install guide",
+      "howToInstall": "Install guide",
+      "copy": "Copy",
+      "copied": "Copied to clipboard",
+      "copyFailed": "Failed to copy",
+      "tools": {
+        "grok": {
+          "name": "Grok CLI",
+          "description": "xAI Grok terminal coding agent"
+        },
+        "kimi": {
+          "name": "Kimi CLI",
+          "description": "Moonshot Kimi Code CLI"
+        },
+        "opencode": {
+          "name": "OpenCode",
+          "description": "Open-source terminal AI coding agent"
+        },
+        "pi": {
+          "name": "PI CLI",
+          "description": "マルチプロバイダーのモデルに対応したミニマルなターミナルコーディングエージェント"
+        }
+      },
+      "installDialog": {
+        "title": "Install {{name}}",
+        "lead": "Install {{name}} in your system terminal first and make sure `{{binary}}` is available, then come back and click Re-check. This plugin will not run the installer for you.",
+        "stepOpenTerminal": "Open your system terminal (Terminal / iTerm / PowerShell, etc.)",
+        "stepRunCommand": "Copy and run the install command below",
+        "stepVerify": "After install, run `{{binary}} --version` to verify",
+        "stepReturn": "Return here and click Re-check",
+        "primaryCommand": "Recommended install command (macOS / Linux)",
+        "windowsCommand": "Windows (PowerShell)",
+        "altCommand": "Alternative install method",
+        "openDocs": "Open official docs"
+      },
+      "listTitle": "ローカル CLI ツール",
+      "summary": "{{installed}} / {{total}} インストール済み",
+      "moreComingSoon": "今後さらに対応予定",
+      "copyPath": "パスをコピー"
     }
   },
   "history": {
@@ -858,7 +973,7 @@
     "loading": "履歴を読み込み中...",
     "loadFailed": "読み込み失敗",
     "noSessions": "履歴セッションなし",
-    "noSessionsDesc": "現在のプロジェクトにClaudeセッション記録が見つかりません",
+    "noSessionsDesc": "現在のプロジェクトにセッション記録が見つかりません",
     "totalSessions": "{{count}}セッション · {{total}}メッセージ",
     "messageCount": "{{count}}メッセージ",
     "searchPlaceholder": "セッションタイトルを検索...",
@@ -981,6 +1096,7 @@
   },
   "config": {
     "clickToCopy": "クリックしてコピー",
+    "officialDocs": "公式ドキュメント",
     "switch": "切り替え",
     "switchProvider": "プロバイダーを切り替え",
     "runtimeProvider": {
@@ -1032,7 +1148,13 @@
   "markdown": {
     "copyCode": "コードをコピー",
     "copyMessage": "メッセージをコピー",
-    "copySuccess": "コピーされました!"
+    "copySuccess": "コピーされました!",
+    "quoteMessage": "メッセージを引用",
+    "quoteSuccess": "引用しました!"
+  },
+  "contextMenu": {
+    "copy": "コピー",
+    "quote": "引用"
   },
   "usage": {
     "checkingLabel": "tokentracker-cli を確認しています…",
@@ -1285,6 +1407,25 @@
     "stopped": "停止",
     "progress": "{{total}} 件中 {{completed}} 件完了"
   },
+  "subagent": {
+    "process": {
+      "title": "エージェントプロセス",
+      "prompt": "プロンプト",
+      "thought": "思考",
+      "filesRead_one": "{{count}} 件のファイルを読む",
+      "filesRead_other": "{{count}} 件のファイルを読む",
+      "otherTools": "その他ツール",
+      "result": "結果",
+      "showFullOutput": "出力全体を表示",
+      "loading": "エージェントプロセスを読み込み中…",
+      "unavailable": "セッションに id ができるまでプロセスログは利用できません。",
+      "reportGenerated": "構造化分析レポートを生成しました",
+      "unitMs": "ミリ秒",
+      "unitS": "秒",
+      "unitTools": "ツール",
+      "unitTokens": "トークン"
+    }
+  },
   "statusPanel": {
     "todoTab": "計画",
     "tasksTab": "タスク",
@@ -1313,7 +1454,9 @@
     "keepAllConfirmMessage": "現在の変更を新しい基準として保持します。今後の変更はゼロからカウントされます。",
     "discardAllSuccess": "すべての変更を元に戻しました",
     "discardAllFailed": "元に戻す失敗: {{error}}",
-    "keepAllSuccess": "すべて保持しました。変更記録をリセットしました"
+    "keepAllSuccess": "すべて保持しました。変更記録をリセットしました",
+    "multiAgentBadge": "複数エージェント",
+    "multiAgentEdited": "このセッションで {{count}} 個のエージェントがこのファイルを編集しました。ご注意ください"
   },
   "skills": {
     "title": "スキル",
@@ -1459,6 +1602,9 @@
     "searchPlaceholder": "モデルを検索",
     "noModelsFound": "モデルが見つかりません",
     "hiddenModelCount": "+ {{count}} 件のモデルがあります。入力して検索してください。",
+    "pinned": "ピン留め",
+    "pin": "ピン留め",
+    "unpin": "ピンを外す",
     "longContext": {
       "label": "1M",
       "shortLabel": "1Mコンテキスト",
@@ -1472,11 +1618,7 @@
       },
       "sonnet5": {
         "label": "Sonnet 5",
-        "description": "Sonnet 5 · Sonnet 4.6 のアップグレードモデル"
-      },
-      "sonnet47": {
-        "label": "Sonnet 4.7",
-        "description": "Sonnet 4.7 · デフォルトモデルを使用"
+        "description": "Sonnet 5 · デフォルトモデルを使用"
       },
       "opus46_1m": {
         "label": "Opus 4.6",
@@ -1547,7 +1689,7 @@
   "codexModes": {
     "default": {
       "label": "Suggest (approval)",
-      "tooltip": "Codex approval_policy=untrusted – prompts before editing files or running shell commands.",
+      "tooltip": "Codex approval_policy=on-request – prompts before editing files or running shell commands.",
       "description": "Safest option. Every write or command requires your approval."
     },
     "plan": {
@@ -1578,6 +1720,9 @@
     },
     "opencode": {
       "label": "OpenCode"
+    },
+    "pi": {
+      "label": "PI CLI"
     }
   },
   "scheduledSend": {
@@ -1617,7 +1762,18 @@
     "keepOriginal": "元のままにする",
     "enhanceFailed": "プロンプトの強化に失敗しました",
     "emptyPrompt": "最初にプロンプトを入力してください",
-    "copyEnhanced": "強化版をコピー"
+    "copyEnhanced": "強化版をコピー",
+    "modeLabel": "モード",
+    "modeAuto": "自動",
+    "modeManual": "手動",
+    "modeUnavailable": "利用不可",
+    "providerLabel": "CLI",
+    "providerUnresolved": "CLI 未解決",
+    "modelLabel": "モデル",
+    "modelUnresolved": "デフォルトモデル",
+    "openSettings": "設定",
+    "openSettingsTooltip": "プロンプト強化の設定を開く",
+    "resolvingUsage": "実行設定を解決中…"
   },
   "fileContext": {
     "placeholder": "ファイルコンテキスト",

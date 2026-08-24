@@ -28,6 +28,10 @@ public class SettingsHandler extends BaseMessageHandler {
     private final NodePathHandler nodePathHandler;
     private final ClaudeCliPathHandler claudeCliPathHandler;
     private final ProjectConfigHandler projectConfigHandler;
+    // Handle for the theme-change callback registered with ThemeConfigService.
+    // Kept so it can be cleanly unregistered when the owning window is disposed,
+    // preventing notifications to disposed webviews (issue #1586).
+    private ThemeConfigService.RegisteredCallback themeCallbackHandle;
     private final CodexSubscriptionQuotaHandler codexSubscriptionQuotaHandler;
     private final TokenTrackerHandler tokenTrackerHandler;
 
@@ -79,12 +83,17 @@ public class SettingsHandler extends BaseMessageHandler {
         "set_commit_generation_enabled",
         "get_status_bar_widget_enabled",
         "set_status_bar_widget_enabled",
+
         "get_task_completion_notification_enabled",
         "set_task_completion_notification_enabled",
         "get_ask_user_question_notification_enabled",
         "set_ask_user_question_notification_enabled",
         "get_error_notification_enabled",
         "set_error_notification_enabled",
+        "get_system_notification_only_when_unfocused",
+        "set_system_notification_only_when_unfocused",
+        "get_ask_user_question_sound_notification_enabled",
+        "set_ask_user_question_sound_notification_enabled",
         "get_ide_theme",
         "get_commit_prompt",
         "set_commit_prompt",
@@ -132,13 +141,27 @@ public class SettingsHandler extends BaseMessageHandler {
 
     /**
      * Register theme change listener.
+     * Uses the multi-callback API so that every open ClaudeChatWindow receives
+     * theme change notifications. The returned handle is stored for clean
+     * unregistration in {@link #dispose()}.
      */
     private void registerThemeChangeListener() {
-        ThemeConfigService.registerThemeChangeListener(themeConfig -> {
+        themeCallbackHandle = ThemeConfigService.registerThemeChangeListener(themeConfig -> {
             ApplicationManager.getApplication().invokeLater(() -> {
                 callJavaScript("window.onIdeThemeChanged", escapeJs(themeConfig.toString()));
             });
-        });
+        }, true);
+    }
+
+    /**
+     * Unregister the theme change callback to prevent notifications to a disposed webview.
+     * Should be called when the owning ClaudeChatWindow is disposed.
+     */
+    public void dispose() {
+        if (themeCallbackHandle != null) {
+            ThemeConfigService.unregisterThemeChangeListener(themeCallbackHandle);
+            themeCallbackHandle = null;
+        }
     }
 
     @Override
@@ -304,6 +327,7 @@ public class SettingsHandler extends BaseMessageHandler {
             case "set_status_bar_widget_enabled":
                 projectConfigHandler.handleSetStatusBarWidgetEnabled(content);
                 return true;
+
             case "get_task_completion_notification_enabled":
                 projectConfigHandler.handleGetTaskCompletionNotificationEnabled();
                 return true;
@@ -321,6 +345,18 @@ public class SettingsHandler extends BaseMessageHandler {
                 return true;
             case "set_error_notification_enabled":
                 projectConfigHandler.handleSetErrorNotificationEnabled(content);
+                return true;
+            case "get_system_notification_only_when_unfocused":
+                projectConfigHandler.handleGetSystemNotificationOnlyWhenUnfocused();
+                return true;
+            case "set_system_notification_only_when_unfocused":
+                projectConfigHandler.handleSetSystemNotificationOnlyWhenUnfocused(content);
+                return true;
+            case "get_ask_user_question_sound_notification_enabled":
+                projectConfigHandler.handleGetAskUserQuestionSoundNotificationEnabled();
+                return true;
+            case "set_ask_user_question_sound_notification_enabled":
+                projectConfigHandler.handleSetAskUserQuestionSoundNotificationEnabled(content);
                 return true;
             case "get_ai_title_generation_enabled":
                 projectConfigHandler.handleGetAiTitleGenerationEnabled();
@@ -484,5 +520,9 @@ public class SettingsHandler extends BaseMessageHandler {
      */
     public static int getModelContextLimit(String model) {
         return ModelProviderHandler.getModelContextLimit(model);
+    }
+
+    public static int getModelContextLimit(String provider, String model) {
+        return ModelProviderHandler.getModelContextLimit(provider, model);
     }
 }
