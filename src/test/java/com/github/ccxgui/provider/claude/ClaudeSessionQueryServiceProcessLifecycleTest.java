@@ -76,11 +76,12 @@ public class ClaudeSessionQueryServiceProcessLifecycleTest {
         }
 
         // The lifecycle bookkeeping is what matters: register before I/O, unregister
-        // in finally, no leak, child dead.
-        assertEquals("child must be registered before I/O",
-                1, processManager.registerCalls.get());
+        // in finally, no leak, child dead. Unusable output is retried once, so every
+        // attempt must balance its own register/unregister pair.
+        assertEquals("child must be registered before I/O, once per attempt",
+                2, processManager.registerCalls.get());
         assertEquals("child must be unregistered in finally (even on exception path)",
-                1, processManager.unregisterCalls.get());
+                2, processManager.unregisterCalls.get());
         assertEquals(processManager.lastRegisteredChannelId.get(),
                 processManager.lastUnregisteredChannelId.get());
         assertSame(processManager.registeredProcess.get(),

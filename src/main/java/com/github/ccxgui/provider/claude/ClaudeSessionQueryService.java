@@ -9,10 +9,12 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonSyntaxException;
 import com.intellij.openapi.diagnostic.Logger;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -32,6 +34,10 @@ class ClaudeSessionQueryService {
 
     private static final String CHANNEL_SCRIPT = "channel-manager.js";
     private static final int PROCESS_TIMEOUT_SECONDS = 30;
+    /** One retry: a damaged read is transient, the bridge re-reads the same file. */
+    private static final int MAX_QUERY_ATTEMPTS = 2;
+    /** Cap the diagnostic tail kept for logging so a chatty bridge cannot hold megabytes. */
+    private static final int MAX_DIAGNOSTIC_CHARS = 8000;
     private static final Pattern VALID_SESSION_ID = Pattern.compile("[a-zA-Z0-9_\\-]+");
     private static final Pattern IMAGE_REFERENCE_PATTERN = Pattern.compile("(?m)^\\[Image #\\d+:\\s*(.+?)\\]\\s*$");
     private static final String IMAGE_ATTACHMENT_HINT =
@@ -111,7 +117,49 @@ class ClaudeSessionQueryService {
         }
     }
 
+    /**
+     * Run a bridge session query, retrying once if the process returns output the
+     * JSON payload cannot be recovered from.
+     *
+     * <p>Only unusable-output failures are retried. Timeouts, a missing node and a
+     * missing bridge directory are all deterministic, so a second 30-second attempt
+     * would only double the stall.</p>
+     */
     private JsonObject runSessionQuery(String commandName, String sessionId, String cwd, String logPrefix) throws Exception {
+        UnusableBridgeOutputException lastFailure = null;
+        for (int attempt = 1; attempt <= MAX_QUERY_ATTEMPTS; attempt++) {
+            try {
+                return runSessionQueryOnce(commandName, sessionId, cwd, logPrefix);
+            } catch (UnusableBridgeOutputException e) {
+                lastFailure = e;
+                log.warn("[" + logPrefix + "] Attempt " + attempt + "/" + MAX_QUERY_ATTEMPTS
+                        + " returned unusable output: " + e.getMessage());
+            }
+        }
+        // Deliberately not surfacing the parser's own message: it names a JSON path
+        // inside the session history and reads as data corruption, which sends anyone
+        // debugging this at the session file rather than at the bridge's stdout.
+        throw new RuntimeException(
+                "Could not read session history: the Claude bridge returned malformed output", lastFailure);
+    }
+
+    private JsonObject runSessionQueryOnce(String commandName, String sessionId, String cwd, String logPrefix) throws Exception {
+        String jsonStr = readBridgeJson(commandName, sessionId, cwd, logPrefix);
+        JsonObject jsonResult;
+        try {
+            jsonResult = gson.fromJson(jsonStr, JsonObject.class);
+        } catch (JsonSyntaxException e) {
+            throw new UnusableBridgeOutputException(e.getMessage(), e);
+        }
+        if (jsonResult == null) {
+            throw new UnusableBridgeOutputException("bridge returned an empty JSON document", null);
+        }
+        log.debug("[" + logPrefix + "] JSON parsed successfully, success="
+                + (jsonResult.has("success") ? jsonResult.get("success").getAsBoolean() : "null"));
+        return jsonResult;
+    }
+
+    private String readBridgeJson(String commandName, String sessionId, String cwd, String logPrefix) throws Exception {
         if (sessionId == null || !VALID_SESSION_ID.matcher(sessionId).matches()) {
             throw new IllegalArgumentException("Invalid sessionId: " + sessionId);
         }
@@ -138,16 +186,30 @@ class ClaudeSessionQueryService {
 
         ProcessBuilder pb = new ProcessBuilder(command);
         pb.directory(workDir);
-        pb.redirectErrorStream(true);
+        // Do NOT merge stderr into stdout. The bridge logs [DIAG-*] and [PERM_DEBUG]
+        // diagnostics to stderr, and those lines carry raw Windows paths. Sharing one
+        // pipe with the (multi-megabyte, single-line) JSON payload means a diagnostic
+        // write can land inside the payload line; Gson then hits the `\U` of
+        // `C:\Users\...` and dies with "Invalid escape sequence" pointing at a JSON
+        // path deep inside the session history. Separate pipes make that impossible.
+        pb.redirectErrorStream(false);
         envConfigurator.updateProcessEnvironment(pb, node);
 
         // L5 fix: register with ProcessManager so cleanupAllProcesses sees this child.
         String channelId = ProcessManager.newChannelId("claude-session-query");
         Process process = null;
         StringBuilder output = new StringBuilder();
+        Thread diagnosticDrain = null;
+        // StringBuffer, not StringBuilder: filled by the drain thread and read here,
+        // and the join below can time out without establishing happens-before.
+        StringBuffer diagnostics = new StringBuffer();
         try {
             process = pb.start();
             processManager.registerProcess(channelId, process);
+
+            // stderr now has its own pipe, so it must have its own reader: an
+            // undrained stderr pipe fills at ~64KB and blocks the child mid-payload.
+            diagnosticDrain = startDiagnosticDrain(process, diagnostics);
 
             // Signal EOF on the child's stdin so it can never block on an unexpected read.
             try {
@@ -199,6 +261,7 @@ class ClaudeSessionQueryService {
                 }
                 processManager.unregisterProcess(channelId, process);
             }
+            joinDiagnosticDrain(diagnosticDrain);
         }
 
         String outputStr = output.toString().trim();
@@ -210,18 +273,68 @@ class ClaudeSessionQueryService {
 
         String jsonStr = outputExtractor.extractLastJsonLine(outputStr);
         if (jsonStr == null) {
-            log.error("[" + logPrefix + "] Failed to extract JSON from output");
-            throw new RuntimeException("Failed to extract JSON from Node.js output");
+            log.warn("[" + logPrefix + "] No complete JSON document in bridge stdout ("
+                    + outputStr.length() + " chars). Bridge diagnostics: " + diagnostics);
+            throw new UnusableBridgeOutputException(
+                    "no complete JSON document in bridge stdout", null);
         }
 
         if (log.isDebugEnabled()) {
             log.debug("[" + logPrefix + "] Extracted JSON: "
                     + (jsonStr.length() > 500 ? jsonStr.substring(0, 500) + "..." : jsonStr));
         }
-        JsonObject jsonResult = gson.fromJson(jsonStr, JsonObject.class);
-        log.debug("[" + logPrefix + "] JSON parsed successfully, success="
-                + (jsonResult.has("success") ? jsonResult.get("success").getAsBoolean() : "null"));
-        return jsonResult;
+        return jsonStr;
+    }
+
+    /**
+     * Consume the child's stderr on its own thread, keeping a bounded head for logs.
+     *
+     * @param process running bridge process.
+     * @param sink buffer receiving the bounded diagnostic text.
+     * @return the started drain thread.
+     */
+    private Thread startDiagnosticDrain(Process process, StringBuffer sink) {
+        Thread drain = new Thread(() -> {
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(process.getErrorStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (sink.length() < MAX_DIAGNOSTIC_CHARS) {
+                        sink.append(line).append('\n');
+                    }
+                    // Keep reading past the cap: stopping here would refill the pipe
+                    // and block the child.
+                }
+            } catch (IOException e) {
+                // Expected when the process is force-terminated on timeout.
+                log.debug("[SessionQuery] stderr drain closed: " + e.getMessage());
+            }
+        }, "claude-session-query-stderr");
+        drain.setDaemon(true);
+        drain.start();
+        return drain;
+    }
+
+    private void joinDiagnosticDrain(Thread drain) {
+        if (drain == null) {
+            return;
+        }
+        try {
+            drain.join(TimeUnit.SECONDS.toMillis(2));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    /**
+     * Raised when the bridge process ran but its stdout could not be turned into the
+     * expected JSON payload. Distinct from a timeout or a configuration error because
+     * only this class of failure is worth retrying.
+     */
+    private static final class UnusableBridgeOutputException extends RuntimeException {
+        UnusableBridgeOutputException(String message, Throwable cause) {
+            super(message, cause);
+        }
     }
 
     static JsonObject normalizeClaudeHistoryMessage(JsonObject originalMessage) {

@@ -135,6 +135,10 @@ public class SessionMessageOrchestrator {
             return CompletableFuture.completedFuture(null);
         }
 
+        // Clear any error left by an earlier load. Without this the stale message is
+        // re-sent on every subsequent state change, so one transient failure keeps
+        // re-raising the same toast long after the reload that caused it succeeded.
+        state.setError(null);
         state.setLoading(true);
         callbackFacade.notifyStateChange(state.isBusy(), state.isLoading(), state.getError());
 
