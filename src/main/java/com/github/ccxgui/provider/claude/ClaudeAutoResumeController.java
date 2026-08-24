@@ -22,7 +22,8 @@ import java.util.function.Supplier;
  * account's usage limit resets.
  *
  * <p>Lifecycle, in one sentence: a turn ends in an error → we fetch fresh usage
- * data → if a rate-limit window is exhausted we <em>arm</em> (schedule a wake for
+ * data → if a rate-limit window is exhausted, or the bridge reported a
+ * {@link ClaudeUsageLimitHint} for the turn, we <em>arm</em> (schedule a wake for
  * just after the latest reset) → at wake we re-fetch and only <em>resume</em>
  * (send the configured prompt) once the block has verifiably lifted.
  *
@@ -151,6 +152,23 @@ public final class ClaudeAutoResumeController {
      *         value, and the future never completes exceptionally.
      */
     public CompletableFuture<Void> onTurnError(String error) {
+        return onTurnError(error, null);
+    }
+
+    /**
+     * As {@link #onTurnError(String)}, with the bridge's own verdict on whether a
+     * usage limit ended the turn.
+     *
+     * <p>The endpoint assessment alone is not sufficient evidence. It lags
+     * enforcement, returns nothing at all for API-key accounts, and — the case
+     * this overload exists for — can read clear when the account is blocked for
+     * a <em>subagent</em>'s model or window. A non-null {@code hint} means the SDK
+     * itself said the turn stopped on a limit, so we arm on that authority and use
+     * whichever reset time is later: the endpoint's or the hint's. Wake-time
+     * verification is unchanged, so an over-eager arm costs one re-check, never a
+     * premature resume.
+     */
+    public CompletableFuture<Void> onTurnError(String error, ClaudeUsageLimitHint hint) {
         if (disposed || armed || !isEnabledForClaude()) {
             return CompletableFuture.completedFuture(null);
         }
@@ -159,13 +177,22 @@ public final class ClaudeAutoResumeController {
                 return;
             }
             Assessment assessment = ClaudeUsageLimitClassifier.assess(json);
-            if (!assessment.isLimitHit()) {
+            boolean limitHit = assessment.isLimitHit() || (hint != null && hint.isLimitHit());
+            if (!limitHit) {
                 // The turn failed for some other reason; not our concern.
                 return;
             }
-            arm(assessment.getWakeAtMs(), assessment.getExhaustedWindows());
+            long wakeAtMs = Math.max(
+                    assessment.getWakeAtMs(),
+                    hint != null ? hint.getResetsAtMs() : 0L);
+            arm(wakeAtMs, assessment.getExhaustedWindows());
         }).exceptionally(ex -> {
             LOG.warn("[ClaudeAutoResume] Limit-check fetch failed: " + ex.getMessage());
+            // The fetch is only corroboration. When the bridge already told us a
+            // limit stopped the turn, losing it must not lose the wake.
+            if (hint != null && hint.isLimitHit() && !disposed && !armed) {
+                arm(hint.getResetsAtMs(), Collections.emptySet());
+            }
             return null;
         });
     }

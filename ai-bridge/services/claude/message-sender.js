@@ -38,6 +38,14 @@ import { createPreToolUseHook } from './permission-mode.js';
 import { loadMcpServersConfigAsRecord } from './mcp-status/config-loader.js';
 import { setActiveQueryResult } from './message-session-registry.js';
 import { normalizeStreamDelta, resolveSnapshotDelta, resetTurnBlockState } from './stream-delta-normalizer.js';
+import {
+  detectUsageLimit,
+  detectUsageLimitInThrownError,
+  emitUsageLimitError,
+  noteUsageLimitRecovery,
+  recordUsageLimitSignal,
+  resolveUsageLimitStop,
+} from './usage-limit-detector.js';
 import { generateSessionTitle } from '../session-title-service.js';
 import { getClaudeCliPathOverride } from '../../utils/claude-cli-path.js';
 
@@ -170,6 +178,18 @@ function processStreamMessage(msg, state, logPrefix) {
     state.streamStarted = true;
   }
 
+  // Usage-limit classification runs BEFORE the sidechain filter below, because a
+  // subagent's rate-limit message is often the only in-stream evidence and the
+  // account is blocked for the main agent too. Mirrors the same gate in
+  // persistent-query-service.js — see usage-limit-detector.js for why a
+  // successful-looking turn can still be a limit stop.
+  const limitSignal = detectUsageLimit(msg);
+  if (limitSignal) {
+    recordUsageLimitSignal(state, limitSignal);
+  } else {
+    noteUsageLimitRecovery(state, msg);
+  }
+
   // Subagent (sidechain) messages carry a non-null parent_tool_use_id pointing
   // at the main turn's Agent/Task tool_use. Their detailed thinking and tool
   // calls belong to the sidechain transcript, which the frontend loads
@@ -230,6 +250,14 @@ function processStreamMessage(msg, state, logPrefix) {
         console.log('[THINKING_START]');
       }
     }
+    return;
+  }
+
+  // The synthetic assistant message the CLI ends a quota-exhausted turn with is
+  // not model output — only the limit notice and an all-zero usage block. Suppress
+  // it so the notice renders once as the error card driven by [LIMIT_ERROR], and
+  // so its empty usage cannot zero out the turn's context-window reading.
+  if (limitSignal?.source === 'assistant') {
     return;
   }
 
@@ -382,6 +410,9 @@ async function executeWithRetry({ createQueryResult, streamingEnabled, resumeSes
         outerStreamState.streamEnded = true;
       }
       outerStreamState.streamStarted = state.streamStarted;
+      // The turn succeeded, but a usage limit is what ended it. Nothing else
+      // reports that here, so raiseError=true: Java synthesizes the error.
+      emitUsageLimitError(resolveUsageLimitStop(state), true);
       console.log('[MESSAGE_END]');
       console.log(JSON.stringify({ success: true, sessionId: state.currentSessionId }));
 
@@ -395,6 +426,10 @@ async function executeWithRetry({ createQueryResult, streamingEnabled, resumeSes
     } catch (retryError) {
       outerStreamState.streamStarted = state.streamStarted;
       outerStreamState.accumulatedUsage = state.accumulatedUsage;
+      // Carry the limit verdict out so handleSendError can attach it to the
+      // failure it is about to report.
+      outerStreamState.usageLimitSignal = state.usageLimitSignal;
+      outerStreamState.softUsageLimitSignal = state.softUsageLimitSignal;
       throw retryError;
     }
   }
@@ -444,6 +479,13 @@ function handleSendError(error, streamState, sdkStderrLines) {
     // If no assistant message was received, the usage would be incomplete anyway.
     process.stdout.write('[STREAM_END]\n');
   }
+  // A hard failure can still be a usage-limit stop. [SEND_ERROR] below already
+  // drives the error card, so raiseError=false — this only carries the reset time
+  // to the auto-resume controller.
+  emitUsageLimitError(
+    resolveUsageLimitStop(streamState) || detectUsageLimitInThrownError(error),
+    false
+  );
   const payload = buildConfigErrorPayload(error);
   if (sdkStderrLines.length > 0) {
     const sdkErrorText = sdkStderrLines.slice(-10).join('\n');

@@ -61,10 +61,43 @@ public class MessageParser {
             return new ClaudeSession.Message(ClaudeSession.Message.Type.USER, content, rawMessage);
         } else if ("assistant".equals(type)) {
             String content = extractMessageContent(msg);
+            // Check both shapes: a live SDK message carries the markers itself,
+            // while a normalized history envelope keeps them under "raw".
+            if (isApiErrorMessage(msg) || isApiErrorMessage(rawMessage)) {
+                // Claude Code records an API failure — a usage limit above all — as a
+                // synthetic assistant message tagged with `error`, not as a failed
+                // turn. Restoring it as ordinary assistant text makes a stop the user
+                // must act on read like something the agent chose to say.
+                return new ClaudeSession.Message(ClaudeSession.Message.Type.ERROR, content, rawMessage);
+            }
             return new ClaudeSession.Message(ClaudeSession.Message.Type.ASSISTANT, content, rawMessage);
         }
 
         return null;
+    }
+
+    /**
+     * Whether a persisted assistant record is one of Claude Code's synthetic
+     * API-error messages (rate limit, auth failure, overloaded, …) rather than
+     * real model output.
+     *
+     * <p>Recognized by the record's own markers: {@code isApiErrorMessage} on the
+     * JSONL entry, or the SDK's {@code error} discriminator
+     * ({@code SDKAssistantMessageError}). Both are written by the CLI; neither
+     * appears on a normal assistant message.
+     */
+    private boolean isApiErrorMessage(JsonObject msg) {
+        if (msg.has("isApiErrorMessage") && msg.get("isApiErrorMessage").isJsonPrimitive()) {
+            try {
+                if (msg.get("isApiErrorMessage").getAsBoolean()) {
+                    return true;
+                }
+            } catch (Exception ignored) {
+                // Not a boolean — fall through to the error discriminator.
+            }
+        }
+        return msg.has("error") && msg.get("error").isJsonPrimitive()
+                && !msg.get("error").getAsString().isBlank();
     }
 
     /**

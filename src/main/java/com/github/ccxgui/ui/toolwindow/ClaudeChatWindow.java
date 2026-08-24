@@ -8,6 +8,7 @@ import com.github.ccxgui.handler.PermissionHandler;
 import com.github.ccxgui.permission.PermissionService;
 import com.github.ccxgui.power.KeepAwakeService;
 import com.github.ccxgui.provider.claude.ClaudeAutoResumeController;
+import com.github.ccxgui.provider.claude.ClaudeUsageLimitHint;
 import com.github.ccxgui.provider.claude.ClaudeSDKBridge;
 import com.github.ccxgui.provider.codex.CodexSDKBridge;
 import com.github.ccxgui.provider.common.DaemonBridge;
@@ -908,15 +909,16 @@ public class ClaudeChatWindow {
             }
 
             @Override
-            public void onTurnError(String error) {
-                super.onTurnError(error);
+            public void onTurnError(String error, String usageLimitHintJson) {
+                super.onTurnError(error, usageLimitHintJson);
                 // The busy hold has just been dropped by onStateChange, but this may
                 // be a usage-limit failure that ends in a scheduled restart — in
                 // which case sleep must stay blocked. Hold across the assessment so
                 // the decision, not a race with it, decides whether we let go.
                 KeepAwakeService.getInstance().acquire(limitCheckKeepAwakeToken, "usage-limit assessment");
-                autoResumeController.onTurnError(error).whenComplete((ignored, throwable) ->
-                        KeepAwakeService.getInstance().release(limitCheckKeepAwakeToken));
+                autoResumeController.onTurnError(error, ClaudeUsageLimitHint.parse(usageLimitHintJson))
+                        .whenComplete((ignored, throwable) ->
+                                KeepAwakeService.getInstance().release(limitCheckKeepAwakeToken));
             }
         };
         session.setCallback(sessionCallbackAdapter);
@@ -1018,6 +1020,28 @@ public class ClaudeChatWindow {
                             callJavaScript("showThinkingStatus", active ? "true" : "false");
                         }
                     });
+                } else if ("usage_limit".equals(event)) {
+                    // A background-agent continuation ran out of quota between turns.
+                    // That turn never passes through executeTurn, so the [LIMIT_ERROR]
+                    // channel cannot carry it: without this branch the stop is
+                    // completely silent — no error, and auto-resume never arms even
+                    // though the account is blocked.
+                    String limitSessionId = data.has("sessionId") && data.get("sessionId").isJsonPrimitive()
+                            ? data.get("sessionId").getAsString() : null;
+                    String currentSessionId = session != null ? session.getSessionId() : null;
+                    if (limitSessionId == null || currentSessionId == null
+                            || !currentSessionId.equals(limitSessionId)) {
+                        return;
+                    }
+                    if (!data.has("limit") || !data.get("limit").isJsonObject()) {
+                        LOG.warn("[ClaudeChatWindow] usage_limit event missing limit payload");
+                        return;
+                    }
+                    ClaudeUsageLimitHint hint = ClaudeUsageLimitHint.from(data.getAsJsonObject("limit"));
+                    if (hint == null) {
+                        return;
+                    }
+                    handleInterTurnUsageLimit(hint);
                 } else if ("task_event".equals(event)) {
                     // Async subagent (Agent/Task tool with run_in_background:true)
                     // lifecycle event forwarded by the
@@ -1363,6 +1387,28 @@ public class ClaudeChatWindow {
         snapshot.scheduledSendText = scheduledSendController != null ? scheduledSendController.getMessage() : null;
 
         TabStateService.getInstance(project).saveTabSessionState(tabIndex, snapshot);
+    }
+
+    /**
+     * A usage limit stopped a continuation that ran between turns (a background
+     * agent's task-notification wake-up). There is no turn to attach an error to,
+     * so this drives the two things that would otherwise be lost: the user-facing
+     * notification, and the auto-resume assessment.
+     *
+     * <p>The red error card in the transcript comes from the reload the paired
+     * {@code session_updated} triggers — {@code MessageParser} renders the CLI's
+     * synthetic rate-limit message as an error rather than as agent text.
+     */
+    private void handleInterTurnUsageLimit(ClaudeUsageLimitHint hint) {
+        LOG.info("[ClaudeChatWindow] Inter-turn usage limit (source=" + hint.getSource()
+                + ", resetsAt=" + hint.getResetsAtMs() + ")");
+        com.github.ccxgui.notifications.ClaudeNotifier.showTurnError(project, hint.getMessage());
+        // Mirrors the in-turn path: hold sleep off across the assessment so the
+        // decision, not a race with it, decides whether the machine may idle.
+        KeepAwakeService.getInstance().acquire(limitCheckKeepAwakeToken, "usage-limit assessment");
+        autoResumeController.onTurnError(hint.getMessage(), hint)
+                .whenComplete((ignored, throwable) ->
+                        KeepAwakeService.getInstance().release(limitCheckKeepAwakeToken));
     }
 
     /**

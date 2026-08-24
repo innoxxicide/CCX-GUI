@@ -13,6 +13,7 @@ import {
   removeRuntime,
   touchRuntime
 } from './runtime-registry.js';
+import { detectUsageLimit } from './usage-limit-detector.js';
 
 let cachedQueryFn = null;
 
@@ -306,6 +307,23 @@ export function startPerpetualReader(runtime, callbacks) {
   const emitTaskEvent = (sessionId, taskMsg) =>
     emitSessionScopedEvent('task_event', sessionId, { taskEvent: taskMsg });
 
+  // A usage-limit stop that happens between turns. Background agents wake the
+  // session with a task-notification, and the continuation turn the CLI runs for
+  // it never passes through executeTurn — so [LIMIT_ERROR] cannot carry it and
+  // the stop would otherwise be invisible: no error card, no auto-resume. The
+  // event is session-scoped so only the owning chat window reacts.
+  const emitUsageLimitEvent = (sessionId, signal) =>
+    emitSessionScopedEvent('usage_limit', sessionId, {
+      limit: {
+        limitHit: true,
+        message: signal.text,
+        resetsAt: signal.resetsAt || 0,
+        source: signal.source,
+        sidechain: !!signal.sidechain,
+        raiseError: true
+      }
+    });
+
   // Start the perpetual reader loop; return the promise so callers (and tests)
   // can await its completion.
   return (async () => {
@@ -369,7 +387,20 @@ export function startPerpetualReader(runtime, callbacks) {
           if (sid) {
             if (!runtime.interTurnActive && (type === 'assistant' || type === 'user' || type === 'result')) {
               runtime.interTurnActive = true;
+              runtime.interTurnUsageLimitReported = false;
               emitInterTurnActivity(sid, true);
+            }
+            // Report the stop once per continuation: the CLI emits the synthetic
+            // rate-limit assistant message and, right behind it, the terminating
+            // result whose text repeats the notice.
+            if (!runtime.interTurnUsageLimitReported) {
+              const limitSignal = detectUsageLimit(msg);
+              if (limitSignal) {
+                runtime.interTurnUsageLimitReported = true;
+                console.log('[PERPETUAL_READER] Inter-turn usage limit detected for sessionId=' + sid
+                  + ', source=' + limitSignal.source);
+                emitUsageLimitEvent(sid, limitSignal);
+              }
             }
             if (type === 'assistant') {
               emitInterTurnEvent(sid);

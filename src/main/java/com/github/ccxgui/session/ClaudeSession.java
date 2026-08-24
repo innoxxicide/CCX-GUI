@@ -154,6 +154,21 @@ public class ClaudeSession {
         }
 
         /**
+         * Same signal as {@link #onTurnError(String)}, plus the bridge's
+         * usage-limit verdict for the turn when it had one.
+         *
+         * <p>{@code usageLimitHintJson} is the {@code [LIMIT_ERROR]} payload
+         * (see {@code ai-bridge/services/claude/usage-limit-detector.js}) and is
+         * non-null only when the turn stopped because the account ran out of
+         * quota — including when a <em>subagent</em> was the one blocked, which
+         * the account-usage endpoint alone cannot reliably reveal in time. It
+         * carries the reset timestamp used to schedule the wake.
+         */
+        default void onTurnError(String error, String usageLimitHintJson) {
+            onTurnError(error);
+        }
+
+        /**
          * Called when a Claude Code task_* SDK system event is received
          * (task_started / task_progress / task_notification).
          *

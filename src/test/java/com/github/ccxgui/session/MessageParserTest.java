@@ -97,4 +97,82 @@ public class MessageParserTest {
         assertEquals("", parsed.content);
         assertEquals(normalizedRaw, parsed.raw);
     }
+
+    @Test
+    public void parseServerMessageRestoresSyntheticApiErrorAsAnError() {
+        // Claude Code records a usage-limit stop as a synthetic assistant message,
+        // not as a failed turn. Restoring it as plain assistant text makes a stop
+        // the user must act on read like something the agent chose to say.
+        MessageParser parser = new MessageParser();
+        String notice = "You've hit your session limit · resets 3pm (Europe/Kiev)";
+
+        ClaudeSession.Message parsed = parser.parseServerMessage(syntheticLimitRecord(notice));
+
+        assertNotNull(parsed);
+        assertEquals(ClaudeSession.Message.Type.ERROR, parsed.type);
+        assertEquals(notice, parsed.content);
+    }
+
+    @Test
+    public void parseServerMessageRestoresSyntheticApiErrorFromNormalizedEnvelope() {
+        MessageParser parser = new MessageParser();
+        String notice = "You've hit your session limit · resets 3pm (Europe/Kiev)";
+
+        JsonObject envelope = new JsonObject();
+        envelope.addProperty("type", "assistant");
+        envelope.addProperty("content", notice);
+        envelope.add("raw", syntheticLimitRecord(notice));
+
+        ClaudeSession.Message parsed = parser.parseServerMessage(envelope);
+
+        assertNotNull(parsed);
+        assertEquals(ClaudeSession.Message.Type.ERROR, parsed.type);
+    }
+
+    @Test
+    public void parseServerMessageKeepsOrdinaryAssistantMessagesAsAssistant() {
+        MessageParser parser = new MessageParser();
+
+        JsonObject textBlock = new JsonObject();
+        textBlock.addProperty("type", "text");
+        textBlock.addProperty("text", "Done — three files changed.");
+
+        JsonArray content = new JsonArray();
+        content.add(textBlock);
+
+        JsonObject message = new JsonObject();
+        message.add("content", content);
+
+        JsonObject raw = new JsonObject();
+        raw.addProperty("type", "assistant");
+        raw.add("message", message);
+
+        ClaudeSession.Message parsed = parser.parseServerMessage(raw);
+
+        assertNotNull(parsed);
+        assertEquals(ClaudeSession.Message.Type.ASSISTANT, parsed.type);
+    }
+
+    /** The shape Claude Code writes to JSONL when an API error ends a turn. */
+    private static JsonObject syntheticLimitRecord(String notice) {
+        JsonObject textBlock = new JsonObject();
+        textBlock.addProperty("type", "text");
+        textBlock.addProperty("text", notice);
+
+        JsonArray content = new JsonArray();
+        content.add(textBlock);
+
+        JsonObject message = new JsonObject();
+        message.addProperty("model", "<synthetic>");
+        message.addProperty("role", "assistant");
+        message.addProperty("stop_reason", "stop_sequence");
+        message.add("content", content);
+
+        JsonObject raw = new JsonObject();
+        raw.addProperty("type", "assistant");
+        raw.addProperty("error", "rate_limit");
+        raw.addProperty("isApiErrorMessage", true);
+        raw.add("message", message);
+        return raw;
+    }
 }

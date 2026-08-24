@@ -81,6 +81,16 @@ class ClaudeStreamAdapter {
             return;
         }
 
+        if (line.startsWith("[LIMIT_ERROR]")) {
+            // Hint channel: the turn stopped on a Claude usage limit. Deliberately
+            // does NOT touch result.success / hadSendError — the request itself may
+            // have completed normally (the CLI ends a quota-exhausted turn with an
+            // ordinary success result), and the limit is reported separately so the
+            // auto-resume controller can schedule a wake from the reset time.
+            callback.onMessage("limit_error", line.substring("[LIMIT_ERROR]".length()).trim());
+            return;
+        }
+
         if (line.startsWith("[CONTENT]")) {
             String content = line.substring("[CONTENT]".length()).trim();
             assistantContent.append(content);

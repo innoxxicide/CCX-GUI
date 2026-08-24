@@ -104,6 +104,110 @@ public class ClaudeAutoResumeControllerTest {
         assertEquals(1, host.armedCount);
     }
 
+    // ===== arming from the bridge's verdict =====
+
+    @Test
+    public void armsFromBridgeHintWhenEndpointReportsNoLimit() {
+        // The stop the endpoint cannot see: a subagent ran out of quota, and the
+        // account-usage endpoint still reads clear (it lags enforcement, and is
+        // unavailable entirely for API-key accounts). The bridge saw the SDK say so.
+        RecordingHost host = new RecordingHost("claude");
+        ManualScheduler scheduler = new ManualScheduler();
+        AtomicReference<String> payload = new AtomicReference<>(available("\"five_hour\":" + window(12.0, futureIso())));
+        ClaudeAutoResumeController controller = controller(host, scheduler, payload, true, PROMPT);
+
+        controller.onTurnError("subagent hit the limit", hint(futureMillis()));
+
+        assertTrue(controller.isArmed());
+        assertEquals(1, host.armedCount);
+        assertEquals(futureMillis(), controller.getWakeAtMs());
+        assertNotNull(scheduler.last);
+    }
+
+    @Test
+    public void hintDoesNotArmOnAnUnrelatedFailure() {
+        RecordingHost host = new RecordingHost("claude");
+        ManualScheduler scheduler = new ManualScheduler();
+        AtomicReference<String> payload = new AtomicReference<>(available("\"five_hour\":" + window(12.0, futureIso())));
+        ClaudeAutoResumeController controller = controller(host, scheduler, payload, true, PROMPT);
+
+        controller.onTurnError("socket hang up", null);
+
+        assertFalse(controller.isArmed());
+        assertEquals(0, host.armedCount);
+    }
+
+    @Test
+    public void wakesAfterTheLaterOfTheEndpointAndHintResets() {
+        // Never resume while a second, longer window is still blocking.
+        RecordingHost host = new RecordingHost("claude");
+        ManualScheduler scheduler = new ManualScheduler();
+        AtomicReference<String> payload = new AtomicReference<>(exhausted(99.0, futureIso()));
+        ClaudeAutoResumeController controller = controller(host, scheduler, payload, true, PROMPT);
+
+        controller.onTurnError("limit", hint(System.currentTimeMillis() + 60_000L));
+
+        assertEquals(futureMillis(), controller.getWakeAtMs());
+    }
+
+    @Test
+    public void armsFromHintWhenTheUsageFetchFails() {
+        // The fetch is corroboration only; losing it must not lose the wake.
+        RecordingHost host = new RecordingHost("claude");
+        ManualScheduler scheduler = new ManualScheduler();
+        ClaudeAutoResumeController controller = new ClaudeAutoResumeController(
+                host, stubSettings(true, PROMPT), scheduler,
+                () -> CompletableFuture.failedFuture(new RuntimeException("offline")));
+
+        controller.onTurnError("limit", hint(futureMillis()));
+
+        assertTrue(controller.isArmed());
+        assertEquals(futureMillis(), controller.getWakeAtMs());
+        assertEquals(1, host.armedCount);
+    }
+
+    @Test
+    public void aFailedFetchWithoutAHintDoesNotArm() {
+        RecordingHost host = new RecordingHost("claude");
+        ManualScheduler scheduler = new ManualScheduler();
+        ClaudeAutoResumeController controller = new ClaudeAutoResumeController(
+                host, stubSettings(true, PROMPT), scheduler,
+                () -> CompletableFuture.failedFuture(new RuntimeException("offline")));
+
+        controller.onTurnError("limit", null);
+
+        assertFalse(controller.isArmed());
+        assertEquals(0, host.armedCount);
+    }
+
+    @Test
+    public void hintArmingStillRespectsTheEnabledGate() {
+        RecordingHost host = new RecordingHost("claude");
+        ManualScheduler scheduler = new ManualScheduler();
+        AtomicReference<String> payload = new AtomicReference<>(available("\"five_hour\":" + window(12.0, futureIso())));
+        ClaudeAutoResumeController controller = controller(host, scheduler, payload, false, PROMPT);
+
+        controller.onTurnError("limit", hint(futureMillis()));
+
+        assertFalse(controller.isArmed());
+    }
+
+    @Test
+    public void resumesAtWakeWhenArmedFromAHintAlone() {
+        // No exhausted window was ever recorded, so wake-time verification falls
+        // back to a plain re-assessment — which must not block the resume.
+        RecordingHost host = new RecordingHost("claude");
+        ManualScheduler scheduler = new ManualScheduler();
+        AtomicReference<String> payload = new AtomicReference<>(available("\"five_hour\":" + window(12.0, futureIso())));
+        ClaudeAutoResumeController controller = controller(host, scheduler, payload, true, PROMPT);
+
+        controller.onTurnError("subagent hit the limit", hint(futureMillis()));
+        scheduler.fireLast();
+
+        assertEquals(PROMPT, host.lastResumePrompt);
+        assertFalse(controller.isArmed());
+    }
+
     // ===== wake-time verify-before-send =====
 
     @Test
@@ -291,6 +395,13 @@ public class ClaudeAutoResumeControllerTest {
                 return prompt;
             }
         };
+    }
+
+    /** A bridge verdict claiming the turn stopped on a limit that lifts at {@code resetsAtMs}. */
+    private static ClaudeUsageLimitHint hint(long resetsAtMs) {
+        return ClaudeUsageLimitHint.parse(
+                "{\"limitHit\":true,\"message\":\"You've hit your session limit\","
+                        + "\"resetsAt\":" + resetsAtMs + ",\"source\":\"tool_result\",\"sidechain\":true}");
     }
 
     private static String futureIso() {

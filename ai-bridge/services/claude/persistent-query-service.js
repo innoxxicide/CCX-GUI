@@ -59,6 +59,14 @@ import {
   processToolResultMessages,
   shouldOutputMessage,
 } from './stream-event-processor.js';
+import {
+  detectUsageLimit,
+  detectUsageLimitInThrownError,
+  emitUsageLimitError,
+  noteUsageLimitRecovery,
+  recordUsageLimitSignal,
+  resolveUsageLimitStop,
+} from './usage-limit-detector.js';
 import { generateSessionTitle } from '../session-title-service.js';
 import { getClaudeCliPathOverride } from '../../utils/claude-cli-path.js';
 
@@ -333,6 +341,18 @@ _sessionCleanupTimer.unref();
         turnState.streamStarted = true;
       }
 
+      // Usage-limit classification runs BEFORE the sidechain filter below: when a
+      // subagent is the one that runs out of quota, its rate-limit message is the
+      // only in-stream evidence, and the account is blocked for the main agent
+      // too. See usage-limit-detector.js for why a successful-looking turn can
+      // still be a limit stop.
+      const limitSignal = detectUsageLimit(msg);
+      if (limitSignal) {
+        recordUsageLimitSignal(turnState, limitSignal);
+      } else {
+        noteUsageLimitRecovery(turnState, msg);
+      }
+
       // Subagent (sidechain) messages carry a non-null parent_tool_use_id pointing
       // at the main turn's Agent/Task tool_use. Their detailed thinking and tool
       // calls belong to the sidechain transcript, which the frontend loads
@@ -349,18 +369,28 @@ _sessionCleanupTimer.unref();
         continue;
       }
 
+      // The synthetic assistant message the CLI ends a quota-exhausted turn with
+      // is not model output: it carries nothing but the limit notice, and an
+      // all-zero usage block. Suppress it so the notice is rendered once — as the
+      // error card driven by [LIMIT_ERROR] below, rather than also being appended
+      // to the last chat bubble as ordinary agent text — and so its empty usage
+      // cannot overwrite the turn's real context-window reading with zero.
+      const suppressAsLimitNotice = limitSignal?.source === 'assistant';
+
       // Preserve all existing message processing logic
-      if (shouldOutputMessage(msg, turnState)) {
+      if (!suppressAsLimitNotice && shouldOutputMessage(msg, turnState)) {
         console.log('[MESSAGE]', JSON.stringify(msg));
       }
 
-      processMessageContent(msg, turnState);
-      // Emit usage tag for assistant messages.
-      // IMPORTANT: This is the authoritative source for token usage, NOT the accumulatedUsage.
-      // The assistant message's usage field contains the correct cumulative total.
-      // In streaming mode, this overwrites any intermediate [USAGE] values sent during streaming.
-      // The Java backend (ClaudeMessageHandler.handleAssistantMessage) relies on this for correct totals.
-      emitUsageTag(msg);
+      if (!suppressAsLimitNotice) {
+        processMessageContent(msg, turnState);
+        // Emit usage tag for assistant messages.
+        // IMPORTANT: This is the authoritative source for token usage, NOT the accumulatedUsage.
+        // The assistant message's usage field contains the correct cumulative total.
+        // In streaming mode, this overwrites any intermediate [USAGE] values sent during streaming.
+        // The Java backend (ClaudeMessageHandler.handleAssistantMessage) relies on this for correct totals.
+        emitUsageTag(msg);
+      }
       processToolResultMessages(msg);
 
       if (msg?.type === 'system' && msg.session_id) {
@@ -394,6 +424,12 @@ _sessionCleanupTimer.unref();
       process.stdout.write('[STREAM_END]\n');
       turnState.streamEnded = true;
     }
+
+    // The turn reached a non-error result, but a usage limit is what ended it.
+    // Emitted after [STREAM_END] and before [MESSAGE_END] so Java's error path
+    // runs against a finished stream (see ClaudeMessageHandler.onError's
+    // ordering note). raiseError=true because nothing else will report it.
+    emitUsageLimitError(resolveUsageLimitStop(turnState), true);
 
     const finalSessionId = turnState.finalSessionId || runtime.sessionId || requestContext.requestedSessionId || '';
     if (finalSessionId) {
@@ -582,6 +618,14 @@ async function sendInternal(params, withAttachments) {
         elapsedMs
       }));
     } else {
+      // A hard failure can still be a usage-limit stop (result.is_error, or the
+      // SDK throwing on a 429). [SEND_ERROR] already drives the red error card,
+      // so this only carries the structured reset time to the auto-resume
+      // controller — hence raiseError=false.
+      emitUsageLimitError(
+        resolveUsageLimitStop(turnMeta.state) || detectUsageLimitInThrownError(error),
+        false
+      );
       emitSendError(runtime, error, requestContext);
     }
 

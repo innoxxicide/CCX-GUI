@@ -170,10 +170,13 @@ public class CallbackHandler {
     /**
      * Notify that a Claude turn ended in an error (single-shot, post-dedup).
      * Drives the auto-resume-on-usage-limit detection.
+     *
+     * @param usageLimitHintJson the bridge's usage-limit verdict for the turn, or
+     *                           null when the turn failed for another reason
      */
-    public void notifyTurnError(String error) {
+    public void notifyTurnError(String error, String usageLimitHintJson) {
         if (callback != null) {
-            callback.onTurnError(error);
+            callback.onTurnError(error, usageLimitHintJson);
         }
     }
 

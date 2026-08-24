@@ -3,6 +3,7 @@ package com.github.ccxgui.session;
 import com.github.ccxgui.session.ClaudeSession.Message;
 import com.github.ccxgui.handler.SettingsHandler;
 import com.github.ccxgui.notifications.ClaudeNotifier;
+import com.github.ccxgui.provider.claude.ClaudeUsageLimitHint;
 import com.github.ccxgui.provider.claude.ClaudeUsageLimitsService;
 import com.github.ccxgui.provider.common.MessageCallback;
 import com.github.ccxgui.provider.common.SDKResult;
@@ -50,6 +51,13 @@ public class ClaudeMessageHandler implements MessageCallback {
     private volatile boolean streamEndedThisTurn = false;
     private volatile boolean errorReportedThisTurn = false;
     private volatile String lastReportedError = null;
+
+    /**
+     * The bridge's usage-limit verdict for the current turn ({@code [LIMIT_ERROR]}),
+     * held until the turn's error is reported so it can ride along to auto-resume.
+     * Cleared at every turn boundary so a stale verdict can never arm a later turn.
+     */
+    private volatile String pendingUsageLimitHint = null;
 
     // Streaming segment state (used to split text/thinking around tool calls).
     // Written on SDK callback thread, read on EDT via invokeLater() happens-before.
@@ -144,6 +152,9 @@ public class ClaudeMessageHandler implements MessageCallback {
             case "system":
                 handleSystemMessage(content);
                 break;
+            case "limit_error":
+                handleLimitError(content);
+                break;
             case "node_log":
                 // Forward Node.js logs to frontend console
                 callbackHandler.notifyNodeLog(content);
@@ -198,8 +209,12 @@ public class ClaudeMessageHandler implements MessageCallback {
 
         // Single-shot per-turn error signal for auto-resume-on-usage-limit
         // detection. Fired here (after the dedup guard above) rather than off
-        // notifyStateChange, which can replay a stale error mid-stream.
-        callbackHandler.notifyTurnError(error);
+        // notifyStateChange, which can replay a stale error mid-stream. The
+        // usage-limit hint is consumed here so a turn that reports two errors
+        // cannot arm auto-resume twice off the same verdict.
+        String limitHint = pendingUsageLimitHint;
+        pendingUsageLimitHint = null;
+        callbackHandler.notifyTurnError(error, limitHint);
 
         // Status bar + opt-in error toast/sound
         ClaudeNotifier.showTurnError(project, error);
@@ -210,6 +225,9 @@ public class ClaudeMessageHandler implements MessageCallback {
      */
     @Override
     public void onComplete(SDKResult result) {
+        // Drop any verdict the turn's error path did not consume, so it cannot
+        // leak into the next turn. onError already took it when it fired.
+        pendingUsageLimitHint = null;
         if (streamEndedThisTurn) {
             streamEndedThisTurn = false;
             errorReportedThisTurn = false;
@@ -655,6 +673,36 @@ public class ClaudeMessageHandler implements MessageCallback {
     }
 
     /**
+     * Handle a {@code [LIMIT_ERROR]} report: this turn stopped because the Claude
+     * account ran out of quota.
+     *
+     * <p>Claude Code does not fail such a turn. It ends it with a synthetic
+     * assistant message carrying only the limit notice and returns an ordinary
+     * success result, so without this hook the notice lands in the chat as plain
+     * agent text, no error is registered, and auto-resume is never armed. That is
+     * especially common in multi-agent runs, where the first thing to hit the
+     * limit is often a subagent whose failure the parent then reports calmly.
+     *
+     * <p>{@code raiseError} distinguishes the two cases: when the turn ended in an
+     * ordinary success we raise the error ourselves; when a {@code [SEND_ERROR]}
+     * for the same stop is already in flight we only stash the verdict, and
+     * {@link #onError} attaches it to the error it is about to report.
+     */
+    private void handleLimitError(String content) {
+        ClaudeUsageLimitHint hint = ClaudeUsageLimitHint.parse(content);
+        if (hint == null) {
+            LOG.warn("Ignoring unparseable [LIMIT_ERROR] payload");
+            return;
+        }
+        pendingUsageLimitHint = content;
+        LOG.info("Claude usage limit stopped the turn (source=" + hint.getSource()
+                + ", sidechain=" + hint.isSidechain() + ", resetsAt=" + hint.getResetsAtMs() + ")");
+        if (hint.shouldRaiseError()) {
+            onError(hint.getMessage());
+        }
+    }
+
+    /**
      * Handle the list of available slash commands.
      */
     private void handleSlashCommands(String content) {
@@ -735,6 +783,7 @@ public class ClaudeMessageHandler implements MessageCallback {
         streamEndedThisTurn = false;
         errorReportedThisTurn = false;
         lastReportedError = null;
+        pendingUsageLimitHint = null;
         resetSegmentState();
         callbackHandler.notifyStreamStart();
     }
