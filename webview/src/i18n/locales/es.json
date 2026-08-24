@@ -91,6 +91,11 @@
       "armed": "Reanudación automática activada — continuará cuando se restablezca el límite de uso.",
       "armedAt": "Reanudación automática activada — continuará alrededor de las {{time}}."
     },
+    "autoRetry": {
+      "pendingAt": "Reintentando tras un error: intento {{attempt}} a las {{time}}.",
+      "inFlight": "Reintentando tras un error: intento {{attempt}} enviado, esperando respuesta.",
+      "stop": "Detener"
+    },
     "goInstallSdk": "Ir a instalar",
     "commandNotImplemented": "La función `{{command}}` aún no está implementada.",
     "clearCommandDescription": "Borrar historial de conversación e iniciar nueva sesión",
@@ -291,6 +296,14 @@
         "enabled": "Activado",
         "disabled": "Desactivado",
         "hint": "Cuando está activado, el equipo no se suspende mientras un agente está trabajando ni mientras una ejecución espera para reiniciarse tras el restablecimiento de un límite de uso. Solo se impide la suspensión automática por inactividad: cerrar la tapa o suspender manualmente sigue funcionando, y la pantalla puede apagarse igualmente."
+      },
+      "autoRetry": {
+        "label": "Reintentar automáticamente tras un error",
+        "enabled": "Activado",
+        "disabled": "Desactivado",
+        "hint": "Cuando un turno se detiene con un error, se envía al agente un mensaje para que retome el trabajo: tres veces con un minuto de diferencia y luego cada cinco minutos hasta que responda. Las paradas por límite de uso quedan excluidas: esas esperan a que el límite se restablezca. Un aviso sobre el campo de entrada muestra el reintento en curso y permite detenerlo.",
+        "promptLabel": "Mensaje de reintento",
+        "promptHint": "Se envía al agente automáticamente tras un error. Déjalo vacío para usar el valor predeterminado."
       },
       "sendShortcut": {
         "label": "Atajo de envío",

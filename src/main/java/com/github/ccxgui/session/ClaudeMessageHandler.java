@@ -228,6 +228,14 @@ public class ClaudeMessageHandler implements MessageCallback {
         // Drop any verdict the turn's error path did not consume, so it cannot
         // leak into the next turn. onError already took it when it fired.
         pendingUsageLimitHint = null;
+        // Captured before the per-turn flags below are reset. Both conditions are
+        // needed: a hard failure never reaches onComplete at all (the executor
+        // short-circuits on [SEND_ERROR]), but a usage-limit stop does — it ends
+        // the turn with an ordinary success result and reports its error through
+        // handleLimitError, so result.success alone would call that turn a win.
+        // A user abort also arrives here with success=false and must not count:
+        // recovery means the agent answered, and nobody answered.
+        boolean turnSucceeded = result != null && result.success && !errorReportedThisTurn;
         if (streamEndedThisTurn) {
             streamEndedThisTurn = false;
             errorReportedThisTurn = false;
@@ -240,6 +248,9 @@ public class ClaudeMessageHandler implements MessageCallback {
             state.setBusy(false);
             state.setLoading(false);
             callbackHandler.notifyStateChange(state.isBusy(), state.isLoading(), state.getError());
+            if (turnSucceeded) {
+                callbackHandler.notifyTurnSuccess();
+            }
             return;
         }
 
@@ -272,6 +283,9 @@ public class ClaudeMessageHandler implements MessageCallback {
         }
 
         callbackHandler.notifyStateChange(state.isBusy(), state.isLoading(), state.getError());
+        if (turnSucceeded) {
+            callbackHandler.notifyTurnSuccess();
+        }
     }
 
     // ===== Private methods: handle different message types =====

@@ -108,6 +108,11 @@
       "armed": "Auto-resume armed — will continue when your usage limit resets.",
       "armedAt": "Auto-resume armed — will continue around {{time}}."
     },
+    "autoRetry": {
+      "pendingAt": "Retrying after an error — attempt {{attempt}} at {{time}}.",
+      "inFlight": "Retrying after an error — attempt {{attempt}} sent, waiting for a reply.",
+      "stop": "Stop"
+    },
     "goInstallSdk": "Go to Install",
     "sdkTooLowForFable": "Claude SDK version is too low for the Fable model. Update the Claude Code SDK in Settings.",
     "updateSdk": "Update SDK",
@@ -442,6 +447,14 @@
         "enabled": "Enabled",
         "disabled": "Disabled",
         "hint": "When enabled, the computer is kept from falling asleep while an agent is working — and while a run is waiting to restart after a usage limit resets. Only automatic idle sleep is suppressed: closing the lid or sleeping the machine yourself still works, and the display is still free to switch off."
+      },
+      "autoRetry": {
+        "label": "Retry Automatically After an Error",
+        "enabled": "Enabled",
+        "disabled": "Disabled",
+        "hint": "When a turn stops with an error, send the agent a message to pick the work back up — three times a minute apart, then every five minutes until it answers. Usage-limit stops are excluded: those wait for the limit to reset instead. A banner above the input shows a run in progress and can stop it.",
+        "promptLabel": "Retry message",
+        "promptHint": "Sent to the agent automatically after an error. Leave empty for the default."
       },
       "sendShortcut": {
         "label": "Send Shortcut",

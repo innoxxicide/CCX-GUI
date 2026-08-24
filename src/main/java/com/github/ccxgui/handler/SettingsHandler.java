@@ -274,6 +274,18 @@ public class SettingsHandler extends BaseMessageHandler {
             case "set_claude_auto_resume_prompt":
                 projectConfigHandler.handleSetClaudeAutoResumePrompt(content);
                 return true;
+            case "get_auto_retry_enabled":
+                projectConfigHandler.handleGetAutoRetryEnabled();
+                return true;
+            case "set_auto_retry_enabled":
+                projectConfigHandler.handleSetAutoRetryEnabled(content);
+                return true;
+            case "get_auto_retry_prompt":
+                projectConfigHandler.handleGetAutoRetryPrompt();
+                return true;
+            case "set_auto_retry_prompt":
+                projectConfigHandler.handleSetAutoRetryPrompt(content);
+                return true;
             case "get_keep_awake_enabled":
                 projectConfigHandler.handleGetKeepAwakeEnabled();
                 return true;

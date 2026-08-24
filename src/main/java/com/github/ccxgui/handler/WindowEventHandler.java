@@ -19,7 +19,8 @@ public class WindowEventHandler extends BaseMessageHandler {
         "create_new_session", "frontend_ready", "refresh_slash_commands",
         "claude_auto_resume_manual",
         "schedule_send", "cancel_scheduled_send", "send_scheduled_now",
-        "get_scheduled_send_status"
+        "get_scheduled_send_status",
+        "cancel_auto_retry", "get_auto_retry_status"
     };
 
     /**
@@ -49,6 +50,16 @@ public class WindowEventHandler extends BaseMessageHandler {
          * nothing until the next transition.
          */
         void onRequestScheduledSendStatus();
+
+        /** Stop the auto-retry recovery run in progress. */
+        void onCancelAutoRetry();
+
+        /**
+         * Re-push the current auto-retry state, for the same reason as
+         * {@link #onRequestScheduledSendStatus()}: a webview that reloaded mid-run
+         * would otherwise lose the banner and its stop button.
+         */
+        void onRequestAutoRetryStatus();
     }
 
     private final Callback callback;
@@ -93,6 +104,12 @@ public class WindowEventHandler extends BaseMessageHandler {
                 return true;
             case "get_scheduled_send_status":
                 callback.onRequestScheduledSendStatus();
+                return true;
+            case "cancel_auto_retry":
+                callback.onCancelAutoRetry();
+                return true;
+            case "get_auto_retry_status":
+                callback.onRequestAutoRetryStatus();
                 return true;
             default:
                 return false;

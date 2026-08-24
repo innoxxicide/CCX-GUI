@@ -169,6 +169,18 @@ public class ClaudeSession {
         }
 
         /**
+         * Called once when a turn ends without reporting an error. The counterpart
+         * of {@link #onTurnError(String)} and, like it, single-shot per turn.
+         *
+         * <p>This is the only evidence that an agent which had been failing is
+         * answering again, so it is what ends an auto-retry recovery run. Fired for
+         * every successful turn regardless of who sent it — a user's message proves
+         * recovery just as well as a retry nudge does. No-op by default.
+         */
+        default void onTurnSuccess() {
+        }
+
+        /**
          * Called when a Claude Code task_* SDK system event is received
          * (task_started / task_progress / task_notification).
          *

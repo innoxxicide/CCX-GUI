@@ -370,6 +370,43 @@ public class ProjectConfigHandler {
         }
     }
 
+    public void handleGetAutoRetryEnabled() {
+        respondWithJson("window.updateAutoRetryEnabled",
+            () -> jsonOf("autoRetryOnErrorEnabled", settingsService.getAutoRetryEnabled()),
+            jsonOf("autoRetryOnErrorEnabled", CodemossSettingsService.DEFAULT_AUTO_RETRY_ENABLED),
+            "Failed to get auto-retry enabled");
+    }
+
+    public void handleSetAutoRetryEnabled(String content) {
+        handleBooleanToggle(content, "autoRetryOnErrorEnabled",
+            CodemossSettingsService.DEFAULT_AUTO_RETRY_ENABLED, "auto-retry enabled",
+            settingsService::setAutoRetryEnabled,
+            "window.updateAutoRetryEnabled",
+            "Failed to save auto-retry setting");
+    }
+
+    public void handleGetAutoRetryPrompt() {
+        respondWithJson("window.updateAutoRetryPrompt",
+            () -> jsonOf("autoRetryPrompt", settingsService.getAutoRetryPrompt()),
+            jsonOf("autoRetryPrompt", CodemossSettingsService.DEFAULT_AUTO_RETRY_PROMPT),
+            "Failed to get auto-retry prompt");
+    }
+
+    public void handleSetAutoRetryPrompt(String content) {
+        try {
+            JsonObject json = gson.fromJson(content, JsonObject.class);
+            String prompt = readString(json, "autoRetryPrompt", CodemossSettingsService.DEFAULT_AUTO_RETRY_PROMPT);
+            settingsService.setAutoRetryPrompt(prompt);
+            String effective = settingsService.getAutoRetryPrompt();
+            LOG.info("[ProjectConfigHandler] Set auto-retry prompt, length: " + effective.length());
+            pushJson("window.updateAutoRetryPrompt", jsonOf("autoRetryPrompt", effective));
+        } catch (Exception e) {
+            LOG.error("[ProjectConfigHandler] Failed to set auto-retry prompt; errorClass="
+                    + e.getClass().getSimpleName(), e);
+            showError("Failed to save auto-retry prompt. See IDE log for details.");
+        }
+    }
+
     public void handleGetSendShortcut() {
         try {
             String sendShortcut = PropertiesComponent.getInstance().getValue(SEND_SHORTCUT_PROPERTY_KEY, "enter");

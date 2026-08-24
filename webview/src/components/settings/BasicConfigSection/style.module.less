@@ -895,3 +895,44 @@
     font-size: 12px;
   }
 }
+
+/* Free-text prompt field used by settings that send a message on the user's
+   behalf (auto-retry). Mirrors ClaudeAutoResumeSetting's field so the two read
+   as one family despite living on different tabs. */
+.promptField {
+  margin-top: 16px;
+}
+
+.promptLabel {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.promptTextarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 44px;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-secondary);
+  border-radius: 6px;
+  transition: border-color 0.2s ease;
+
+  &:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+  }
+
+  &::placeholder {
+    color: var(--text-tertiary);
+  }
+}

@@ -57,6 +57,11 @@ public class CodexMessageHandler implements MessageCallback {
      * stream ended this turn.
      */
     private boolean streamEndedThisTurn = false;
+    /**
+     * Whether {@link #onError} has already fired for the current turn. Drives the
+     * single-shot turn outcome signals that auto-retry-on-error listens to.
+     */
+    private boolean errorReportedThisTurn = false;
 
     /**
      * Constructor.
@@ -135,6 +140,7 @@ public class CodexMessageHandler implements MessageCallback {
         boolean wasStreaming = isStreaming;
         isStreaming = false;
         streamEndedThisTurn = false;
+        errorReportedThisTurn = true;
         state.setError(error);
         state.setBusy(false);
         state.setLoading(false);
@@ -162,6 +168,12 @@ public class CodexMessageHandler implements MessageCallback {
         resetStreamingAccumulator();
         callbackHandler.notifyStateChange(state.isBusy(), state.isLoading(), state.getError());
 
+        // Single-shot per-turn error signal, mirroring ClaudeMessageHandler.onError.
+        // The usage-limit hint is always null here: that detection is Claude-only
+        // (it reads the Claude Agent SDK's message shapes), so a Codex failure is
+        // always an ordinary error as far as the listeners are concerned.
+        callbackHandler.notifyTurnError(error, null);
+
         if (project != null) {
             // Status bar + opt-in error toast/sound (mirrors ClaudeMessageHandler.onError)
             com.github.ccxgui.notifications.ClaudeNotifier.showTurnError(project, error);
@@ -178,9 +190,13 @@ public class CodexMessageHandler implements MessageCallback {
     public void onComplete(SDKResult result) {
         boolean streamEndedBeforeComplete = streamEndedThisTurn;
         boolean wasStreaming = isStreaming;
+        // A Codex interruption also lands here, with success=false — that is not the
+        // agent answering, so it must not read as a recovered turn.
+        boolean turnSucceeded = result != null && result.success && !errorReportedThisTurn;
 
         isStreaming = false;
         streamEndedThisTurn = false;
+        errorReportedThisTurn = false;
         state.setBusy(false);
         state.setLoading(false);
         state.updateLastModifiedTime();
@@ -193,6 +209,9 @@ public class CodexMessageHandler implements MessageCallback {
 
         resetStreamingAccumulator();
         callbackHandler.notifyStateChange(state.isBusy(), state.isLoading(), state.getError());
+        if (turnSucceeded) {
+            callbackHandler.notifyTurnSuccess();
+        }
     }
 
     // ===== Private methods =====
@@ -844,6 +863,7 @@ public class CodexMessageHandler implements MessageCallback {
     private void handleStreamStart() {
         isStreaming = true;
         streamEndedThisTurn = false;
+        errorReportedThisTurn = false;
         resetStreamingAccumulator();
         callbackHandler.notifyStreamStart();
         LOG.debug("Codex stream started");

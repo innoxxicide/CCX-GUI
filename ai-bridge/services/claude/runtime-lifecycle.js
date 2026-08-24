@@ -324,6 +324,14 @@ export function startPerpetualReader(runtime, callbacks) {
       }
     });
 
+  // An ordinary (non-usage-limit) failure of a between-turns continuation. Same
+  // blind spot as emitUsageLimitEvent: a background agent's wake-up turn runs
+  // outside executeTurn, so its error never reaches the [SEND_ERROR] path and
+  // nothing would notice the agent had stopped. Routed to the chat window so
+  // auto-retry-on-error can nudge it back to work.
+  const emitTurnErrorEvent = (sessionId, message) =>
+    emitSessionScopedEvent('turn_error', sessionId, { message });
+
   // Start the perpetual reader loop; return the promise so callers (and tests)
   // can await its completion.
   return (async () => {
@@ -407,6 +415,16 @@ export function startPerpetualReader(runtime, callbacks) {
             } else if (type === 'result') {
               console.log('[PERPETUAL_READER] Inter-turn result detected, emitting session_updated for sessionId=' + sid);
               emitInterTurnEvent(sid);
+              // A continuation that ended badly for an ordinary reason. Reported
+              // only when the usage-limit path did not already claim this
+              // continuation, so a limit stop is never also treated as a retryable
+              // failure — retrying one would hammer a blocked account.
+              if (msg.is_error && !runtime.interTurnUsageLimitReported) {
+                console.log('[PERPETUAL_READER] Inter-turn result is an error for sessionId=' + sid);
+                emitTurnErrorEvent(sid, typeof msg.result === 'string' && msg.result
+                  ? msg.result
+                  : 'The agent stopped with an error between turns.');
+              }
               if (runtime.interTurnActive) {
                 runtime.interTurnActive = false;
                 emitInterTurnActivity(sid, false);

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { DEFAULT_PERMISSION_DIALOG_TIMEOUT_SECONDS } from '../../../utils/permissionDialogTimeout';
 import { PermissionDialogTimeoutSetting } from './PermissionDialogTimeoutSetting';
 import { KeepAwakeSetting } from './KeepAwakeSetting';
+import { AutoRetrySetting } from './AutoRetrySetting';
 
 /** Upward-opening custom select for sound selection (avoids JCEF clipping) */
 const SoundSelectUpward = ({
@@ -527,6 +528,11 @@ const BehaviorTab = ({
       {/* Keep the machine awake while an agent is working. Self-contained IPC —
           the value is account-global, so it is not part of this tab's props. */}
       <KeepAwakeSetting />
+
+      {/* Nudge the agent back to work after an error. Same self-contained IPC,
+          and next to the toggle above because both govern what happens while a
+          run is left unattended. */}
+      <AutoRetrySetting />
 
       {/* ===== Message notification settings (grouped) ===== */}
 

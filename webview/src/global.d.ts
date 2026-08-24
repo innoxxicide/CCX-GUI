@@ -463,6 +463,25 @@ interface Window {
   updateClaudeAutoResumeStatus?: (json: string) => void;
 
   /**
+   * Update the "retry automatically after an error" master toggle.
+   * Payload: {"autoRetryOnErrorEnabled": boolean}
+   */
+  updateAutoRetryEnabled?: (json: string) => void;
+
+  /**
+   * Update the auto-retry nudge text.
+   * Payload: {"autoRetryPrompt": string}
+   */
+  updateAutoRetryPrompt?: (json: string) => void;
+
+  /**
+   * Push the auto-retry recovery-run state for the active tab.
+   * Payload: {engaged: boolean, attempt: number, nextAttemptAt: number}
+   * `nextAttemptAt` is 0 while a nudge is in flight and its outcome unknown.
+   */
+  updateAutoRetryStatus?: (json: string) => void;
+
+  /**
    * Push the "Send scheduled" state for the active tab.
    * Payload: {scheduled: boolean, fireAt: number, preview: string, missed: boolean, error?: string}
    * `error` appears only when a schedule request was rejected, in which case the

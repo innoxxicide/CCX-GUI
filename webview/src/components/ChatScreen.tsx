@@ -2,6 +2,7 @@ import { type RefObject, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChatInputBox } from './ChatInputBox';
 import ClaudeAutoResumeBanner from './ClaudeAutoResumeBanner';
+import AutoRetryBanner from './AutoRetryBanner';
 import ScheduledSendBanner from './ScheduledSendBanner';
 import type {
   Attachment,
@@ -330,6 +331,7 @@ export const ChatScreen = ({
 
       <div className="input-area" ref={inputAreaRef}>
         <ClaudeAutoResumeBanner />
+        <AutoRetryBanner />
         <ScheduledSendBanner />
         <ChatInputBox
           ref={chatInputRef}

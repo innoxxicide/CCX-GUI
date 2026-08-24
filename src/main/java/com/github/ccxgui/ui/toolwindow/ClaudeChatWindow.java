@@ -13,6 +13,7 @@ import com.github.ccxgui.provider.claude.ClaudeSDKBridge;
 import com.github.ccxgui.provider.codex.CodexSDKBridge;
 import com.github.ccxgui.provider.common.DaemonBridge;
 import com.github.ccxgui.provider.common.MessageCallback;
+import com.github.ccxgui.schedule.AutoRetryController;
 import com.github.ccxgui.schedule.ScheduledSendController;
 import com.github.ccxgui.session.ClaudeSession;
 import com.github.ccxgui.session.SessionCallbackAdapter;
@@ -142,6 +143,10 @@ public class ClaudeChatWindow {
     // idle until the user picks a time; like the controller above, its Host reads
     // the live session field so it survives session re-binding.
     private final ScheduledSendController scheduledSendController;
+    // Nudges the agent back to work after a turn dies on an ordinary (non
+    // usage-limit) error. Provider-agnostic, off by default, and — like the two
+    // above — reads the live session field through its Host.
+    private final AutoRetryController autoRetryController;
     // Text of a scheduled send that could not be delivered on time. Held so the
     // banner's "Send now" has something to send — the controller drops its own
     // copy when it disarms. volatile: written from the scheduler thread that
@@ -166,6 +171,10 @@ public class ClaudeChatWindow {
     // A scheduled send has the same deadline problem as an armed auto-resume wake:
     // it does not fire on time if the machine idle-slept through it.
     private final Object scheduledSendKeepAwakeToken = new Object();
+    // And so does a pending auto-retry nudge: the work is not finished, it is
+    // waiting to be restarted, and a machine that sleeps through the delay never
+    // restarts it.
+    private final Object autoRetryKeepAwakeToken = new Object();
 
     public ClaudeChatWindow(Project project) {
         this(project, false);
@@ -221,6 +230,7 @@ public class ClaudeChatWindow {
         this.session = new ClaudeSession(project, claudeSDKBridge, codexSDKBridge);
         this.autoResumeController = new ClaudeAutoResumeController(createAutoResumeHost(), settingsService);
         this.scheduledSendController = new ScheduledSendController(createScheduledSendHost());
+        this.autoRetryController = new AutoRetryController(createAutoRetryHost(), settingsService);
 
         this.chatWindowDelegate = new ChatWindowDelegate(createDelegateHost());
         chatWindowDelegate.loadPermissionModeFromSettings();
@@ -911,14 +921,25 @@ public class ClaudeChatWindow {
             @Override
             public void onTurnError(String error, String usageLimitHintJson) {
                 super.onTurnError(error, usageLimitHintJson);
+                ClaudeUsageLimitHint limitHint = ClaudeUsageLimitHint.parse(usageLimitHintJson);
+                // Exactly one of the two recovery paths takes a failure: a usage limit
+                // is waited out by auto-resume, anything else is nudged by auto-retry.
+                // The hint is the discriminator, so it is resolved once here.
+                autoRetryController.onTurnError(error, limitHint != null);
                 // The busy hold has just been dropped by onStateChange, but this may
                 // be a usage-limit failure that ends in a scheduled restart — in
                 // which case sleep must stay blocked. Hold across the assessment so
                 // the decision, not a race with it, decides whether we let go.
                 KeepAwakeService.getInstance().acquire(limitCheckKeepAwakeToken, "usage-limit assessment");
-                autoResumeController.onTurnError(error, ClaudeUsageLimitHint.parse(usageLimitHintJson))
+                autoResumeController.onTurnError(error, limitHint)
                         .whenComplete((ignored, throwable) ->
                                 KeepAwakeService.getInstance().release(limitCheckKeepAwakeToken));
+            }
+
+            @Override
+            public void onTurnSuccess() {
+                super.onTurnSuccess();
+                autoRetryController.onTurnSuccess();
             }
         };
         session.setCallback(sessionCallbackAdapter);
@@ -1042,6 +1063,23 @@ public class ClaudeChatWindow {
                         return;
                     }
                     handleInterTurnUsageLimit(hint);
+                } else if ("turn_error".equals(event)) {
+                    // A background-agent continuation failed for an ordinary reason.
+                    // Same blind spot as usage_limit: that turn runs outside the
+                    // normal request path, so nothing else would tell auto-retry the
+                    // agent had stopped.
+                    String errorSessionId = data.has("sessionId") && data.get("sessionId").isJsonPrimitive()
+                            ? data.get("sessionId").getAsString() : null;
+                    String currentSessionId = session != null ? session.getSessionId() : null;
+                    if (errorSessionId == null || currentSessionId == null
+                            || !currentSessionId.equals(errorSessionId)) {
+                        return;
+                    }
+                    String message = data.has("message") && data.get("message").isJsonPrimitive()
+                            ? data.get("message").getAsString()
+                            : "The agent stopped with an error between turns.";
+                    LOG.info("[ClaudeChatWindow] Inter-turn turn error for sessionId=" + errorSessionId);
+                    autoRetryController.onTurnError(message, false);
                 } else if ("task_event".equals(event)) {
                     // Async subagent (Agent/Task tool with run_in_background:true)
                     // lifecycle event forwarded by the
@@ -1478,6 +1516,55 @@ public class ClaudeChatWindow {
     }
 
     /**
+     * Build the {@link AutoRetryController.Host} bridging the controller to this
+     * window. Nothing is persisted here — a recovery run is a reaction to a live
+     * failure and deliberately does not survive a restart — so this is only session
+     * access, the keep-awake hold and the webview status push.
+     */
+    private AutoRetryController.Host createAutoRetryHost() {
+        return new AutoRetryController.Host() {
+            @Override
+            public boolean isActive() {
+                return !disposed;
+            }
+
+            @Override
+            public boolean isBusy() {
+                ClaudeSession current = session;
+                return current != null && current.isBusy();
+            }
+
+            @Override
+            public void onEngaged(int attempt, long nextAttemptAtMs) {
+                // The work is not finished, it is waiting to be restarted — and a
+                // machine that idle-sleeps through the delay never restarts it.
+                KeepAwakeService.getInstance().acquire(autoRetryKeepAwakeToken, "auto-retry pending");
+                pushAutoRetryStatus(true, attempt, nextAttemptAtMs);
+            }
+
+            @Override
+            public void retry(String prompt) {
+                ClaudeSession current = session;
+                if (current == null) {
+                    return;
+                }
+                // Cast disambiguates send(String, String agentPrompt) from the
+                // send(String, List<Attachment>) overload; null = default agent.
+                current.send(prompt, (String) null).exceptionally(ex -> {
+                    LOG.warn("[AutoRetry] Recovery send failed: " + ex.getMessage());
+                    return null;
+                });
+            }
+
+            @Override
+            public void onDisengaged() {
+                KeepAwakeService.getInstance().release(autoRetryKeepAwakeToken);
+                pushAutoRetryStatus(false, 0, 0L);
+            }
+        };
+    }
+
+    /**
      * Build the {@link ScheduledSendController.Host} bridging the controller to
      * this window. Mirrors {@link #createAutoResumeHost()}: persistence rides
      * {@link #persistTabSessionState()}, which reads the controller's current
@@ -1649,6 +1736,36 @@ public class ClaudeChatWindow {
         callJavaScript("updateClaudeAutoResumeStatus", JsUtils.escapeJs(new Gson().toJson(payload)));
     }
 
+    /**
+     * Push the current auto-retry state to the webview as a JSON payload. The
+     * frontend banner consumes {@code window.updateAutoRetryStatus}; the call is a
+     * safe no-op until that handler exists.
+     *
+     * <p>{@code nextAttemptAtMs} is 0 while a nudge is in flight — there is no next
+     * attempt to announce until that one's outcome is known.
+     */
+    private void pushAutoRetryStatus(boolean engaged, int attempt, long nextAttemptAtMs) {
+        JsonObject payload = new JsonObject();
+        payload.addProperty("engaged", engaged);
+        payload.addProperty("attempt", attempt);
+        payload.addProperty("nextAttemptAt", nextAttemptAtMs);
+        callJavaScript("updateAutoRetryStatus", JsUtils.escapeJs(new Gson().toJson(payload)));
+    }
+
+    /**
+     * Re-push the auto-retry state after the webview reloads, so a run that is
+     * still in progress does not lose its banner (and its stop button) to a
+     * frontend restart.
+     */
+    private void resyncAutoRetryStatus() {
+        if (autoRetryController == null) {
+            return;
+        }
+        pushAutoRetryStatus(autoRetryController.isEngaged(),
+                autoRetryController.getAttempt(),
+                autoRetryController.getNextAttemptAtMs());
+    }
+
     private boolean isNonEmpty(String value) {
         return value != null && !value.trim().isEmpty();
     }
@@ -1720,6 +1837,7 @@ public class ClaudeChatWindow {
         keepAwakeService.release(limitCheckKeepAwakeToken);
         keepAwakeService.release(autoResumeKeepAwakeToken);
         keepAwakeService.release(scheduledSendKeepAwakeToken);
+        keepAwakeService.release(autoRetryKeepAwakeToken);
 
         JBCefBrowser targetBrowser = this.browser;
         this.browser = null;
@@ -1749,6 +1867,10 @@ public class ClaudeChatWindow {
             // Same contract as above: cancels the pending fire, leaves the
             // persisted schedule for restoreFromPersisted to replay.
             scheduledSendController.dispose();
+        }
+        if (autoRetryController != null) {
+            // Nothing persisted to preserve — a recovery run ends with its window.
+            autoRetryController.dispose();
         }
         deferredReloadSafetyAlarm.cancelAllRequests();
         Disposer.dispose(safetyAlarmDisposable);
@@ -2130,6 +2252,18 @@ public class ClaudeChatWindow {
             @Override
             public void requestScheduledSendStatus() {
                 pushCurrentScheduledSendStatus();
+            }
+
+            @Override
+            public void cancelAutoRetry() {
+                if (autoRetryController != null) {
+                    autoRetryController.cancel();
+                }
+            }
+
+            @Override
+            public void requestAutoRetryStatus() {
+                resyncAutoRetryStatus();
             }
 
             @Override

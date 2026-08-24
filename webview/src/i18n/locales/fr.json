@@ -91,6 +91,11 @@
       "armed": "Reprise automatique activée — continuera dès la réinitialisation de la limite d'utilisation.",
       "armedAt": "Reprise automatique activée — continuera vers {{time}}."
     },
+    "autoRetry": {
+      "pendingAt": "Reprise après une erreur — tentative {{attempt}} à {{time}}.",
+      "inFlight": "Reprise après une erreur — tentative {{attempt}} envoyée, en attente de réponse.",
+      "stop": "Arrêter"
+    },
     "goInstallSdk": "Aller installer",
     "commandNotImplemented": "La fonctionnalité `{{command}}` n'est pas encore implémentée.",
     "clearCommandDescription": "Effacer l'historique et démarrer une nouvelle session",
@@ -291,6 +296,14 @@
         "enabled": "Activé",
         "disabled": "Désactivé",
         "hint": "Lorsque cette option est activée, l’ordinateur ne se met pas en veille tant qu’un agent travaille, ni pendant l’attente d’un redémarrage après la réinitialisation d’une limite d’usage. Seule la veille automatique par inactivité est empêchée : fermer le capot ou mettre en veille manuellement fonctionne toujours, et l’écran peut s’éteindre normalement."
+      },
+      "autoRetry": {
+        "label": "Réessayer automatiquement après une erreur",
+        "enabled": "Activé",
+        "disabled": "Désactivé",
+        "hint": "Lorsqu'un tour s'arrête sur une erreur, un message est envoyé à l'agent pour qu'il reprenne le travail : trois fois à une minute d'intervalle, puis toutes les cinq minutes jusqu'à ce qu'il réponde. Les arrêts dus à une limite d'utilisation sont exclus : ceux-là attendent la réinitialisation de la limite. Une bannière au-dessus du champ de saisie affiche la reprise en cours et permet de l'arrêter.",
+        "promptLabel": "Message de reprise",
+        "promptHint": "Envoyé automatiquement à l'agent après une erreur. Laissez vide pour la valeur par défaut."
       },
       "sendShortcut": {
         "label": "Raccourci d'envoi",

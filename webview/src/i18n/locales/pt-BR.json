@@ -91,6 +91,11 @@
       "armed": "Retomada automática ativada — continuará quando o limite de uso for reiniciado.",
       "armedAt": "Retomada automática ativada — continuará por volta das {{time}}."
     },
+    "autoRetry": {
+      "pendingAt": "Retomando após um erro — tentativa {{attempt}} às {{time}}.",
+      "inFlight": "Retomando após um erro — tentativa {{attempt}} enviada, aguardando resposta.",
+      "stop": "Parar"
+    },
     "goInstallSdk": "Ir para Instalação",
     "commandNotImplemented": "O recurso `{{command}}` ainda não foi implementado.",
     "clearCommandDescription": "Limpar histórico de conversa e iniciar uma nova sessão",
@@ -303,6 +308,14 @@
         "enabled": "Ativado",
         "disabled": "Desativado",
         "hint": "Quando ativado, o computador não entra em suspensão enquanto um agente está trabalhando nem enquanto uma execução aguarda reinício após a redefinição de um limite de uso. Apenas a suspensão automática por inatividade é impedida: fechar a tampa ou suspender manualmente continua funcionando, e a tela ainda pode desligar."
+      },
+      "autoRetry": {
+        "label": "Tentar novamente após um erro",
+        "enabled": "Ativado",
+        "disabled": "Desativado",
+        "hint": "Quando um turno para com erro, o agente recebe uma mensagem para retomar o trabalho: três vezes com um minuto de intervalo e depois a cada cinco minutos até responder. Paradas por limite de uso ficam de fora — essas esperam o limite ser redefinido. Um aviso acima do campo de entrada mostra a tentativa em andamento e permite interrompê-la.",
+        "promptLabel": "Mensagem de retomada",
+        "promptHint": "Enviada automaticamente ao agente após um erro. Deixe vazio para usar o padrão."
       },
       "sendShortcut": {
         "label": "Atalho de Envio",

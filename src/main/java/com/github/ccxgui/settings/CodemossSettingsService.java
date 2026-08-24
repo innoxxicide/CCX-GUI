@@ -623,6 +623,27 @@ public class CodemossSettingsService {
         ClaudeAutoResumeSettings.setClaudeAutoResumePrompt(this, prompt);
     }
 
+    // ==================== Auto-Retry-On-Error Config Management ====================
+
+    public static final boolean DEFAULT_AUTO_RETRY_ENABLED = AutoRetrySettings.DEFAULT_AUTO_RETRY_ENABLED;
+    public static final String DEFAULT_AUTO_RETRY_PROMPT = AutoRetrySettings.DEFAULT_AUTO_RETRY_PROMPT;
+
+    public boolean getAutoRetryEnabled() throws IOException {
+        return AutoRetrySettings.getAutoRetryEnabled(this);
+    }
+
+    public void setAutoRetryEnabled(boolean enabled) throws IOException {
+        AutoRetrySettings.setAutoRetryEnabled(this, enabled);
+    }
+
+    public String getAutoRetryPrompt() throws IOException {
+        return AutoRetrySettings.getAutoRetryPrompt(this);
+    }
+
+    public void setAutoRetryPrompt(String prompt) throws IOException {
+        AutoRetrySettings.setAutoRetryPrompt(this, prompt);
+    }
+
     // ==================== Keep-Awake Config Management ====================
 
     public static final boolean DEFAULT_KEEP_AWAKE_ENABLED = KeepAwakeSettings.DEFAULT_KEEP_AWAKE_ENABLED;

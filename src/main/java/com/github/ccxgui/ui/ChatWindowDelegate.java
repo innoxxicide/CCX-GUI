@@ -118,6 +118,12 @@ public class ChatWindowDelegate {
         /** Re-push the current scheduled-send state to the webview. */
         void requestScheduledSendStatus();
 
+        /** Stop the auto-retry recovery run in progress. */
+        void cancelAutoRetry();
+
+        /** Re-push the current auto-retry state to the webview. */
+        void requestAutoRetryStatus();
+
         /**
          * Soft-reload the currently active session's transcript without interrupting
          * any in-flight turn.
@@ -356,6 +362,8 @@ public class ChatWindowDelegate {
             @Override public void onCancelScheduledSend() { host.cancelScheduledSend(); }
             @Override public void onSendScheduledNow() { host.sendScheduledNow(); }
             @Override public void onRequestScheduledSendStatus() { host.requestScheduledSendStatus(); }
+            @Override public void onCancelAutoRetry() { host.cancelAutoRetry(); }
+            @Override public void onRequestAutoRetryStatus() { host.requestAutoRetryStatus(); }
         }));
 
         PermissionHandler permissionHandler = new PermissionHandler(handlerContext);

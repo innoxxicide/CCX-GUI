@@ -181,6 +181,16 @@ public class CallbackHandler {
     }
 
     /**
+     * Notify that a turn ended without an error (single-shot, per turn).
+     * Ends an auto-retry recovery run.
+     */
+    public void notifyTurnSuccess() {
+        if (callback != null) {
+            callback.onTurnSuccess();
+        }
+    }
+
+    /**
      * Notify of a Claude Code task_* SDK system event (task_started /
      * task_progress / task_notification).
      */
