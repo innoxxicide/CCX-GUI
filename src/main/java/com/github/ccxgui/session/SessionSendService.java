@@ -160,6 +160,43 @@ public class SessionSendService {
                 effectivePermissionMode, normalizedRequestedEffort);
     }
 
+    /**
+     * Compose the prompt handed to Codex and the marker CLI providers.
+     *
+     * <p>Concise mode is the user's instruction that the plugin must contribute nothing of
+     * its own, so the provider sees exactly what a plain terminal session would send. On the
+     * Claude path that is enforced in ai-bridge (isConciseModeEnabled() zeroes both
+     * systemPrompt.append and the IDE-context suffix); the CLI providers assemble their
+     * prompt here instead, so the same rule has to be applied on this side.
+     *
+     * @param input         the user's own message
+     * @param contextAppend IDE/workspace context block, already empty in concise mode
+     * @param agentPrompt   selected agent's role prompt, or null when the caller forwards it
+     *                      to the bridge instead of inlining it
+     * @param conciseMode   whether concise mode is on
+     * @return the message to send
+     */
+    static String composeProviderInput(String input, String contextAppend, String agentPrompt, boolean conciseMode) {
+        String base = input != null ? input : "";
+        if (conciseMode) {
+            return base;
+        }
+        String composed = base + (contextAppend != null ? contextAppend : "");
+        if (agentPrompt != null && !agentPrompt.isEmpty()) {
+            composed = composed + "\n\n## Agent Role and Instructions\n\n" + agentPrompt;
+        }
+        return composed;
+    }
+
+    private boolean readConciseModeEnabled() {
+        try {
+            return new CodemossSettingsService().getConciseModeEnabled();
+        } catch (Exception e) {
+            LOG.warn("[ConciseMode] Failed to read setting, assuming off: " + e.getMessage());
+            return false;
+        }
+    }
+
     public static String normalizeRequestedReasoningEffort(String effort) {
         if (effort == null) {
             return null;
@@ -284,8 +321,15 @@ public class SessionSendService {
             return CompletableFuture.completedFuture(null);
         }
 
-        String contextAppend = contextService.buildCodexContextAppend(openedFilesJson, fileTagPaths);
-        String finalInput = (input != null ? input : "") + contextAppend;
+        // Concise mode suppresses everything the plugin contributes on its own —
+        // the IDE/workspace context block here and the agent-role wrapper that
+        // CodexSDKBridge appends downstream — so Codex receives exactly the text
+        // the user typed, matching the Claude path.
+        boolean conciseMode = readConciseModeEnabled();
+        String contextAppend = conciseMode
+                ? ""
+                : contextService.buildCodexContextAppend(openedFilesJson, fileTagPaths);
+        String finalInput = composeProviderInput(input, contextAppend, null, conciseMode);
         String configuredModel = new CodexSettingsManager(gson).resolveModelAlias(state.getModel());
 
         return codexSDKBridge.sendMessage(
@@ -296,7 +340,7 @@ public class SessionSendService {
                 attachments,
                 effectivePermissionMode,
                 configuredModel,
-                agentPrompt,
+                conciseMode ? null : agentPrompt,
                 requestedReasoningEffort != null ? requestedReasoningEffort : state.getReasoningEffort(),
                 effectiveCodexServiceTier,
                 handler
@@ -325,10 +369,13 @@ public class SessionSendService {
         // dupes). Other CLI providers reuse Codex streaming marker handling.
         MessageCallback handler = createCliMessageHandler(provider);
 
-        String contextAppend = contextService.buildCodexContextAppend(openedFilesJson, fileTagPaths);
-        String finalInput = (input != null ? input : "") + contextAppend;
-        if (agentPrompt != null && !agentPrompt.isEmpty()) {
-            finalInput = finalInput + "\n\n## Agent Role and Instructions\n\n" + agentPrompt;
+        // See sendToCodex: concise mode means the plugin adds nothing of its own.
+        boolean conciseMode = readConciseModeEnabled();
+        String contextAppend = conciseMode
+                ? ""
+                : contextService.buildCodexContextAppend(openedFilesJson, fileTagPaths);
+        String finalInput = composeProviderInput(input, contextAppend, agentPrompt, conciseMode);
+        if (!conciseMode && agentPrompt != null && !agentPrompt.isEmpty()) {
             LOG.info("[Agent] ✓ Appending agentPrompt to user message for " + provider
                     + " (length: " + agentPrompt.length() + " chars)");
         }

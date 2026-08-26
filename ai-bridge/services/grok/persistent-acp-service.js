@@ -38,6 +38,7 @@ import {
   normalizeGrokModelId,
 } from './grok-utils.js';
 import { requestPermissionFromJava } from '../../permission-ipc.js';
+import { isConciseModeEnabled } from '../../config/codemoss-config.js';
 import { AcpTerminalHost } from './acp-terminal-host.js';
 
 export { buildGrokContextUsagePayload, extractUsedTokens };
@@ -339,6 +340,7 @@ async function executeTurn(runtime, params, normalizer) {
       agentPrompt: params.agentPrompt || '',
       openedFiles: params.openedFiles || null,
       attachments: params.attachments || [],
+      conciseMode: isConciseModeEnabled(),
     });
 
     // Wire notifications / permission / fs writes into the turn normalizer.

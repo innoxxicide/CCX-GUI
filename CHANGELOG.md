@@ -1,4 +1,11 @@
-##### **2026年8月17日（v0.0.5）**
+##### **2026年8月26日（v0.0.6）**
+
+English:
+
+🐛 Fixes
+- Fix **Concise mode leaking the plugin's own prompt sections into every non-Claude provider**. Concise mode promises that the plugin contributes nothing beyond the user's own message, but the gate was only ever implemented in the Claude path of `ai-bridge` — Codex and the marker CLI providers (Grok, Kimi, OpenCode, Pi, DeepSeek Harness) assemble their prompt in Java, which never read the setting. With the toggle on they still received, on every turn: the `## Workspace Context` / `## Project Modules` block ("You are working in a multi-project workspace environment", plus the subproject list and a rule about which build config to consider), `## Active Terminal Session` ("Commands should be executed in this terminal context"), `## Referenced Files` ("the user expects answers based on their content"), `## User's Current IDE Context` ("This is the PRIMARY SUBJECT of the user's question"), and the `## Agent Role and Instructions` wrapper for a selected agent. Codex additionally had the project's own `AGENTS.md` re-injected as an `<agents-instructions>` block on the first turn of each thread — which Codex discovers by itself, so the plugin was duplicating an instruction file it had no business restating — and Grok had `~/.grok/grok-rules.md` and a JSON dump of the open editors appended. All of it is now suppressed when Concise mode is on, so these providers see the same thing Claude does: the message as typed. Attachments and images are unaffected, since those are the user's own input. Concise mode was added on 2026-07-24 and has behaved this way for every provider except Claude since then
+
+
 
 English:
 

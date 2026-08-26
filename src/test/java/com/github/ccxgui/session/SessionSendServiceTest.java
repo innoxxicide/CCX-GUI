@@ -101,6 +101,37 @@ public class SessionSendServiceTest {
     }
 
     @Test
+    public void composeProviderInputAppendsContextAndAgentRoleWhenConciseModeIsOff() {
+        assertEquals(
+                "fix this\n\n## IDE Context\n\nActive file: `A.java`"
+                        + "\n\n## Agent Role and Instructions\n\nYou are a reviewer.",
+                SessionSendService.composeProviderInput(
+                        "fix this",
+                        "\n\n## IDE Context\n\nActive file: `A.java`",
+                        "You are a reviewer.",
+                        false
+                )
+        );
+    }
+
+    @Test
+    public void composeProviderInputSendsOnlyTheUserMessageInConciseMode() {
+        // Regression: concise mode was honored on the Claude path only, so Codex and
+        // every marker CLI provider still received the plugin's own context block and
+        // agent-role wrapper on every turn.
+        assertEquals(
+                "fix this",
+                SessionSendService.composeProviderInput(
+                        "fix this",
+                        "\n\n## IDE Context\n\nActive file: `A.java`",
+                        "You are a reviewer.",
+                        true
+                )
+        );
+        assertEquals("", SessionSendService.composeProviderInput(null, "ctx", "role", true));
+    }
+
+    @Test
     public void newSessionStateDoesNotInjectDefaultClaudeReasoningEffort() {
         SessionState state = new SessionState();
 

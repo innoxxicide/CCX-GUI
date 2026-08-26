@@ -13,6 +13,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG_DATA: ChangelogEntry[] = [
   {
+    version: '0.0.6',
+    date: '2026-08-26',
+    content: {
+      en: `🐛 Fixes
+- Fix **Concise mode leaking the plugin's own prompt sections into every non-Claude provider**. Concise mode promises that the plugin contributes nothing beyond the user's own message, but the gate was only implemented in the Claude path — Codex and the marker CLI providers (Grok, Kimi, OpenCode, Pi, DeepSeek Harness) assemble their prompt on the Java side, which never read the setting. With the toggle on they still received, every turn: the \`## Workspace Context\` / \`## Project Modules\` block, \`## Active Terminal Session\`, \`## Referenced Files\`, \`## User's Current IDE Context\` and the \`## Agent Role and Instructions\` wrapper. Codex additionally had the project's own \`AGENTS.md\` re-injected as an \`<agents-instructions>\` block — which Codex discovers by itself — and Grok had \`~/.grok/grok-rules.md\` and a JSON dump of the open editors appended. All of it is now suppressed when Concise mode is on, so these providers see what Claude sees: the message as typed. Attachments and images are unaffected, being the user's own input`,
+      zh: ``,
+    },
+  },
+  {
     version: '0.0.5',
     date: '2026-08-17',
     content: {

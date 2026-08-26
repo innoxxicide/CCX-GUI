@@ -29,6 +29,7 @@ import {
   buildErrorPayload
 } from './codex-utils.js';
 import { collectAgentsInstructions } from './codex-agents-loader.js';
+import { isConciseModeEnabled } from '../../config/codemoss-config.js';
 import {
   createInitialEventState,
   prepareSessionReplayBoundary,
@@ -225,8 +226,11 @@ export async function sendMessage(
     // 5. Collect AGENTS.md Instructions (only for new threads)
     // ============================================================
 
+    // Concise mode: the plugin adds nothing of its own. Codex discovers AGENTS.md
+    // itself, so re-injecting it here is a plugin-authored prompt section like any
+    // other and must be suppressed along with the rest.
     let finalMessage = message;
-    if (!isResumingThread && cwd) {
+    if (!isResumingThread && cwd && !isConciseModeEnabled()) {
       const agentsInstructions = collectAgentsInstructions(cwd);
       if (agentsInstructions) {
         finalMessage = `<agents-instructions>\n${agentsInstructions}\n</agents-instructions>\n\n${message}`;

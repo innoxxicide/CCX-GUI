@@ -20,6 +20,7 @@ import {
   normalizeGrokModelId,
 } from './grok-utils.js';
 import { requestPermissionFromJava } from '../../permission-ipc.js';
+import { isConciseModeEnabled } from '../../config/codemoss-config.js';
 import { AcpTerminalHost, isTerminalMethod } from './acp-terminal-host.js';
 import {
   buildGrokImageBlocks,
@@ -762,6 +763,7 @@ export async function runAcpTurn({
       agentPrompt,
       openedFiles,
       attachments,
+      conciseMode: isConciseModeEnabled(),
     });
 
     // Signal the normalizer to open [STREAM_START] only for the user turn.
@@ -1070,39 +1072,44 @@ export function isAutoApproveMode(permissionMode) {
  * When the user only attaches images with empty text, inject
  * GROK_IMAGE_ONLY_FALLBACK_TEXT so the payload stays valid.
  */
-export function buildPromptBlocks({ message, agentPrompt, openedFiles, attachments }) {
+export function buildPromptBlocks({ message, agentPrompt, openedFiles, attachments, conciseMode = false }) {
   const blocks = [];
   let text = message || '';
 
-  if (agentPrompt && String(agentPrompt).trim()) {
-    text =
-      `${text}\n\n## Agent Role and Instructions\n\n${String(agentPrompt).trim()}`;
-  }
-
-  // Load user-global rules for Grok from ~/.grok/grok-rules.md (if exists).
-  // This allows persistent, user-level instructions without hardcoding in the plugin.
-  try {
-    const rulesPath = path.join(homedir(), '.grok', 'grok-rules.md');
-    if (fs.existsSync(rulesPath)) {
-      const rulesContent = fs.readFileSync(rulesPath, 'utf8').trim();
-      if (rulesContent) {
-        console.log('[Grok] Loaded global rules from ~/.grok/grok-rules.md (' + rulesContent.length + ' chars)');
-        text += `\n\n## Global Grok Rules (~/.grok/grok-rules.md)\n\n${rulesContent}`;
-      }
+  // Concise mode: send the user's own message and nothing else — no agent-role
+  // wrapper, no ~/.grok/grok-rules.md re-injection, no IDE context. Attachments
+  // are the user's own input, so they still go through.
+  if (!conciseMode) {
+    if (agentPrompt && String(agentPrompt).trim()) {
+      text =
+        `${text}\n\n## Agent Role and Instructions\n\n${String(agentPrompt).trim()}`;
     }
-  } catch (err) {
-    // Non-fatal: don't break prompt building if the file is unreadable
-    console.error('[Grok] Failed to read ~/.grok/grok-rules.md:', err?.message || err);
-  }
 
-  if (openedFiles && typeof openedFiles === 'object') {
+    // Load user-global rules for Grok from ~/.grok/grok-rules.md (if exists).
+    // This allows persistent, user-level instructions without hardcoding in the plugin.
     try {
-      const serialized = JSON.stringify(openedFiles, null, 2);
-      if (serialized && serialized !== '{}' && serialized !== 'null') {
-        text += `\n\n## IDE Context (opened files)\n\`\`\`json\n${serialized}\n\`\`\``;
+      const rulesPath = path.join(homedir(), '.grok', 'grok-rules.md');
+      if (fs.existsSync(rulesPath)) {
+        const rulesContent = fs.readFileSync(rulesPath, 'utf8').trim();
+        if (rulesContent) {
+          console.log('[Grok] Loaded global rules from ~/.grok/grok-rules.md (' + rulesContent.length + ' chars)');
+          text += `\n\n## Global Grok Rules (~/.grok/grok-rules.md)\n\n${rulesContent}`;
+        }
       }
-    } catch {
-      // ignore
+    } catch (err) {
+      // Non-fatal: don't break prompt building if the file is unreadable
+      console.error('[Grok] Failed to read ~/.grok/grok-rules.md:', err?.message || err);
+    }
+
+    if (openedFiles && typeof openedFiles === 'object') {
+      try {
+        const serialized = JSON.stringify(openedFiles, null, 2);
+        if (serialized && serialized !== '{}' && serialized !== 'null') {
+          text += `\n\n## IDE Context (opened files)\n\`\`\`json\n${serialized}\n\`\`\``;
+        }
+      } catch {
+        // ignore
+      }
     }
   }
 
