@@ -14,9 +14,10 @@ export interface ChangelogEntry {
 export const CHANGELOG_DATA: ChangelogEntry[] = [
   {
     version: '0.0.6',
-    date: '2026-08-26',
+    date: '2026-08-28',
     content: {
       en: `🐛 Fixes
+- Fix **a permission prompt sometimes never appearing, leaving the agent stuck as though the command were still running**. A tool needing approval blocks the Node bridge on a response file while the IDE shows the dialog, so a lost request hangs the turn — indefinitely when "Auto-close dialog on timeout" is off, since neither side then has a safety net. Four paths could lose it: JCEF silently dropping the fire-and-forget \`executeJavaScript\` while the renderer was booting or restarting, so the dialog was never rendered (the webview now acknowledges each dialog and the backend re-sends unacknowledged ones); a webview state-to-ref mirror running one commit behind, which let a queued request open on top of an arriving one and strand it; the IPC watcher thread exiting permanently on any interrupt or \`Error\`, after which no later request in the session was read at all; and two paths that consumed the request file without writing a response. Every path that consumes a request now answers it, defaulting to deny
 - Fix **Concise mode leaking the plugin's own prompt sections into every non-Claude provider**. Concise mode promises that the plugin contributes nothing beyond the user's own message, but the gate was only implemented in the Claude path — Codex and the marker CLI providers (Grok, Kimi, OpenCode, Pi, DeepSeek Harness) assemble their prompt on the Java side, which never read the setting. With the toggle on they still received, every turn: the \`## Workspace Context\` / \`## Project Modules\` block, \`## Active Terminal Session\`, \`## Referenced Files\`, \`## User's Current IDE Context\` and the \`## Agent Role and Instructions\` wrapper. Codex additionally had the project's own \`AGENTS.md\` re-injected as an \`<agents-instructions>\` block — which Codex discovers by itself — and Grok had \`~/.grok/grok-rules.md\` and a JSON dump of the open editors appended. All of it is now suppressed when Concise mode is on, so these providers see what Claude sees: the message as typed. Attachments and images are unaffected, being the user's own input`,
       zh: ``,
     },
