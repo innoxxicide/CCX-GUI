@@ -260,6 +260,94 @@ public class PermissionServiceRefactorTest {
     }
 
     @Test
+    public void watcherKeepsPollingAfterASpuriousInterrupt() throws Exception {
+        // The poll loop used to break out on any InterruptedException while leaving `running`
+        // true, so start() took its "already running" early return forever. Every later
+        // permission request in the session then sat unread in the IPC directory: no dialog,
+        // and the agent blocked on a response file that nobody would ever write.
+        assertWatcherSurvives((requestFile, firstDispatch) -> {
+            deleteQuietly(requestFile);
+            if (firstDispatch) {
+                Thread.currentThread().interrupt();
+            }
+        });
+    }
+
+    @Test
+    public void watcherKeepsPollingAfterAHandlerThrowsAnError() throws Exception {
+        // The loop only caught Exception, so an Error escaping a request handler killed the
+        // polling thread outright — same permanent, silent loss of every later request.
+        assertWatcherSurvives((requestFile, firstDispatch) -> {
+            deleteQuietly(requestFile);
+            if (firstDispatch) {
+                throw new AssertionError("simulated handler failure");
+            }
+        });
+    }
+
+    private interface DispatchAction {
+        void accept(Path requestFile, boolean firstDispatch);
+    }
+
+    /**
+     * Feed the watcher two requests in sequence, letting {@code onDispatch} sabotage the first
+     * one, and assert the second is still consumed.
+     */
+    private void assertWatcherSurvives(DispatchAction onDispatch) throws Exception {
+        Path permissionDir = Files.createTempDirectory("permission-watcher-resilience");
+        PermissionRequestWatcher watcher = null;
+        try {
+            PermissionFileProtocol protocol = new PermissionFileProtocol(
+                    permissionDir, "session-a", new Gson(), (tag, message) -> { });
+            CountDownLatch first = new CountDownLatch(1);
+            CountDownLatch second = new CountDownLatch(1);
+
+            watcher = new PermissionRequestWatcher(
+                    permissionDir, "session-a", protocol, (tag, message) -> { });
+            watcher.start(new PermissionRequestWatcher.RequestHandler() {
+                @Override
+                public void handlePermissionRequest(Path requestFile) {
+                    boolean firstDispatch = first.getCount() > 0;
+                    first.countDown();
+                    if (!firstDispatch) {
+                        second.countDown();
+                    }
+                    onDispatch.accept(requestFile, firstDispatch);
+                }
+
+                @Override
+                public void handleAskUserQuestionRequest(Path requestFile) { }
+
+                @Override
+                public void handlePlanApprovalRequest(Path requestFile) { }
+            });
+
+            Files.writeString(permissionDir.resolve("request-session-a-one.json"),
+                    "{\"requestId\":\"one\"}");
+            assertTrue("watcher must dispatch the first request",
+                    first.await(5, TimeUnit.SECONDS));
+
+            Files.writeString(permissionDir.resolve("request-session-a-two.json"),
+                    "{\"requestId\":\"two\"}");
+            assertTrue("watcher must keep polling after the first dispatch went wrong",
+                    second.await(10, TimeUnit.SECONDS));
+        } finally {
+            if (watcher != null) {
+                watcher.stop();
+            }
+            deleteDirectory(permissionDir);
+        }
+    }
+
+    private static void deleteQuietly(Path file) {
+        try {
+            Files.deleteIfExists(file);
+        } catch (IOException ignored) {
+            // Best effort: the assertions below only care about dispatch, not cleanup.
+        }
+    }
+
+    @Test
     public void fileProtocolListsOnlyCurrentSessionRequests() throws IOException {
         Path permissionDir = Files.createTempDirectory("permission-protocol-list");
         try {

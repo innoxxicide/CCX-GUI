@@ -10,8 +10,6 @@ import com.github.ccxgui.util.SoundNotificationService;
 import com.github.ccxgui.util.SystemNotificationService;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-import com.intellij.openapi.application.Application;
-import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.project.Project;
 import com.intellij.util.concurrency.AppExecutorUtil;
@@ -34,8 +32,18 @@ public class PermissionHandler extends BaseMessageHandler {
     private static final String[] SUPPORTED_TYPES = {
         "permission_decision",
         "ask_user_question_response",
-        "plan_approval_response"
+        "plan_approval_response",
+        "dialog_shown"
     };
+
+    /**
+     * How long to wait for the webview to acknowledge a dialog before re-sending it,
+     * and how many times to try. 5 attempts × 4s covers a webview that is still
+     * booting, mid-navigation, or recovering from a renderer restart, and gives up
+     * well inside the shortest configurable dialog timeout (30s).
+     */
+    static final long DIALOG_DELIVERY_RETRY_DELAY_SECONDS = 4;
+    static final int DIALOG_DELIVERY_MAX_ATTEMPTS = 5;
 
     private static int payloadLength(String value) {
         return value == null ? 0 : value.length();
@@ -79,6 +87,9 @@ public class PermissionHandler extends BaseMessageHandler {
 
     // PlanApproval request map (requestId -> CompletableFuture<JsonObject>)
     private final Map<String, CompletableFuture<JsonObject>> pendingPlanApprovalRequests = new ConcurrentHashMap<>();
+
+    // Dialog payloads that the webview has not acknowledged yet (see deliverDialog).
+    private final Map<String, DialogDelivery> pendingDialogDeliveries = new ConcurrentHashMap<>();
 
     // Permission denied callback
     public interface PermissionDeniedCallback {
@@ -179,6 +190,101 @@ public class PermissionHandler extends BaseMessageHandler {
         context.executeJavaScriptOnEDT(jsCode);
     }
 
+    /** One dialog payload plus the state needed to keep re-sending it until acknowledged. */
+    private static final class DialogDelivery {
+        private final String jsCode;
+        private final CompletableFuture<?> future;
+        private int attempts;
+        private CancellableTask retry;
+
+        private DialogDelivery(String jsCode, CompletableFuture<?> future) {
+            this.jsCode = jsCode;
+            this.future = future;
+        }
+    }
+
+    /**
+     * Send a dialog payload to the webview and keep re-sending it until the frontend
+     * acknowledges the request, the backing future resolves, or the attempt budget runs out.
+     *
+     * <p>{@code CefBrowser.executeJavaScript} is fire-and-forget. When the renderer is still
+     * booting, mid-navigation, or has just been re-created, the snippet is dropped with no
+     * exception and no return value. The retry loop embedded in the snippet cannot help,
+     * because the snippet itself never ran. The visible result is a permission request that
+     * Node is blocked on while no dialog ever appears — and with "auto-close dialog on
+     * timeout" switched off neither side has a safety net, so the turn hangs indefinitely.</p>
+     *
+     * <p>Re-sending is safe: the webview's {@code open*Dialog} handlers are idempotent per
+     * request id, discarding a payload whose id is already showing or already queued.</p>
+     *
+     * <p>The scheduler seam is shared with {@link #scheduleSafetyNet} — both need the same
+     * "cancellable delayed task" primitive, and sharing keeps a single injection point for tests.</p>
+     */
+    private void deliverDialog(String deliveryId, String jsCode, CompletableFuture<?> future) {
+        DialogDelivery delivery = new DialogDelivery(jsCode, future);
+        pendingDialogDeliveries.put(deliveryId, delivery);
+        // A resolved future (user answered, safety net fired, session switched) means nobody
+        // is waiting on this dialog any more, so stop re-sending it.
+        future.whenComplete((ignored, error) -> cancelDialogDelivery(deliveryId));
+        sendDialogPayload(deliveryId, delivery);
+    }
+
+    private void sendDialogPayload(String deliveryId, DialogDelivery delivery) {
+        delivery.attempts++;
+        // executeJavaScriptOnEDT already marshals to the EDT and no-ops when the browser is
+        // absent, so it is safe to call from the scheduler thread and from unit tests.
+        context.executeJavaScriptOnEDT(delivery.jsCode);
+
+        if (delivery.attempts >= DIALOG_DELIVERY_MAX_ATTEMPTS) {
+            LOG.warn("[DIALOG_DELIVERY] Giving up after " + delivery.attempts
+                    + " unacknowledged attempts for id=" + deliveryId
+                    + "; the request now depends on the safety net");
+            return;
+        }
+
+        delivery.retry = safetyNetScheduler.schedule(() -> {
+            // Identity check, not a containsKey check: a later delivery reusing this id
+            // must not be re-sent by an older delivery's timer.
+            if (pendingDialogDeliveries.get(deliveryId) != delivery) {
+                return;
+            }
+            // isDone() flips atomically inside complete(), ahead of the whenComplete callback
+            // that removes this delivery. Checking it here keeps a decision that lands in the
+            // same instant as the timer from re-opening a dialog the user just answered.
+            if (delivery.future.isDone()) {
+                cancelDialogDelivery(deliveryId);
+                return;
+            }
+            LOG.warn("[DIALOG_DELIVERY] No frontend acknowledgement for id=" + deliveryId
+                    + " after attempt " + delivery.attempts + "; re-sending the dialog");
+            sendDialogPayload(deliveryId, delivery);
+        }, DIALOG_DELIVERY_RETRY_DELAY_SECONDS);
+    }
+
+    private void cancelDialogDelivery(String deliveryId) {
+        DialogDelivery delivery = pendingDialogDeliveries.remove(deliveryId);
+        if (delivery != null && delivery.retry != null) {
+            delivery.retry.cancel();
+        }
+    }
+
+    /**
+     * Handle the frontend's "I rendered (or queued) this dialog" acknowledgement.
+     * The content is the bare request id — channelId for permission dialogs, requestId
+     * for AskUserQuestion / PlanApproval. Ids are unique across all three kinds, so one
+     * flat map is enough.
+     */
+    private void handleDialogShown(String deliveryId) {
+        if (deliveryId == null || deliveryId.trim().isEmpty()) {
+            return;
+        }
+        String id = deliveryId.trim();
+        if (pendingDialogDeliveries.containsKey(id)) {
+            LOG.debug("[DIALOG_DELIVERY] Frontend acknowledged id=" + id);
+            cancelDialogDelivery(id);
+        }
+    }
+
     public void setPermissionDeniedCallback(PermissionDeniedCallback callback) {
         this.deniedCallback = callback;
     }
@@ -204,6 +310,9 @@ public class PermissionHandler extends BaseMessageHandler {
             LOG.debug("[PLAN_APPROVAL][BRIDGE_RECV] Received plan_approval_response from JS");
             LOG.debug("[PLAN_APPROVAL][BRIDGE_RECV] payloadLength=" + payloadLength(content));
             handlePlanApprovalResponse(content);
+            return true;
+        } else if ("dialog_shown".equals(type)) {
+            handleDialogShown(content);
             return true;
         }
         return false;
@@ -231,20 +340,18 @@ public class PermissionHandler extends BaseMessageHandler {
             String requestJson = gson.toJson(requestData);
             String escapedJson = escapeJs(requestJson);
 
-            ApplicationManager.getApplication().invokeLater(() -> {
-                LOG.info("[PERM_SHOW] Executing JS to show dialog for channelId=" + channelId);
-                String jsCode = "(function retryShowDialog(retries) { " +
-                    "  if (window.showPermissionDialog) { " +
-                    "    window.showPermissionDialog('" + escapedJson + "'); " +
-                    "  } else if (retries > 0) { " +
-                    "    setTimeout(function() { retryShowDialog(retries - 1); }, 200); " +
-                    "  } else { " +
-                    "    console.error('[PERM_DEBUG][JS] FAILED: showPermissionDialog not available!'); " +
-                    "  } " +
-                    "})(30);";
+            LOG.info("[PERM_SHOW] Dispatching dialog JS for channelId=" + channelId);
+            String jsCode = "(function retryShowDialog(retries) { " +
+                "  if (window.showPermissionDialog) { " +
+                "    window.showPermissionDialog('" + escapedJson + "'); " +
+                "  } else if (retries > 0) { " +
+                "    setTimeout(function() { retryShowDialog(retries - 1); }, 200); " +
+                "  } else { " +
+                "    console.error('[PERM_DEBUG][JS] FAILED: showPermissionDialog not available!'); " +
+                "  } " +
+                "})(30);";
 
-                context.executeJavaScriptOnEDT(jsCode);
-            });
+            deliverDialog(channelId, jsCode, future);
 
             scheduleSafetyNet(future, () -> {
                 if (future.complete(PermissionService.PermissionResponse.DENY.getValue())) {
@@ -478,24 +585,17 @@ public class PermissionHandler extends BaseMessageHandler {
             String requestJson = gson.toJson(questionsData);
             String escapedJson = escapeJs(requestJson);
 
-            Application application = ApplicationManager.getApplication();
-            if (application != null) {
-                application.invokeLater(() -> {
-                    String jsCode = "(function retryShowAskUserQuestion(retries) { " +
-                        "  if (window.showAskUserQuestionDialog) { " +
-                        "    window.showAskUserQuestionDialog('" + escapedJson + "'); " +
-                        "  } else if (retries > 0) { " +
-                        "    setTimeout(function() { retryShowAskUserQuestion(retries - 1); }, 200); " +
-                        "  } else { " +
-                        "    console.error('[ASK_USER_QUESTION][JS] FAILED: showAskUserQuestionDialog not available!'); " +
-                        "  } " +
-                        "})(30);";
+            String jsCode = "(function retryShowAskUserQuestion(retries) { " +
+                "  if (window.showAskUserQuestionDialog) { " +
+                "    window.showAskUserQuestionDialog('" + escapedJson + "'); " +
+                "  } else if (retries > 0) { " +
+                "    setTimeout(function() { retryShowAskUserQuestion(retries - 1); }, 200); " +
+                "  } else { " +
+                "    console.error('[ASK_USER_QUESTION][JS] FAILED: showAskUserQuestionDialog not available!'); " +
+                "  } " +
+                "})(30);";
 
-                    context.executeJavaScriptOnEDT(jsCode);
-                });
-            } else {
-                LOG.debug("[ASK_USER_QUESTION][SHOW_DIALOG] Application unavailable, skipping JS dialog dispatch");
-            }
+            deliverDialog(requestId, jsCode, future);
 
             scheduleSafetyNet(future, () -> {
                 if (future.complete(new JsonObject())) {
@@ -558,19 +658,17 @@ public class PermissionHandler extends BaseMessageHandler {
             String requestJson = gson.toJson(planData);
             String escapedJson = escapeJs(requestJson);
 
-            ApplicationManager.getApplication().invokeLater(() -> {
-                String jsCode = "(function retryShowPlanApproval(retries) { " +
-                    "  if (window.showPlanApprovalDialog) { " +
-                    "    window.showPlanApprovalDialog('" + escapedJson + "'); " +
-                    "  } else if (retries > 0) { " +
-                    "    setTimeout(function() { retryShowPlanApproval(retries - 1); }, 200); " +
-                    "  } else { " +
-                    "    console.error('[PLAN_APPROVAL][JS] FAILED: showPlanApprovalDialog not available!'); " +
-                    "  } " +
-                    "})(30);";
+            String jsCode = "(function retryShowPlanApproval(retries) { " +
+                "  if (window.showPlanApprovalDialog) { " +
+                "    window.showPlanApprovalDialog('" + escapedJson + "'); " +
+                "  } else if (retries > 0) { " +
+                "    setTimeout(function() { retryShowPlanApproval(retries - 1); }, 200); " +
+                "  } else { " +
+                "    console.error('[PLAN_APPROVAL][JS] FAILED: showPlanApprovalDialog not available!'); " +
+                "  } " +
+                "})(30);";
 
-                context.executeJavaScriptOnEDT(jsCode);
-            });
+            deliverDialog(requestId, jsCode, future);
 
             scheduleSafetyNet(future, () -> {
                 JsonObject timeoutResponse = new JsonObject();

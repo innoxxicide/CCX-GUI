@@ -7,6 +7,20 @@
  */
 
 import type { UseWindowCallbacksOptions } from '../../useWindowCallbacks';
+import { sendBridgeEvent } from '../../../utils/bridge';
+
+/**
+ * Tell Java the dialog request reached the webview (it is now either showing or
+ * queued behind an open dialog). Java re-sends an unacknowledged dialog a few
+ * times, because `CefBrowser.executeJavaScript` silently drops snippets while the
+ * renderer is booting, navigating, or restarting — leaving the agent blocked on a
+ * dialog that never appeared. Acking stops that retry loop.
+ */
+function acknowledgeDialogShown(id: unknown): void {
+  if (typeof id === 'string' && id.length > 0) {
+    sendBridgeEvent('dialog_shown', id);
+  }
+}
 
 export function registerPermissionCallbacks(options: UseWindowCallbacksOptions): void {
   const {
@@ -22,6 +36,7 @@ export function registerPermissionCallbacks(options: UseWindowCallbacksOptions):
     try {
       const request = JSON.parse(json);
       openPermissionDialog(request);
+      acknowledgeDialogShown(request?.channelId);
     } catch (error) {
       console.error('[Frontend] Failed to parse permission request:', error);
     }
@@ -60,6 +75,7 @@ export function registerPermissionCallbacks(options: UseWindowCallbacksOptions):
     try {
       const request = JSON.parse(json);
       openAskUserQuestionDialog(request);
+      acknowledgeDialogShown(request?.requestId);
     } catch (error) {
       console.error('[Frontend] Failed to parse ask user question request:', error);
     }
@@ -80,6 +96,7 @@ export function registerPermissionCallbacks(options: UseWindowCallbacksOptions):
     try {
       const request = JSON.parse(json);
       openPlanApprovalDialog(request);
+      acknowledgeDialogShown(request?.requestId);
     } catch (error) {
       console.error('[Frontend] Failed to parse plan approval request:', error);
     }

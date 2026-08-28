@@ -97,21 +97,17 @@ export function useDialogManagement({ t }: UseDialogManagementOptions): UseDialo
   const [contextUsageData, setContextUsageData] = useState<ContextUsageData | null>(null);
   const contextUsageRequestIdRef = useRef<string | null>(null);
 
-  // Sync refs with state
-  useEffect(() => {
-    permissionDialogOpenRef.current = permissionDialogOpen;
-    currentPermissionRequestRef.current = currentPermissionRequest;
-  }, [permissionDialogOpen, currentPermissionRequest]);
-
-  useEffect(() => {
-    askUserQuestionDialogOpenRef.current = askUserQuestionDialogOpen;
-    currentAskUserQuestionRequestRef.current = currentAskUserQuestionRequest;
-  }, [askUserQuestionDialogOpen, currentAskUserQuestionRequest]);
-
-  useEffect(() => {
-    planApprovalDialogOpenRef.current = planApprovalDialogOpen;
-    currentPlanApprovalRequestRef.current = currentPlanApprovalRequest;
-  }, [planApprovalDialogOpen, currentPlanApprovalRequest]);
+  // The refs — not the state — are the source of truth for "a dialog is showing".
+  // They are written synchronously by every open/close path below, so a request
+  // arriving from Java (a plain JCEF callback, outside React's batching) always
+  // sees the current situation instead of a state value that has not committed yet.
+  //
+  // There used to be effects here that mirrored state back onto the refs. They ran
+  // one commit behind: a dialog opened between a commit and its passive-effect flush
+  // had its refs overwritten with the *previous* commit's values, and the queue-drain
+  // effect below then opened a queued request on top of it. The overwritten request
+  // was neither showing nor queued — permanently lost, with Java still blocking on
+  // its answer. Never resurrect that mirroring.
 
   // Open permission dialog
   const openPermissionDialog = useCallback((request: PermissionRequest) => {
@@ -176,37 +172,66 @@ export function useDialogManagement({ t }: UseDialogManagementOptions): UseDialo
     setPlanApprovalDialogOpen(true);
   }, []);
 
-  // Process pending permission requests queue
-  useEffect(() => {
-    if (permissionDialogOpen) return;
-    if (currentPermissionRequest) return;
+  // Drain helpers. Every close path calls these synchronously, so a queued request
+  // opens immediately instead of waiting for a state transition to schedule an
+  // effect. That matters because a stranded queue entry has no recovery path: Java
+  // blocks on the answer, and with "auto-close dialog on timeout" off there is no
+  // safety net on either side, so the agent hangs forever with no dialog on screen.
+  const openNextPendingPermissionRequest = useCallback(() => {
     const next = pendingPermissionRequestsRef.current.shift();
     if (next) {
       openPermissionDialog(next);
     }
-  }, [permissionDialogOpen, currentPermissionRequest, openPermissionDialog]);
+  }, [openPermissionDialog]);
 
-  // Process pending ask user question requests queue
-  useEffect(() => {
-    if (askUserQuestionDialogOpen) return;
-    if (currentAskUserQuestionRequest) return;
+  const openNextPendingAskUserQuestionRequest = useCallback(() => {
     const next = pendingAskUserQuestionRequestsRef.current.shift();
     if (next) {
       openAskUserQuestionDialog(next);
     }
-  }, [askUserQuestionDialogOpen, currentAskUserQuestionRequest, openAskUserQuestionDialog]);
+  }, [openAskUserQuestionDialog]);
 
-  // Process pending plan approval requests queue
-  useEffect(() => {
-    if (planApprovalDialogOpen) return;
-    if (currentPlanApprovalRequest) return;
+  const openNextPendingPlanApprovalRequest = useCallback(() => {
     const next = pendingPlanApprovalRequestsRef.current.shift();
     if (next) {
       openPlanApprovalDialog(next);
     }
-  }, [planApprovalDialogOpen, currentPlanApprovalRequest, openPlanApprovalDialog]);
+  }, [openPlanApprovalDialog]);
+
+  // Backstops for the synchronous drains above: they cover a close path that forgets
+  // to drain. The ref guards make them idempotent — when a newer request is already
+  // opening, the refs are set even though its state has not committed yet, so these
+  // must not shift another entry on top of it.
+  useEffect(() => {
+    if (permissionDialogOpen || currentPermissionRequest) return;
+    if (permissionDialogOpenRef.current || currentPermissionRequestRef.current) return;
+    openNextPendingPermissionRequest();
+  }, [permissionDialogOpen, currentPermissionRequest, openNextPendingPermissionRequest]);
+
+  useEffect(() => {
+    if (askUserQuestionDialogOpen || currentAskUserQuestionRequest) return;
+    if (askUserQuestionDialogOpenRef.current || currentAskUserQuestionRequestRef.current) return;
+    openNextPendingAskUserQuestionRequest();
+  }, [askUserQuestionDialogOpen, currentAskUserQuestionRequest, openNextPendingAskUserQuestionRequest]);
+
+  useEffect(() => {
+    if (planApprovalDialogOpen || currentPlanApprovalRequest) return;
+    if (planApprovalDialogOpenRef.current || currentPlanApprovalRequestRef.current) return;
+    openNextPendingPlanApprovalRequest();
+  }, [planApprovalDialogOpen, currentPlanApprovalRequest, openNextPendingPlanApprovalRequest]);
 
   // Permission handlers
+  const closePermissionDialogAndDrain = useCallback((channelId: string) => {
+    pendingPermissionRequestsRef.current = pendingPermissionRequestsRef.current.filter(
+      (item) => item.channelId !== channelId
+    );
+    permissionDialogOpenRef.current = false;
+    currentPermissionRequestRef.current = null;
+    setPermissionDialogOpen(false);
+    setCurrentPermissionRequest(null);
+    openNextPendingPermissionRequest();
+  }, [openNextPendingPermissionRequest]);
+
   const handlePermissionApprove = useCallback((channelId: string) => {
     const payload = JSON.stringify({
       channelId,
@@ -215,14 +240,8 @@ export function useDialogManagement({ t }: UseDialogManagementOptions): UseDialo
       rejectMessage: null,
     });
     sendBridgeEvent('permission_decision', payload);
-    pendingPermissionRequestsRef.current = pendingPermissionRequestsRef.current.filter(
-      (item) => item.channelId !== channelId
-    );
-    permissionDialogOpenRef.current = false;
-    currentPermissionRequestRef.current = null;
-    setPermissionDialogOpen(false);
-    setCurrentPermissionRequest(null);
-  }, []);
+    closePermissionDialogAndDrain(channelId);
+  }, [closePermissionDialogAndDrain]);
 
   const handlePermissionApproveAlways = useCallback((channelId: string) => {
     const payload = JSON.stringify({
@@ -232,14 +251,8 @@ export function useDialogManagement({ t }: UseDialogManagementOptions): UseDialo
       rejectMessage: null,
     });
     sendBridgeEvent('permission_decision', payload);
-    pendingPermissionRequestsRef.current = pendingPermissionRequestsRef.current.filter(
-      (item) => item.channelId !== channelId
-    );
-    permissionDialogOpenRef.current = false;
-    currentPermissionRequestRef.current = null;
-    setPermissionDialogOpen(false);
-    setCurrentPermissionRequest(null);
-  }, []);
+    closePermissionDialogAndDrain(channelId);
+  }, [closePermissionDialogAndDrain]);
 
   const handlePermissionSkip = useCallback((channelId: string) => {
     const payload = JSON.stringify({
@@ -249,27 +262,29 @@ export function useDialogManagement({ t }: UseDialogManagementOptions): UseDialo
       rejectMessage: t('permission.userDenied'),
     });
     sendBridgeEvent('permission_decision', payload);
-    pendingPermissionRequestsRef.current = pendingPermissionRequestsRef.current.filter(
-      (item) => item.channelId !== channelId
-    );
-    permissionDialogOpenRef.current = false;
-    currentPermissionRequestRef.current = null;
-    setPermissionDialogOpen(false);
-    setCurrentPermissionRequest(null);
-  }, [t]);
+    closePermissionDialogAndDrain(channelId);
+  }, [t, closePermissionDialogAndDrain]);
 
   // AskUserQuestion handlers
+  const closeAskUserQuestionDialogAndDrain = useCallback((requestId: string) => {
+    pendingAskUserQuestionRequestsRef.current = pendingAskUserQuestionRequestsRef.current.filter(
+      (item) => item.requestId !== requestId
+    );
+    askUserQuestionDialogOpenRef.current = false;
+    currentAskUserQuestionRequestRef.current = null;
+    setAskUserQuestionDialogOpen(false);
+    setCurrentAskUserQuestionRequest(null);
+    openNextPendingAskUserQuestionRequest();
+  }, [openNextPendingAskUserQuestionRequest]);
+
   const handleAskUserQuestionSubmit = useCallback((requestId: string, answers: Record<string, string | string[]>) => {
     const payload = JSON.stringify({
       requestId,
       answers,
     });
     sendBridgeEvent('ask_user_question_response', payload);
-    askUserQuestionDialogOpenRef.current = false;
-    currentAskUserQuestionRequestRef.current = null;
-    setAskUserQuestionDialogOpen(false);
-    setCurrentAskUserQuestionRequest(null);
-  }, []);
+    closeAskUserQuestionDialogAndDrain(requestId);
+  }, [closeAskUserQuestionDialogAndDrain]);
 
   const handleAskUserQuestionCancel = useCallback((requestId: string) => {
     const payload = JSON.stringify({
@@ -277,13 +292,21 @@ export function useDialogManagement({ t }: UseDialogManagementOptions): UseDialo
       answers: {},
     });
     sendBridgeEvent('ask_user_question_response', payload);
-    askUserQuestionDialogOpenRef.current = false;
-    currentAskUserQuestionRequestRef.current = null;
-    setAskUserQuestionDialogOpen(false);
-    setCurrentAskUserQuestionRequest(null);
-  }, []);
+    closeAskUserQuestionDialogAndDrain(requestId);
+  }, [closeAskUserQuestionDialogAndDrain]);
 
   // PlanApproval handlers
+  const closePlanApprovalDialogAndDrain = useCallback((requestId: string) => {
+    pendingPlanApprovalRequestsRef.current = pendingPlanApprovalRequestsRef.current.filter(
+      (item) => item.requestId !== requestId
+    );
+    planApprovalDialogOpenRef.current = false;
+    currentPlanApprovalRequestRef.current = null;
+    setPlanApprovalDialogOpen(false);
+    setCurrentPlanApprovalRequest(null);
+    openNextPendingPlanApprovalRequest();
+  }, [openNextPendingPlanApprovalRequest]);
+
   const handlePlanApprovalApprove = useCallback((requestId: string, targetMode: string) => {
     const payload = JSON.stringify({
       requestId,
@@ -291,11 +314,8 @@ export function useDialogManagement({ t }: UseDialogManagementOptions): UseDialo
       targetMode,
     });
     sendBridgeEvent('plan_approval_response', payload);
-    planApprovalDialogOpenRef.current = false;
-    currentPlanApprovalRequestRef.current = null;
-    setPlanApprovalDialogOpen(false);
-    setCurrentPlanApprovalRequest(null);
-  }, []);
+    closePlanApprovalDialogAndDrain(requestId);
+  }, [closePlanApprovalDialogAndDrain]);
 
   const handlePlanApprovalReject = useCallback((requestId: string) => {
     const payload = JSON.stringify({
@@ -304,11 +324,8 @@ export function useDialogManagement({ t }: UseDialogManagementOptions): UseDialo
       targetMode: 'default',
     });
     sendBridgeEvent('plan_approval_response', payload);
-    planApprovalDialogOpenRef.current = false;
-    currentPlanApprovalRequestRef.current = null;
-    setPlanApprovalDialogOpen(false);
-    setCurrentPlanApprovalRequest(null);
-  }, []);
+    closePlanApprovalDialogAndDrain(requestId);
+  }, [closePlanApprovalDialogAndDrain]);
 
   // Force-close helpers — invoked by the backend safety-net handlers when the
   // Java side has already resolved the pending future and we must tear the
@@ -333,7 +350,10 @@ export function useDialogManagement({ t }: UseDialogManagementOptions): UseDialo
     currentAskUserQuestionRequestRef.current = null;
     setAskUserQuestionDialogOpen(false);
     setCurrentAskUserQuestionRequest(null);
-  }, []);
+    // No-op when targetId was null (the queue was emptied above); otherwise the
+    // genuine follow-up request surfaces right away.
+    openNextPendingAskUserQuestionRequest();
+  }, [openNextPendingAskUserQuestionRequest]);
 
   const forceClosePermissionDialog = useCallback((channelId?: string | null) => {
     const targetId = channelId && channelId.length > 0 ? channelId : null;
@@ -347,7 +367,8 @@ export function useDialogManagement({ t }: UseDialogManagementOptions): UseDialo
     currentPermissionRequestRef.current = null;
     setPermissionDialogOpen(false);
     setCurrentPermissionRequest(null);
-  }, []);
+    openNextPendingPermissionRequest();
+  }, [openNextPendingPermissionRequest]);
 
   const forceClosePlanApprovalDialog = useCallback((requestId?: string | null) => {
     const targetId = requestId && requestId.length > 0 ? requestId : null;
@@ -361,7 +382,8 @@ export function useDialogManagement({ t }: UseDialogManagementOptions): UseDialo
     currentPlanApprovalRequestRef.current = null;
     setPlanApprovalDialogOpen(false);
     setCurrentPlanApprovalRequest(null);
-  }, []);
+    openNextPendingPlanApprovalRequest();
+  }, [openNextPendingPlanApprovalRequest]);
 
   // Context usage dialog handlers
   const isCurrentContextUsageRequest = useCallback((requestId?: string | null) => {

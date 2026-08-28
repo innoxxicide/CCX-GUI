@@ -36,7 +36,9 @@ class PermissionRequestWatcher {
     private final BiConsumer<String, String> debugLog;
 
     private volatile boolean running;
-    private Thread watchThread;
+    // Volatile because an outgoing watch thread reads it to check whether it is still the
+    // owner before clearing `running` — see watchLoop's finally block.
+    private volatile Thread watchThread;
 
     PermissionRequestWatcher(
             Path permissionDir,
@@ -81,6 +83,28 @@ class PermissionRequestWatcher {
 
     private void watchLoop(RequestHandler handler) {
         debugLog.accept("WATCH_LOOP", "Starting polling loop on: " + permissionDir);
+        try {
+            pollUntilStopped(handler);
+        } finally {
+            // Clearing the flag here (rather than only in stop()) is what makes the
+            // watcher restartable. If this thread ever dies while `running` is still
+            // true — a spurious interrupt, an Error escaping the loop body — start()
+            // would take its "Already running" early return forever, and every later
+            // permission request in this session would sit unread in the IPC directory:
+            // no dialog, and the agent blocked until the Node safety net fires (never,
+            // when "auto-close dialog on timeout" is off).
+            //
+            // Only the current owner may clear it: stop() gives up joining after 1s, so a
+            // slow thread can still be unwinding when start() has already installed its
+            // successor, and clearing the flag then would switch that successor off.
+            if (watchThread == Thread.currentThread()) {
+                running = false;
+            }
+            debugLog.accept("WATCH_LOOP", "Polling loop ended");
+        }
+    }
+
+    private void pollUntilStopped(RequestHandler handler) {
         int pollCount = 0;
         while (running) {
             try {
@@ -110,20 +134,61 @@ class PermissionRequestWatcher {
 
                 Thread.sleep(POLL_INTERVAL_MS);
             } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                break;
-            } catch (Exception e) {
-                debugLog.accept("POLL_ERROR", "Error in poll loop: " + e.getMessage());
-                LOG.error("Error occurred", e);
-                try {
-                    Thread.sleep(ERROR_RETRY_DELAY_MS);
-                } catch (InterruptedException ex) {
-                    Thread.currentThread().interrupt();
-                    break;
+                if (!keepPollingAfterInterrupt()) {
+                    return;
+                }
+            } catch (Throwable e) {
+                // Throwable, not Exception: an Error escaping a request handler used to
+                // kill this thread outright and silently stop all permission routing.
+                if (!recoverFromPollError(e)) {
+                    return;
                 }
             }
         }
-        debugLog.accept("WATCH_LOOP", "Polling loop ended");
+    }
+
+    /**
+     * Report a failed poll and back off before the next one.
+     *
+     * @return true to continue polling, false to exit
+     */
+    private boolean recoverFromPollError(Throwable error) {
+        try {
+            debugLog.accept("POLL_ERROR", "Error in poll loop: " + error.getMessage());
+            LOG.error("Error occurred", error);
+        } catch (Throwable reportingFailure) {
+            // Reporting must not be able to kill the poll loop: Logger.error rethrows what it
+            // is handed under the test logger and in IDE internal mode, which would defeat the
+            // whole point of catching Throwable above.
+        }
+        try {
+            Thread.sleep(ERROR_RETRY_DELAY_MS);
+        } catch (InterruptedException e) {
+            return keepPollingAfterInterrupt();
+        }
+        return true;
+    }
+
+    /**
+     * Decide whether an interrupt means "shut down" or "spurious, keep polling".
+     *
+     * <p>{@link #stop()} clears {@code running} before interrupting, so a real stop is
+     * already visible here. Any other interrupt (the IDE cancelling work on a pooled
+     * thread, a handler restoring the interrupt flag after swallowing it) must not end
+     * polling: the loop would exit while the session is still live and every subsequent
+     * permission request would go unanswered.</p>
+     *
+     * @return true to continue polling, false to exit and propagate the interrupt
+     */
+    private boolean keepPollingAfterInterrupt() {
+        if (!running) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
+        // Clear the interrupt status so the next Thread.sleep() does not rethrow immediately.
+        Thread.interrupted();
+        debugLog.accept("POLL_INTERRUPTED", "Spurious interrupt while still running; continuing to poll");
+        return true;
     }
 
     private void dispatchFiles(File[] files, String tag, java.util.function.Consumer<Path> consumer) {

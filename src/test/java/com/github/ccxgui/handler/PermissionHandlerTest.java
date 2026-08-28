@@ -9,7 +9,9 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -55,15 +57,16 @@ public class PermissionHandlerTest {
     }
 
     @Test
-    public void getSupportedTypesReturnsTheThreeIpcMessageTypes() {
+    public void getSupportedTypesReturnsTheIpcMessageTypes() {
         // Order is part of the dispatch contract documented in PermissionHandler.SUPPORTED_TYPES,
         // but the asserted property here is set-membership: the bridge will deliver any of these
-        // three keys and the handler must claim ownership of all three.
+        // keys and the handler must claim ownership of all of them.
         String[] actual = handler.getSupportedTypes().clone();
         String[] expected = {
                 "permission_decision",
                 "ask_user_question_response",
-                "plan_approval_response"
+                "plan_approval_response",
+                "dialog_shown"
         };
         Arrays.sort(actual);
         Arrays.sort(expected);
@@ -283,6 +286,102 @@ public class PermissionHandlerTest {
         assertTrue(scheduler.task.cancelled);
     }
 
+    // --- dialog re-delivery ---------------------------------------------------------------
+    //
+    // CefBrowser.executeJavaScript is fire-and-forget: while the renderer boots, navigates, or
+    // restarts, the snippet is dropped with no error. The permission dialog then never appears
+    // while Node stays blocked on the response file — and with auto-close disabled there is no
+    // safety net on either side, so the turn hangs forever. The handler therefore re-sends the
+    // payload until the webview acknowledges it.
+
+    @Test
+    public void unacknowledgedPermissionDialogIsResent() {
+        RecordingSafetyNetScheduler scheduler = new RecordingSafetyNetScheduler();
+        PermissionHandler configuredHandler = new PermissionHandler(contextStub(), scheduler);
+
+        configuredHandler.showFrontendPermissionDialog("Bash", new JsonObject());
+        assertEquals("first send must arm a re-delivery timer",
+                1, scheduler.deliveryTasks.size());
+
+        // Nothing acknowledged: firing the timer must re-send and arm the next attempt.
+        scheduler.deliveryTasks.get(0).runnable.run();
+        assertEquals("an unacknowledged dialog must be re-sent",
+                2, scheduler.deliveryTasks.size());
+    }
+
+    @Test
+    public void acknowledgedPermissionDialogIsNotResent() {
+        RecordingSafetyNetScheduler scheduler = new RecordingSafetyNetScheduler();
+        PermissionHandler configuredHandler = new PermissionHandler(contextStub(), scheduler);
+
+        configuredHandler.showFrontendPermissionDialog("Bash", new JsonObject());
+        String channelId = onlyPendingPermissionChannelId(configuredHandler);
+
+        assertTrue(configuredHandler.handle("dialog_shown", channelId));
+
+        scheduler.deliveryTasks.get(0).runnable.run();
+        assertEquals("an acknowledged dialog must never be re-sent",
+                1, scheduler.deliveryTasks.size());
+        assertTrue("the armed re-delivery timer must be cancelled on ack",
+                scheduler.deliveryTasks.get(0).task.cancelled);
+    }
+
+    @Test
+    public void answeredPermissionDialogIsNotResent() {
+        RecordingSafetyNetScheduler scheduler = new RecordingSafetyNetScheduler();
+        PermissionHandler configuredHandler = new PermissionHandler(contextStub(), scheduler);
+
+        CompletableFuture<Integer> future = configuredHandler.showFrontendPermissionDialog("Bash", new JsonObject());
+        future.complete(PermissionService.PermissionResponse.ALLOW.getValue());
+
+        scheduler.deliveryTasks.get(0).runnable.run();
+        assertEquals("a resolved request has nobody waiting on it; stop re-sending",
+                1, scheduler.deliveryTasks.size());
+    }
+
+    @Test
+    public void permissionDialogReDeliveryIsBounded() {
+        RecordingSafetyNetScheduler scheduler = new RecordingSafetyNetScheduler();
+        PermissionHandler configuredHandler = new PermissionHandler(contextStub(), scheduler);
+
+        configuredHandler.showFrontendPermissionDialog("Bash", new JsonObject());
+        // Keep firing whatever timer is currently armed; the chain must stop on its own.
+        for (int i = 0; i < PermissionHandler.DIALOG_DELIVERY_MAX_ATTEMPTS + 3; i++) {
+            int armed = scheduler.deliveryTasks.size();
+            scheduler.deliveryTasks.get(armed - 1).runnable.run();
+            if (scheduler.deliveryTasks.size() == armed) {
+                break;
+            }
+        }
+
+        // The last attempt sends without arming another timer, so timers == attempts - 1.
+        assertEquals("re-delivery must give up rather than retry forever",
+                PermissionHandler.DIALOG_DELIVERY_MAX_ATTEMPTS - 1, scheduler.deliveryTasks.size());
+    }
+
+    @Test
+    public void dialogShownForAnUnknownOrBlankIdIsHarmless() {
+        // Late acks (the request already timed out) and empty payloads must not throw — the
+        // bridge delivers whatever the webview sent.
+        assertTrue(handler.handle("dialog_shown", "not-a-pending-id"));
+        assertTrue(handler.handle("dialog_shown", ""));
+        assertTrue(handler.handle("dialog_shown", "   "));
+    }
+
+    private String onlyPendingPermissionChannelId(PermissionHandler target) {
+        try {
+            Field f = PermissionHandler.class.getDeclaredField("pendingPermissionRequests");
+            f.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            Map<String, CompletableFuture<Integer>> map =
+                    (Map<String, CompletableFuture<Integer>>) f.get(target);
+            assertEquals(1, map.size());
+            return map.keySet().iterator().next();
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            throw new AssertionError(e);
+        }
+    }
+
     @Test
     public void showAskUserQuestionDialogTriggersReminderNotification() {
         FakeSafetyNetScheduler scheduler = new FakeSafetyNetScheduler();
@@ -407,6 +506,37 @@ public class PermissionHandlerTest {
         @Override
         public void cancel() {
             cancelled = true;
+        }
+    }
+
+    /**
+     * Records every scheduled task instead of only the last one. The dialog-show paths arm two
+     * kinds of timer on the same seam — the bounded re-delivery retry and the safety net — so
+     * the re-delivery tests select by delay.
+     */
+    private static class RecordingSafetyNetScheduler implements PermissionHandler.SafetyNetScheduler {
+        private final List<ScheduledEntry> deliveryTasks = new ArrayList<>();
+        private final List<ScheduledEntry> allTasks = new ArrayList<>();
+
+        @Override
+        public PermissionHandler.CancellableTask schedule(Runnable task, long delaySeconds) {
+            ScheduledEntry entry = new ScheduledEntry(task, delaySeconds);
+            allTasks.add(entry);
+            if (delaySeconds == PermissionHandler.DIALOG_DELIVERY_RETRY_DELAY_SECONDS) {
+                deliveryTasks.add(entry);
+            }
+            return entry.task;
+        }
+    }
+
+    private static class ScheduledEntry {
+        private final Runnable runnable;
+        private final long delaySeconds;
+        private final FakeCancellableTask task = new FakeCancellableTask();
+
+        private ScheduledEntry(Runnable runnable, long delaySeconds) {
+            this.runnable = runnable;
+            this.delaySeconds = delaySeconds;
         }
     }
 

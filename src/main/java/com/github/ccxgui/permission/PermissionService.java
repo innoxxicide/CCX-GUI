@@ -311,9 +311,16 @@ public class PermissionService {
         String content = acquireRequestContent(requestFile, "PERM");
         if (content == null) { return; }
 
+        // Tracks whether this request has been answered, or handed to something that
+        // owns answering it. Node blocks on the response file, and when the user turns
+        // "auto-close dialog on timeout" off there is no safety net on either side — so
+        // any path that consumes the request without producing a response hangs the turn
+        // forever with no dialog ever appearing.
+        String requestId = null;
+        boolean answered = false;
         try {
             JsonObject request = gson.fromJson(content, JsonObject.class);
-            String requestId = request.get("requestId").getAsString();
+            requestId = request.get("requestId").getAsString();
             String toolName = request.get("toolName").getAsString();
             JsonObject inputs = request.get("inputs").getAsJsonObject();
 
@@ -323,6 +330,7 @@ public class PermissionService {
                 boolean allow = toolDecision.isAllow();
                 debugLog("MEMORY_HIT", "Tool-level: " + toolName + " -> " + (allow ? "ALLOW" : "DENY"));
                 fileProtocol.writePermissionResponse(requestId, allow);
+                answered = true;
                 notifyDecision(toolName, inputs, toolDecision);
                 safeDeleteFile(requestFile, "PERM");
                 return;
@@ -331,6 +339,7 @@ public class PermissionService {
             // Diff review for file-modifying tools (Edit, Write)
             if (DiffReviewService.isFileModifyingTool(toolName)
                     && tryDiffReview(request, requestFile, fileName, requestId, toolName, inputs)) {
+                answered = true;
                 return;
             }
 
@@ -340,6 +349,7 @@ public class PermissionService {
                 boolean allow = remembered != PermissionResponse.DENY;
                 debugLog("PARAM_MEMORY_HIT", toolName + " -> " + (allow ? "ALLOW" : "DENY"));
                 fileProtocol.writePermissionResponse(requestId, allow);
+                answered = true;
                 notifyDecision(toolName, inputs, remembered);
                 safeDeleteFile(requestFile, "PERM");
                 return;
@@ -353,7 +363,24 @@ public class PermissionService {
             } else {
                 dispatchPermissionFallback(requestId, toolName, inputs, requestFile, fileName);
             }
+            // Both dispatchers own the response from here on (dialog future callbacks,
+            // or the fallback's own failure handling).
+            answered = true;
         } catch (Exception e) {
+            // Unblock first, log second: Logger.error rethrows what it is handed under the
+            // test logger and in IDE internal mode, which would skip the response write and
+            // reintroduce exactly the hang this branch exists to prevent.
+            if (requestId != null && !answered) {
+                // We got far enough to identify the request, so Node is already polling
+                // for this response file. Deny by default: the turn keeps moving and the
+                // user sees the denial, instead of the agent hanging on a dialog that
+                // was never shown.
+                debugLog("HANDLE_ERROR", "Writing default DENY so the blocked request cannot hang");
+                fileProtocol.writePermissionResponse(requestId, false);
+                safeDeleteFile(requestFile, "PERM");
+            }
+            // requestId == null means the file was unreadable or torn mid-write; it is
+            // deliberately left in place so the next poll can retry it.
             debugLog("HANDLE_ERROR", "Error handling request: " + e.getMessage());
             LOG.error("Error occurred", e);
         } finally {
@@ -408,8 +435,19 @@ public class PermissionService {
             }
             notifyDecision(toolName, inputs, decision);
             fileProtocol.writePermissionResponse(requestId, allow);
-            Files.delete(requestFile);
+            safeDeleteFile(requestFile, "FALLBACK");
         } catch (Exception e) {
+            // The 30s get() timeout used to leave the request unanswered AND the request
+            // file in place: Node kept blocking while the watcher re-dispatched the same
+            // request on every poll, each retry blocking the watcher thread for another
+            // 30s. Answer with a deny and consume the file so neither side is stuck.
+            // Done before logging, since Logger.error can rethrow (see handlePermissionRequest).
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
+            notifyDecision(toolName, inputs, PermissionResponse.DENY);
+            fileProtocol.writePermissionResponse(requestId, false);
+            safeDeleteFile(requestFile, "FALLBACK");
             debugLog("FALLBACK_ERROR", "Error: " + e.getMessage());
             LOG.error("Error occurred", e);
         }
