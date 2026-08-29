@@ -1,0 +1,295 @@
+/* Pipeline Monitor Styles */
+.pipeline-monitor-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.pipeline-monitor-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(1180px, 94vw);
+  max-height: 86vh;
+  overflow-y: auto;
+  padding: 16px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: 8px;
+  box-shadow: var(--shadow-md);
+  color: var(--text-primary);
+}
+
+.pipeline-monitor-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pipeline-monitor-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.pipeline-monitor-modes {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.pipeline-mode-badge {
+  padding: 2px 10px;
+  font-size: 11px;
+  border-radius: 10px;
+  border: 1px solid var(--border-primary);
+  color: var(--text-muted);
+  opacity: 0.5;
+
+  &[data-active='true'] {
+    opacity: 1;
+    color: var(--text-white);
+    background: var(--accent-primary);
+    border-color: var(--accent-primary);
+  }
+}
+
+.pipeline-monitor-close {
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--text-primary);
+  }
+}
+
+.pipeline-monitor-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.pipeline-monitor-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.pipeline-summary-progress {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.pipeline-summary-running {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--color-todo-panel-progress);
+
+  .codicon {
+    font-size: 12px;
+    animation: pipeline-spin 1s linear infinite;
+  }
+}
+
+.pipeline-summary-totals {
+  margin-left: auto;
+  color: var(--text-tertiary);
+}
+
+/* Wraps rather than scrolls: a step the reader never scrolls to is a step the track failed to show. */
+.pipeline-monitor-track {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(116px, 1fr));
+  gap: 8px;
+  align-items: start;
+  padding-bottom: 6px;
+}
+
+.pipeline-track-column {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  /* Once the track wraps, a tall stack sits beside short cells; the rule marks it as one slot. */
+  &[data-parallel='true'] {
+    padding-left: 8px;
+    border-left: 2px solid var(--border-primary);
+  }
+}
+
+/* Pale = described but not reached; solid = this run actually got there. */
+.pipeline-step {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+  padding: 8px;
+  text-align: left;
+  border-radius: 6px;
+  border: 1px dashed var(--border-primary);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  opacity: 0.35;
+  cursor: pointer;
+  transition: opacity 0.15s ease, border-color 0.15s ease;
+
+  &:not([data-state='pending']) {
+    opacity: 1;
+    border-style: solid;
+    background: var(--bg-elevated);
+  }
+
+  &[data-state='running'] {
+    border-color: var(--color-todo-panel-progress);
+  }
+
+  &[data-state='done'] {
+    border-color: var(--color-todo-status-completed);
+  }
+
+  &[data-state='error'] {
+    border-color: var(--color-error);
+  }
+
+  &[data-selected='true'] {
+    border-color: var(--accent-primary);
+    background: var(--bg-active);
+  }
+}
+
+.pipeline-step-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  /* The run-count badge takes its own line rather than squeezing the label mid-word. */
+  flex-wrap: wrap;
+}
+
+.pipeline-step-icon {
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+
+  [data-state='running'] & {
+    color: var(--color-todo-panel-progress);
+    animation: pipeline-spin 1s linear infinite;
+  }
+
+  [data-state='done'] & {
+    color: var(--color-todo-status-completed);
+  }
+
+  [data-state='error'] & {
+    color: var(--color-error);
+  }
+}
+
+.pipeline-step-label {
+  font-size: 11px;
+  font-weight: 500;
+  overflow-wrap: break-word;
+}
+
+.pipeline-step-count {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 0 5px;
+  font-size: 10px;
+  border-radius: 8px;
+  background: var(--bg-tertiary);
+  color: var(--text-tertiary);
+}
+
+.pipeline-step-note {
+  font-size: 10px;
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+.pipeline-step-meta {
+  font-size: 10px;
+  color: var(--text-tertiary);
+}
+
+.pipeline-step-error {
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--color-error);
+  overflow-wrap: break-word;
+}
+
+.pipeline-monitor-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pipeline-monitor-offtrack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-primary);
+}
+
+.pipeline-monitor-offtrack-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.pipeline-monitor-offtrack-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pipeline-offtrack-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--bg-tertiary);
+  color: var(--text-tertiary);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--text-primary);
+  }
+
+  &[data-selected='true'] {
+    border-color: var(--accent-primary);
+    background: var(--bg-active);
+    color: var(--text-primary);
+  }
+}
+
+@keyframes pipeline-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}

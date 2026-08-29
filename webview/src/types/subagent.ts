@@ -74,6 +74,8 @@ export interface SubagentInfo {
   isAsync?: boolean;
   /** Message index where this subagent was invoked */
   messageIndex: number;
+  /** ISO timestamp of the invoking message, when that message carries one */
+  startedAt?: string;
   /** Stable runtime agent id returned by Claude Code, used to locate sidechain logs */
   agentId?: string;
   /** Codex agent path derived from spawn_agent task_name. */

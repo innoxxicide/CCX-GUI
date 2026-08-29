@@ -142,6 +142,7 @@ export function extractSubagentsFromMessages(
         status,
         isAsync,
         messageIndex,
+        ...(message.timestamp && { startedAt: message.timestamp }),
         ...resultMetadata,
         ...(spawnMeta.agentId && { agentId: spawnMeta.agentId }),
         ...(spawnMeta.agentPath && { agentPath: spawnMeta.agentPath }),

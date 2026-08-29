@@ -604,6 +604,7 @@ const App = () => {
           }
         }}
         showClaudeLimits={currentProvider === 'claude'}
+        subagents={subagents}
         claudeLimits={claudeLimits}
         onUsageStatsClick={() => {
           setUsageStatsModalOpen(true);

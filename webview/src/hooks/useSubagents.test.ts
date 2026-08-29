@@ -107,6 +107,21 @@ describe('extractSubagentsFromMessages', () => {
     });
   });
 
+  it('carries the launch timestamp through, and invents none when the message has no timestamp', () => {
+    const undated = assistantWithAgent('tooluse_undated');
+    const dated: ClaudeMessage = { ...assistantWithAgent('tooluse_dated'), timestamp: '2026-08-29T10:00:00.000Z' };
+
+    const fromDated = extractSubagentsFromMessages(
+      [dated], getContentBlocks, findToolResult([dated]), getToolResultRaw([dated]),
+    );
+    const fromUndated = extractSubagentsFromMessages(
+      [undated], getContentBlocks, findToolResult([undated]), getToolResultRaw([undated]),
+    );
+
+    expect(fromDated[0].startedAt).toBe('2026-08-29T10:00:00.000Z');
+    expect(fromUndated[0]).not.toHaveProperty('startedAt');
+  });
+
   it('attaches completed Agent result metadata including stable agent id', () => {
     const messages = [assistantWithAgent('tooluse_backend'), toolResultMessage('tooluse_backend')];
 

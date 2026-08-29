@@ -3,7 +3,9 @@ import type { TFunction } from 'i18next';
 
 import { BackIcon } from '../Icons';
 import type { ClaudeLimitsState } from '../../types/usageLimits';
+import type { SubagentInfo } from '../../types';
 import { ClaudeLimitsIndicators } from './ClaudeLimitsIndicators';
+import PipelineMonitorButton from '../PipelineMonitor/PipelineMonitorButton';
 
 export interface ChatHeaderProps {
   currentView: 'chat' | 'history' | 'settings';
@@ -27,6 +29,8 @@ export interface ChatHeaderProps {
   showClaudeLimits?: boolean;
   /** Opens the usage-statistics modal when the battery block is clicked. */
   onUsageStatsClick?: () => void;
+  /** Subagents of the current conversation, read-only input for the pipeline monitor. */
+  subagents?: SubagentInfo[];
 }
 
 export function ChatHeader({
@@ -44,6 +48,7 @@ export function ChatHeader({
   claudeLimits,
   showClaudeLimits = false,
   onUsageStatsClick,
+  subagents = [],
 }: ChatHeaderProps): React.ReactElement | null {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -147,6 +152,7 @@ export function ChatHeader({
       <div className="header-right">
         {currentView === 'chat' && (
           <>
+            <PipelineMonitorButton subagents={subagents} t={t} />
             {showClaudeLimits && onUsageStatsClick && (
               <ClaudeLimitsIndicators
                 limits={claudeLimits ?? null}
