@@ -27,6 +27,8 @@ export interface RunSummary {
   /** Steps this run involves: one it was free to skip and did is not outstanding work. */
   total: number;
   running: string[];
+  /** Steps whose agent never reported back, kept apart from the ones actually working. */
+  stalled: string[];
   totalTokens: number;
   totalToolUseCount: number;
 }
@@ -104,6 +106,7 @@ export function summarizeRun(run: PipelineRun): RunSummary {
     done: involved.filter((entry) => entry.status === 'done').length,
     total: involved.length,
     running: run.steps.filter((entry) => entry.status === 'running').map((entry) => entry.step.label),
+    stalled: run.steps.filter((entry) => entry.status === 'stalled').map((entry) => entry.step.label),
     totalTokens: agents.reduce((sum, agent) => sum + (agent.totalTokens ?? 0), 0),
     totalToolUseCount: agents.reduce((sum, agent) => sum + (agent.totalToolUseCount ?? 0), 0),
   };

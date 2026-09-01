@@ -3,7 +3,7 @@ import type { TFunction } from 'i18next';
 
 import { BackIcon } from '../Icons';
 import type { ClaudeLimitsState } from '../../types/usageLimits';
-import type { SubagentInfo } from '../../types';
+import type { SubagentHistoryResponse, SubagentInfo } from '../../types';
 import { ClaudeLimitsIndicators } from './ClaudeLimitsIndicators';
 import PipelineMonitorButton from '../PipelineMonitor/PipelineMonitorButton';
 
@@ -31,6 +31,11 @@ export interface ChatHeaderProps {
   onUsageStatsClick?: () => void;
   /** Subagents of the current conversation, read-only input for the pipeline monitor. */
   subagents?: SubagentInfo[];
+  /** Session the pipeline monitor reads sidechain transcripts from; null before the first turn. */
+  currentSessionId?: string | null;
+  currentProvider?: string;
+  /** Sidechain transcripts already loaded, keyed by tool_use_id or agent id. */
+  subagentHistories?: Record<string, SubagentHistoryResponse>;
 }
 
 export function ChatHeader({
@@ -49,6 +54,9 @@ export function ChatHeader({
   showClaudeLimits = false,
   onUsageStatsClick,
   subagents = [],
+  currentSessionId = null,
+  currentProvider = 'claude',
+  subagentHistories,
 }: ChatHeaderProps): React.ReactElement | null {
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -152,7 +160,13 @@ export function ChatHeader({
       <div className="header-right">
         {currentView === 'chat' && (
           <>
-            <PipelineMonitorButton subagents={subagents} t={t} />
+            <PipelineMonitorButton
+              subagents={subagents}
+              t={t}
+              sessionId={currentSessionId}
+              provider={currentProvider}
+              histories={subagentHistories}
+            />
             {showClaudeLimits && onUsageStatsClick && (
               <ClaudeLimitsIndicators
                 limits={claudeLimits ?? null}

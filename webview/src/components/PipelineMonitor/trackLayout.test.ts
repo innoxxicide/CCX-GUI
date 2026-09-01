@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SubagentInfo, SubagentStatus } from '../../types';
-import type { PipelineStepStatus, StepRun } from './derivePipelineRun';
+import type { PipelineRun, PipelineStepStatus, StepRun } from './derivePipelineRun';
 import { derivePipelineRun } from './derivePipelineRun';
 import type { PipelineStep } from './pipelineDescriptor';
 import { groupOffTrack, liveElapsedMs, offTrackKey, resolveSelection, summarizeRun, toColumns } from './trackLayout';
@@ -25,6 +25,10 @@ function entry(step: PipelineStep): StepRun {
 
 function agent(id: string, label: string, group?: string): PipelineStep {
   return { id, label, role: id, kind: 'agent', group };
+}
+
+function mkRun(steps: StepRun[], offTrack: SubagentInfo[] = []): PipelineRun {
+  return { mode: 'fast', detectedMode: 'fast', steps, offTrack, stalledAgentIds: [] };
 }
 
 function ran(id: string, role: string): StepRun {
@@ -92,14 +96,14 @@ describe('toColumns', () => {
 
 describe('resolveSelection', () => {
   it('resolves an open selection to its own step while that step is on the track', () => {
-    const run = { mode: 'fast' as const, steps: [ran('planner', 'planner'), ran('implementer', 'implementer')], offTrack: [] };
+    const run = mkRun([ran('planner', 'planner'), ran('implementer', 'implementer')]);
 
     expect(resolveSelection(run, { kind: 'step', id: 'planner', role: 'planner' })?.key).toBe('planner');
     expect(resolveSelection(run, null)).toBeUndefined();
   });
 
   it('carries the open selection to the step the same role owns after the track swaps', () => {
-    const run = { mode: 'fast' as const, steps: [ran('implementer', 'implementer'), ran('optimizer-cleanup', 'optimizer')], offTrack: [] };
+    const run = mkRun([ran('implementer', 'implementer'), ran('optimizer-cleanup', 'optimizer')]);
     const carried = resolveSelection(run, { kind: 'step', id: 'optimizer-phase2', role: 'optimizer' });
 
     expect(carried?.key, 'the wave step left the track, its optimizer run did not').toBe('optimizer-cleanup');
@@ -107,7 +111,7 @@ describe('resolveSelection', () => {
   });
 
   it('drops the selection only when no step of that role is left holding a run', () => {
-    const run = { mode: 'fast' as const, steps: [ran('implementer', 'implementer')], offTrack: [] };
+    const run = mkRun([ran('implementer', 'implementer')]);
 
     expect(resolveSelection(run, { kind: 'step', id: 'reviewer', role: 'reviewer' })).toBeUndefined();
   });
@@ -115,7 +119,7 @@ describe('resolveSelection', () => {
   it('resolves an off-track selection to every agent of that type', () => {
     const first = mk('general-purpose', 'completed');
     const second = mk('general-purpose', 'running');
-    const run = { mode: 'fast' as const, steps: [], offTrack: [first, mk('security-review', 'completed'), second] };
+    const run = mkRun([], [first, mk('security-review', 'completed'), second]);
     const selected = resolveSelection(run, { kind: 'offTrack', type: 'general-purpose' });
 
     expect(selected?.key).toBe(offTrackKey('general-purpose'));

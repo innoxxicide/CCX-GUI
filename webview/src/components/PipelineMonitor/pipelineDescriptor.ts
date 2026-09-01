@@ -1,4 +1,13 @@
-export type PipelineMode = 'fast' | 'standard' | 'full' | 'undetermined';
+/**
+ * `undetermined` — a pipeline run whose route is not settled yet.
+ * `none` — agents ran, but none of them belongs to a pipeline track (a branch-scale
+ * lens review, an ad-hoc Explore batch); forcing a track on those draws a run that
+ * never existed, with every step after the first permanently unreached.
+ */
+export type PipelineMode = 'fast' | 'standard' | 'full' | 'undetermined' | 'none';
+
+/** The modes that own a track, and so can be picked by hand in the header. */
+export type TrackMode = 'fast' | 'standard' | 'full';
 
 export interface PipelineStep {
   id: string;
@@ -27,7 +36,7 @@ function reviewWave(): PipelineStep[] {
   ];
 }
 
-export const PIPELINE_TRACKS: Record<'fast' | 'standard' | 'full', PipelineStep[]> = {
+export const PIPELINE_TRACKS: Record<TrackMode, PipelineStep[]> = {
   fast: [
     TASK_BOARD,
     { id: 'triage', label: 'Triage', role: 'triage', kind: 'agent' },

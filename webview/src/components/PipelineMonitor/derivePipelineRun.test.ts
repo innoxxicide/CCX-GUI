@@ -51,7 +51,33 @@ describe('derivePipelineRun', () => {
       mk('code-reviewer', 'running'),
     ]);
 
-    expect(run.mode, 'the risk analyst also authors the lens set outside the pipeline').toBe('undetermined');
+    expect(run.mode, 'the risk analyst also authors the lens set outside the pipeline').toBe('none');
+  });
+
+  it('draws no track for a run whose agents belong to no pipeline path', () => {
+    const lens = mk('risk-analyst', 'completed');
+    const review = mk('code-reviewer', 'running');
+    const run = derivePipelineRun([lens, review]);
+
+    expect(run.steps, 'a forced track would show steps this run never had').toEqual([]);
+    expect(run.offTrack.map((agent) => agent.id)).toEqual([lens.id, review.id]);
+  });
+
+  it('draws the track the reader picked instead of the detected one', () => {
+    const agents = [mk('planner', 'completed'), mk('implementer', 'running')];
+    const run = derivePipelineRun(agents, 'full');
+
+    expect(run.mode).toBe('full');
+    expect(run.detectedMode, 'the pick does not rewrite what the agents say').toBe('standard');
+    expect(run.steps.map((entry) => entry.step.id)).toEqual(PIPELINE_TRACKS.full.map((step) => step.id));
+    expect(run.steps.find((entry) => entry.step.id === 'implementer')?.agents).toHaveLength(1);
+  });
+
+  it('a picked track gives a run outside every path somewhere to be drawn', () => {
+    const run = derivePipelineRun([mk('code-reviewer', 'completed')], 'fast');
+
+    expect(run.detectedMode).toBe('none');
+    expect(run.steps.find((entry) => entry.step.id === 'code-reviewer')?.status).toBe('done');
   });
 
   it('infers full when the risk analyst ran beside a role only Full launches', () => {
@@ -98,14 +124,14 @@ describe('derivePipelineRun', () => {
   it('step status follows its subagents', () => {
     const run = derivePipelineRun([
       mk('planner', 'completed'),
-      mk('implementer', 'running'),
       mk('validator', 'error'),
+      mk('code-reviewer', 'running'),
     ]);
     const statusOf = (role: string) => run.steps.find((entry) => entry.step.role === role)?.status;
 
     expect(statusOf('planner')).toBe('done');
-    expect(statusOf('implementer')).toBe('running');
     expect(statusOf('validator')).toBe('error');
+    expect(statusOf('code-reviewer'), 'no later step holds an agent, so this one is still live').toBe('running');
   });
 
   it('a step relaunched after an error reads as running, not failed', () => {
@@ -161,7 +187,7 @@ describe('derivePipelineRun', () => {
   });
 
   it('an agent outside the track is evidence enough for the opening step', () => {
-    const run = derivePipelineRun([mk('general-purpose', 'completed')]);
+    const run = derivePipelineRun([mk('general-purpose', 'completed')], 'standard');
 
     expect(run.offTrack).toHaveLength(1);
     expect(run.steps[0].status).toBe('done');
@@ -248,6 +274,70 @@ describe('derivePipelineRun', () => {
     ]);
 
     expect(run.steps.find((entry) => entry.step.id === 'final-audit')?.status).toBe('pending');
+  });
+
+  it('a step the run walked past is stalled, not running', () => {
+    const lost = mk('implementer', 'running');
+    const run = derivePipelineRun([
+      mk('planner', 'completed'),
+      lost,
+      mk('validator', 'completed'),
+    ]);
+    const statusOf = (id: string) => run.steps.find((entry) => entry.step.id === id)?.status;
+
+    expect(statusOf('implementer'), 'the validator already answered, so nothing is still working').toBe('stalled');
+    expect(run.stalledAgentIds).toEqual([lost.id]);
+  });
+
+  it('a live wave member is not stalled by the sibling that finished before it', () => {
+    const run = derivePipelineRun([
+      mk('planner', 'completed'),
+      mk('implementer', 'completed'),
+      mk('validator', 'completed'),
+      mk('reviewer', 'running'),
+      mk('code-reviewer', 'running'),
+      mk('optimizer', 'completed'),
+    ]);
+    const statusOf = (id: string) => run.steps.find((entry) => entry.step.id === id)?.status;
+
+    expect(statusOf('reviewer'), 'wave members finish in any order').toBe('running');
+    expect(statusOf('code-reviewer')).toBe('running');
+    expect(run.stalledAgentIds).toEqual([]);
+  });
+
+  it('the last step of a run is left running: nothing proves it stopped', () => {
+    const run = derivePipelineRun([mk('planner', 'completed'), mk('implementer', 'running')]);
+
+    expect(run.steps.find((entry) => entry.step.id === 'implementer')?.status).toBe('running');
+    expect(run.stalledAgentIds).toEqual([]);
+  });
+
+  it('a relaunch that reported back settles the step its stalled run left open', () => {
+    const run = derivePipelineRun([
+      mk('planner', 'completed'),
+      mk('implementer', 'running'),
+      mk('implementer', 'completed'),
+      mk('validator', 'completed'),
+    ]);
+    const implementer = run.steps.find((entry) => entry.step.id === 'implementer');
+
+    expect(implementer?.agents).toHaveLength(2);
+    expect(implementer?.status, 'the relaunch answered, so the step is not a dead end').toBe('done');
+  });
+
+  it('an orchestrator step waiting on a stalled one is a dead end, not pending', () => {
+    const run = derivePipelineRun([
+      mk('planner', 'completed'),
+      mk('implementer', 'completed'),
+      mk('validator', 'completed'),
+      mk('reviewer', 'running'),
+      mk('code-reviewer', 'completed'),
+      mk('closer', 'completed'),
+    ]);
+    const statusOf = (id: string) => run.steps.find((entry) => entry.step.id === id)?.status;
+
+    expect(statusOf('reviewer'), 'the closer ran, so the wave is over').toBe('stalled');
+    expect(statusOf('final-audit'), 'a step that waits on one that never reports is not waiting').toBe('stalled');
   });
 
   it('every step the contract lets a run skip carries the conditional flag', () => {
