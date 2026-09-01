@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { TFunction } from 'i18next';
-import type { SubagentInfo } from '../../types';
+import type { SubagentHistoryResponse, SubagentInfo } from '../../types';
+import { sendBridgeEvent } from '../../utils/bridge';
 import { subagentStatusIconMap } from '../StatusPanel/types';
 import { formatSubagentDuration } from '../StatusPanel/subagentProcess';
 import SubagentProcessDetails from '../StatusPanel/SubagentProcessDetails';
 import { derivePipelineRun } from './derivePipelineRun';
-import type { PipelineStepStatus, StepRun } from './derivePipelineRun';
+import type { StepRun } from './derivePipelineRun';
+import type { TrackMode } from './pipelineDescriptor';
 import { groupOffTrack, liveElapsedMs, offTrackKey, resolveSelection, summarizeRun, toColumns } from './trackLayout';
 import type { PanelSelection } from './trackLayout';
 import './PipelineMonitor.less';
@@ -15,15 +17,20 @@ interface PipelineMonitorOverlayProps {
   subagents: SubagentInfo[];
   t: TFunction;
   onClose: () => void;
+  /** Session whose sidechain transcripts back the details pane; null before the first turn. */
+  sessionId?: string | null;
+  provider?: string;
+  histories?: Record<string, SubagentHistoryResponse>;
 }
 
-const LIVE_STATUS_ICON: Record<Exclude<PipelineStepStatus, 'pending'>, SubagentInfo['status']> = {
+const LIVE_STATUS_ICON: Record<'running' | 'done' | 'error', SubagentInfo['status']> = {
   running: 'running',
   done: 'completed',
   error: 'error',
 };
 
 const NOT_REACHED_ICON = 'codicon-circle-outline';
+const STALLED_ICON = 'codicon-warning';
 
 function agentIcon(status: SubagentInfo['status']): string {
   // A status widened upstream would otherwise render as `codicon undefined`, an invisible chip;
@@ -32,9 +39,11 @@ function agentIcon(status: SubagentInfo['status']): string {
 }
 
 function stepIcon(entry: StepRun): string {
+  // Ahead of the orchestrator check: a dead end is worth more to the reader than the step kind.
+  if (entry.status === 'stalled') return STALLED_ICON;
   if (entry.step.kind === 'orchestrator') return 'codicon-checklist';
   if (entry.status === 'pending') return NOT_REACHED_ICON;
-  return agentIcon(LIVE_STATUS_ICON[entry.status]);
+  return agentIcon(LIVE_STATUS_ICON[entry.status as 'running' | 'done' | 'error']);
 }
 
 function statsLine(t: TFunction, durationMs: number, toolUseCount: number, tokens: number): string {
@@ -64,13 +73,32 @@ function errorPreview(entry: StepRun): string | undefined {
   return failed?.resultText?.split('\n').map((line) => line.trim()).find(Boolean)?.slice(0, 120);
 }
 
-export default function PipelineMonitorOverlay({ subagents, t, onClose }: PipelineMonitorOverlayProps) {
+function statusNote(entry: StepRun, t: TFunction): string | undefined {
+  if (entry.status === 'stalled') {
+    return t('pipelineMonitor.stalled', { defaultValue: 'interrupted — never reported back' });
+  }
+  if (entry.step.conditional && entry.status === 'pending') {
+    return t('pipelineMonitor.conditional', { defaultValue: 'conditional' });
+  }
+  return undefined;
+}
+
+export default function PipelineMonitorOverlay({
+  subagents,
+  t,
+  onClose,
+  sessionId = null,
+  provider = 'claude',
+  histories = {},
+}: PipelineMonitorOverlayProps) {
   const [selection, setSelection] = useState<PanelSelection | null>(null);
+  const [pickedMode, setPickedMode] = useState<TrackMode | null>(null);
   const [now, setNow] = useState(() => Date.now());
-  const run = useMemo(() => derivePipelineRun(subagents), [subagents]);
+  const run = useMemo(() => derivePipelineRun(subagents, pickedMode ?? undefined), [subagents, pickedMode]);
   const columns = useMemo(() => toColumns(run.steps), [run]);
   const offTrackGroups = useMemo(() => groupOffTrack(run.offTrack), [run]);
   const summary = useMemo(() => summarizeRun(run), [run]);
+  const stalledIds = useMemo(() => new Set(run.stalledAgentIds), [run]);
   const selected = resolveSelection(run, selection);
 
   const toggleStep = (entry: StepRun) => {
@@ -89,7 +117,13 @@ export default function PipelineMonitorOverlay({ subagents, t, onClose }: Pipeli
     setSelection({ kind: 'offTrack', type });
   };
 
+  // Picking the mode already on screen goes back to reading it off the agents that ran.
+  const pickMode = (mode: TrackMode) => {
+    setPickedMode((current) => (current === mode ? null : mode));
+  };
+
   // A settled run has nothing left to count, so it does not re-render once a second.
+  // A stalled step is not counted either: nothing is running behind that spinner.
   const hasLiveStep = run.steps.some((entry) => entry.status === 'running');
 
   useEffect(() => {
@@ -98,6 +132,28 @@ export default function PipelineMonitorOverlay({ subagents, t, onClose }: Pipeli
     const tick = window.setInterval(() => setNow(Date.now()), 1_000);
     return () => window.clearInterval(tick);
   }, [hasLiveStep]);
+
+  // An agent that never reported back left its work in its own sidechain transcript.
+  // Asking for it once per agent is what turns a frozen step into a readable one; the
+  // reply also settles agents whose transcript does end with a terminal turn.
+  const unsettled = useMemo(() => subagents.filter((agent) => agent.status === 'running'), [subagents]);
+  const requestedRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!sessionId) return;
+    for (const agent of unsettled) {
+      if (requestedRef.current.has(agent.id)) continue;
+      requestedRef.current.add(agent.id);
+      sendBridgeEvent('load_subagent_session', JSON.stringify({
+        sessionId,
+        provider,
+        agentId: agent.agentId,
+        agentPath: agent.agentPath,
+        description: agent.description,
+        toolUseId: agent.id,
+      }));
+    }
+  }, [provider, sessionId, unsettled]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -112,12 +168,13 @@ export default function PipelineMonitorOverlay({ subagents, t, onClose }: Pipeli
     if (event.target === event.currentTarget) onClose();
   }, [onClose]);
 
-  const modeChips: Array<{ mode: 'fast' | 'standard' | 'full'; label: string }> = [
+  const modeChips: Array<{ mode: TrackMode; label: string }> = [
     { mode: 'fast', label: t('pipelineMonitor.modeFast', { defaultValue: 'Fast' }) },
     { mode: 'standard', label: t('pipelineMonitor.modeStandard', { defaultValue: 'Standard' }) },
     { mode: 'full', label: t('pipelineMonitor.modeFull', { defaultValue: 'Full' }) },
   ];
   const summaryTotals = statsLine(t, 0, summary.totalToolUseCount, summary.totalTokens);
+  const runCount = run.steps.reduce((sum, entry) => sum + entry.agents.length, 0) + run.offTrack.length;
 
   return createPortal(
     <div className="pipeline-monitor-backdrop" onClick={handleBackdropClick}>
@@ -128,14 +185,18 @@ export default function PipelineMonitorOverlay({ subagents, t, onClose }: Pipeli
           </div>
           <div className="pipeline-monitor-modes">
             {modeChips.map((chip) => (
-              <span
+              <button
                 key={chip.mode}
+                type="button"
                 className="pipeline-mode-badge"
                 data-testid="pipeline-mode-badge"
                 data-active={run.mode === chip.mode}
+                data-picked={pickedMode === chip.mode}
+                title={t('pipelineMonitor.pickMode', { defaultValue: 'Draw this track instead of the detected one' })}
+                onClick={() => pickMode(chip.mode)}
               >
                 {chip.label}
-              </span>
+              </button>
             ))}
           </div>
           <button
@@ -148,14 +209,27 @@ export default function PipelineMonitorOverlay({ subagents, t, onClose }: Pipeli
         </div>
 
         <div className="pipeline-monitor-summary" data-testid="pipeline-monitor-summary">
-          <span className="pipeline-summary-progress">
-            {`${summary.done}/${summary.total} `}
-            {t('pipelineMonitor.stepsDone', { defaultValue: 'steps done' })}
-          </span>
+          {run.steps.length > 0 ? (
+            <span className="pipeline-summary-progress">
+              {`${summary.done}/${summary.total} `}
+              {t('pipelineMonitor.stepsDone', { defaultValue: 'steps done' })}
+            </span>
+          ) : (
+            <span className="pipeline-summary-progress">
+              {`${runCount} `}
+              {t('pipelineMonitor.agentRuns', { defaultValue: 'Agent runs' }).toLowerCase()}
+            </span>
+          )}
           {summary.running.length > 0 && (
             <span className="pipeline-summary-running">
               <span className="codicon codicon-loading" />
               {summary.running.join(', ')}
+            </span>
+          )}
+          {summary.stalled.length > 0 && (
+            <span className="pipeline-summary-stalled" data-testid="pipeline-summary-stalled">
+              <span className={`codicon ${STALLED_ICON}`} />
+              {summary.stalled.join(', ')}
             </span>
           )}
           {summaryTotals && <span className="pipeline-summary-totals">{summaryTotals}</span>}
@@ -169,59 +243,75 @@ export default function PipelineMonitorOverlay({ subagents, t, onClose }: Pipeli
           </div>
         )}
 
-        <div className="pipeline-monitor-track">
-          {columns.map((column) => (
-            <div key={column.key} className="pipeline-track-column" data-parallel={column.entries.length > 1}>
-              {column.entries.map((entry) => {
-                const meta = stepMeta(entry, t, now);
-                const failure = errorPreview(entry);
-                return (
-                  <button
-                    key={entry.step.id}
-                    type="button"
-                    className="pipeline-step"
-                    data-testid="pipeline-step"
-                    data-state={entry.status}
-                    data-step-id={entry.step.id}
-                    data-selected={entry.step.id === selected?.key}
-                    onClick={() => toggleStep(entry)}
-                  >
-                    <span className="pipeline-step-head">
-                      <span className={`pipeline-step-icon codicon ${stepIcon(entry)}`} />
-                      <span className="pipeline-step-label">{entry.step.label}</span>
-                      {entry.agents.length > 1 && (
-                        <span className="pipeline-step-count">{`×${entry.agents.length}`}</span>
-                      )}
-                    </span>
-                    {entry.step.conditional && entry.status === 'pending' && (
-                      <span className="pipeline-step-note">
-                        {t('pipelineMonitor.conditional', { defaultValue: 'conditional' })}
+        {run.mode === 'none' && (
+          <div className="pipeline-monitor-hint" data-testid="pipeline-monitor-no-track">
+            {t('pipelineMonitor.notAPipeline', {
+              defaultValue: 'Not a pipeline run — listing the agents as they were launched. Pick a track above to draw one anyway.',
+            })}
+          </div>
+        )}
+
+        {columns.length > 0 && (
+          <div className="pipeline-monitor-track">
+            {columns.map((column) => (
+              <div key={column.key} className="pipeline-track-column" data-parallel={column.entries.length > 1}>
+                {column.entries.map((entry) => {
+                  const meta = stepMeta(entry, t, now);
+                  const failure = errorPreview(entry);
+                  const note = statusNote(entry, t);
+                  return (
+                    <button
+                      key={entry.step.id}
+                      type="button"
+                      className="pipeline-step"
+                      data-testid="pipeline-step"
+                      data-state={entry.status}
+                      data-step-id={entry.step.id}
+                      data-selected={entry.step.id === selected?.key}
+                      onClick={() => toggleStep(entry)}
+                    >
+                      <span className="pipeline-step-head">
+                        <span className={`pipeline-step-icon codicon ${stepIcon(entry)}`} />
+                        <span className="pipeline-step-label">{entry.step.label}</span>
+                        {entry.agents.length > 1 && (
+                          <span className="pipeline-step-count">{`×${entry.agents.length}`}</span>
+                        )}
                       </span>
-                    )}
-                    {failure && (
-                      <span className="pipeline-step-error" data-testid="pipeline-step-error">{failure}</span>
-                    )}
-                    {meta && <span className="pipeline-step-meta">{meta}</span>}
-                  </button>
-                );
-              })}
-            </div>
-          ))}
-        </div>
+                      {note && <span className="pipeline-step-note">{note}</span>}
+                      {failure && (
+                        <span className="pipeline-step-error" data-testid="pipeline-step-error">{failure}</span>
+                      )}
+                      {meta && <span className="pipeline-step-meta">{meta}</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        )}
 
         {selected && selected.agents.length > 0 && (
           <div className="pipeline-monitor-details">
             {selected.agents.map((agent) => (
-              <SubagentProcessDetails
-                key={agent.id}
-                agentId={agent.agentId}
-                totalDurationMs={agent.totalDurationMs}
-                totalTokens={agent.totalTokens}
-                totalToolUseCount={agent.totalToolUseCount}
-                resultText={agent.resultText}
-                prompt={agent.prompt}
-                canLoad={false}
-              />
+              <div key={agent.id} className="pipeline-monitor-detail">
+                {stalledIds.has(agent.id) && (
+                  <div className="pipeline-detail-stalled" data-testid="pipeline-stalled-note">
+                    {t('pipelineMonitor.stalledNote', {
+                      defaultValue: 'This agent never reported back — the session was interrupted while it ran. Below is what its transcript still holds.',
+                    })}
+                  </div>
+                )}
+                <SubagentProcessDetails
+                  agentId={agent.agentId}
+                  totalDurationMs={agent.totalDurationMs}
+                  totalTokens={agent.totalTokens}
+                  totalToolUseCount={agent.totalToolUseCount}
+                  resultText={agent.resultText}
+                  prompt={agent.prompt}
+                  history={histories[agent.id] ?? (agent.agentId ? histories[agent.agentId] : undefined)}
+                  canLoad={Boolean(sessionId)}
+                />
+              </div>
             ))}
           </div>
         )}
@@ -229,7 +319,9 @@ export default function PipelineMonitorOverlay({ subagents, t, onClose }: Pipeli
         {offTrackGroups.length > 0 && (
           <div className="pipeline-monitor-offtrack">
             <div className="pipeline-monitor-offtrack-title">
-              {t('pipelineMonitor.offTrack', { defaultValue: 'Off track' })}
+              {run.steps.length > 0
+                ? t('pipelineMonitor.offTrack', { defaultValue: 'Off track' })
+                : t('pipelineMonitor.agentRuns', { defaultValue: 'Agent runs' })}
             </div>
             <div className="pipeline-monitor-offtrack-list">
               {offTrackGroups.map((group) => (

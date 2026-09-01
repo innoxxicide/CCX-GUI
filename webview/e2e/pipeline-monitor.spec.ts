@@ -228,6 +228,41 @@ const SKIPPED_CLEANUP_RUN = [
   }),
 ];
 
+/**
+ * A Standard run whose implementer never reported back — the session was cut off
+ * while it ran, so its terminal notification was lost. The validator answering after
+ * it is the proof that nothing is still working behind that step.
+ */
+const LOST_IMPLEMENTER_RUN = [
+  { type: 'user', content: 'Add the agent pipeline monitor to the chat header', timestamp: new Date().toISOString() },
+  agentLaunch('tu-planner', 'planner', 'Plan the implementation'),
+  agentReturn('tu-planner', 'Plan ready: 4 phases, 9 RED specs.', {
+    agentId: 'agent-planner-1', totalDurationMs: 62_629, totalTokens: 110_586, totalToolUseCount: 21,
+  }),
+  agentLaunch('tu-implementer', 'implementer', 'Build the overlay', LIVE_AGENT_LAUNCHED_AT),
+  agentLaunch('tu-validator', 'validator', 'Verify the evidence'),
+  agentReturn('tu-validator', 'Evidence fresh, all gates re-run.', {
+    agentId: 'agent-validator-1', totalDurationMs: 47_500, totalTokens: 88_260, totalToolUseCount: 19,
+  }),
+];
+
+/** A branch-scale lens review: agents ran, but none of them walks a pipeline track. */
+const BRANCH_LENS_REVIEW = [
+  { type: 'user', content: 'Review the multiplayer branch', timestamp: new Date().toISOString() },
+  agentLaunch('tu-risk', 'risk-analyst', 'Author the lens set'),
+  agentReturn('tu-risk', 'Six lenses, ranked by blast radius.', {
+    agentId: 'agent-risk-1', totalDurationMs: 40_100, totalTokens: 77_300, totalToolUseCount: 12,
+  }),
+  agentLaunch('tu-lens-1', 'code-reviewer', 'Lens: reconnection'),
+  agentReturn('tu-lens-1', 'Two findings, one CONFIRMED.', {
+    agentId: 'agent-lens-1', totalDurationMs: 51_200, totalTokens: 91_400, totalToolUseCount: 18,
+  }),
+  agentLaunch('tu-lens-2', 'code-reviewer', 'Lens: state sync'),
+  agentReturn('tu-lens-2', 'No blocking defects.', {
+    agentId: 'agent-lens-2', totalDurationMs: 48_900, totalTokens: 86_700, totalToolUseCount: 16,
+  }),
+];
+
 /** A Standard run whose validator came back failed, so one step on the track is in error. */
 const FAILED_VALIDATOR_RUN = [
   { type: 'user', content: 'Fix the drag threshold regression', timestamp: new Date().toISOString() },
@@ -522,6 +557,86 @@ test('a failed step says what went wrong without being opened', async ({ page },
   await expect(page.locator('.pipeline-monitor-details'), 'the preview is not an opened pane').toHaveCount(0);
 
   await page.screenshot({ path: `/tmp/ccx-e2e/pipeline-monitor-error-${testInfo.project.name}.png`, fullPage: true });
+  expect(significantErrors(errors)).toEqual([]);
+});
+
+test('an agent the session lost is marked interrupted instead of left spinning', async ({ page }, testInfo) => {
+  const errors = collectPageErrors(page);
+  await seedPipelineRun(page, LOST_IMPLEMENTER_RUN);
+  await openOverlay(page);
+
+  const implementer = page.locator('[data-testid="pipeline-step"][data-step-id="implementer"]');
+  await expect(implementer).toHaveAttribute('data-state', 'stalled');
+  await expect(implementer.locator('.pipeline-step-note')).toHaveText('interrupted — never reported back');
+  await expect(page.getByTestId('pipeline-step').and(page.locator('[data-state="running"]')),
+    'the validator answered, so nothing is working behind that step').toHaveCount(0);
+
+  const spin = await implementer.locator('.pipeline-step-icon')
+    .evaluate((element) => window.getComputedStyle(element).animationName);
+  expect(spin, 'a spinner is the claim that work is still going on').toBe('none');
+
+  const summary = page.getByTestId('pipeline-monitor-summary');
+  await expect(summary.getByTestId('pipeline-summary-stalled')).toHaveText('Implementer');
+  await expect(summary.locator('.pipeline-summary-running'), 'a stalled step is not outstanding work').toHaveCount(0);
+
+  await implementer.click();
+  const details = page.locator('.pipeline-monitor-details');
+  await expect(page.getByTestId('pipeline-stalled-note')).toContainText('never reported back');
+  await expect(details, 'what the interrupted run left behind is still readable').toContainText('Build the overlay');
+
+  await page.screenshot({ path: `/tmp/ccx-e2e/pipeline-monitor-stalled-${testInfo.project.name}.png`, fullPage: true });
+  expect(significantErrors(errors)).toEqual([]);
+});
+
+test('the mode badges draw the track the reader picks and hand it back on a second click', async ({ page }) => {
+  const errors = collectPageErrors(page);
+  await seedPipelineRun(page);
+  const overlay = await openOverlay(page);
+
+  const badge = (label: string) => page.getByTestId('pipeline-mode-badge').filter({ hasText: label });
+  const techArchitect = page.locator('[data-testid="pipeline-step"][data-step-id="tech-architect"]');
+  await expect(overlay).toHaveAttribute('data-mode', 'standard');
+  await expect(techArchitect, 'the standard track has no perspectives block').toHaveCount(0);
+
+  await badge('Full').click();
+  await expect(overlay).toHaveAttribute('data-mode', 'full');
+  await expect(techArchitect, 'the picked track is the one drawn').toHaveCount(1);
+  await expect(badge('Full')).toHaveAttribute('data-active', 'true');
+  await expect(badge('Full'), 'a picked track is told apart from a detected one').toHaveAttribute('data-picked', 'true');
+  await expect(badge('Standard')).toHaveAttribute('data-active', 'false');
+  const runningStep = page.getByTestId('pipeline-step').and(page.locator('[data-state="running"]'));
+  await expect(runningStep, 'the agents keep their steps across the swap').toHaveAttribute('data-step-id', 'implementer');
+
+  await badge('Full').click();
+  await expect(overlay, 'picking the drawn track again goes back to reading it off the run')
+    .toHaveAttribute('data-mode', 'standard');
+  await expect(techArchitect).toHaveCount(0);
+  await expect(badge('Standard')).toHaveAttribute('data-active', 'true');
+
+  expect(significantErrors(errors)).toEqual([]);
+});
+
+test('a run that walks no pipeline path is listed rather than forced onto a track', async ({ page }, testInfo) => {
+  const errors = collectPageErrors(page);
+  await seedPipelineRun(page, BRANCH_LENS_REVIEW);
+  const overlay = await openOverlay(page);
+
+  await expect(overlay).toHaveAttribute('data-mode', 'none');
+  await expect(page.getByTestId('pipeline-step'), 'no track means no step may claim it was skipped').toHaveCount(0);
+  await expect(page.getByTestId('pipeline-monitor-no-track')).toBeVisible();
+  await expect(page.getByTestId('pipeline-mode-badge').and(page.locator('[data-active="true"]'))).toHaveCount(0);
+
+  const runs = page.getByTestId('pipeline-offtrack-agent');
+  await expect(runs, 'the lens review is two types of run').toHaveCount(2);
+  await expect(runs.filter({ hasText: 'code-reviewer' }).locator('.pipeline-step-count')).toHaveText('×2');
+  await expect(page.getByTestId('pipeline-monitor-summary')).toContainText('3 agent runs');
+
+  await page.screenshot({ path: `/tmp/ccx-e2e/pipeline-monitor-no-track-${testInfo.project.name}.png`, fullPage: true });
+
+  await page.getByTestId('pipeline-mode-badge').filter({ hasText: 'Standard' }).click();
+  await expect(overlay, 'a track is still available to whoever wants one').toHaveAttribute('data-mode', 'standard');
+  expect(await page.getByTestId('pipeline-step').count()).toBeGreaterThan(0);
+
   expect(significantErrors(errors)).toEqual([]);
 });
 
