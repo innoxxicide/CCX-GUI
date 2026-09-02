@@ -42,6 +42,28 @@ function renderWorkingTurn(overrides?: { onStop?: () => void; onSendNow?: () => 
   );
 }
 
+describe('ButtonArea with nothing running', () => {
+  it('lights the send button on Shift, so the key answers in this state too', () => {
+    render(<ButtonArea hasInputContent />);
+
+    const send = screen.getByTestId('send-button');
+    expect(send.getAttribute('data-armed')).toBe('false');
+
+    holdShift(true);
+    expect(send.getAttribute('data-armed')).toBe('true');
+
+    holdShift(false);
+    expect(send.getAttribute('data-armed')).toBe('false');
+  });
+
+  it('stays dark with an empty input, where the button sends nothing', () => {
+    render(<ButtonArea hasInputContent={false} />);
+
+    holdShift(true);
+    expect(screen.getByTestId('send-button').getAttribute('data-armed')).toBe('false');
+  });
+});
+
 describe('ButtonArea while a turn is running', () => {
   it('arms both buttons on Shift and disarms them on release', () => {
     renderWorkingTurn();
@@ -60,6 +82,15 @@ describe('ButtonArea while a turn is running', () => {
     holdShift(false);
     expect(sendNow.getAttribute('data-armed')).toBe('false');
     expect(stop.querySelector('.codicon-debug-stop')).not.toBeNull();
+  });
+
+  it('arms while the mouse travels to the button with Shift down and no keyboard focus', () => {
+    renderWorkingTurn();
+
+    act(() => {
+      window.dispatchEvent(new MouseEvent('mousemove', { shiftKey: true }));
+    });
+    expect(screen.getByTestId('send-now-button').getAttribute('data-armed')).toBe('true');
   });
 
   it('sends out of turn on a Shift-click of the stop button, and stops without it', () => {

@@ -205,11 +205,11 @@ export const ButtonArea = ({
     onSendNow?.();
   }, [onSendNow]);
 
-  // While a turn is running, Shift arms the out-of-turn send: the button that
-  // carries it lights up, and the stop button — the one the hand is already on —
-  // becomes that send for as long as the key is down.
-  const canSendNow = isLoading && !sendNowDisabled && hasInputContent;
-  const sendNowArmed = useShiftHeld(canSendNow);
+  // Shift lights the button that Enter is about to fire, in both states, so the key
+  // always answers. While a turn is running that button also jumps the queue, and
+  // the stop button — the one the hand is already on — becomes it while Shift is down.
+  const canArm = !sendNowDisabled && hasInputContent;
+  const sendNowArmed = useShiftHeld(canArm);
 
   /**
    * Handle stop button click
@@ -412,6 +412,8 @@ export const ButtonArea = ({
         ) : (
           <button
             className="submit-button"
+            data-testid="send-button"
+            data-armed={sendNowArmed}
             onClick={handleSubmitClick}
             disabled={disabled || !hasInputContent}
             title={t('chat.sendMessageEnter')}

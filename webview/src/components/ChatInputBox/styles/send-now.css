@@ -46,6 +46,12 @@
   color: white;
 }
 
+/* The plain send button is already primary-coloured, so its armed state cannot be
+   "turn blue" — it draws a ring, which nothing else in the row draws. */
+.submit-button[data-armed='true']:not(.stop-button):not(:disabled) {
+  box-shadow: 0 0 0 2px var(--input-bg), 0 0 0 4px var(--button-primary);
+}
+
 .submit-button.stop-button[data-armed='true'] {
   background: var(--button-primary);
 }

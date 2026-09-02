@@ -1,9 +1,15 @@
 import { act, renderHook } from '@testing-library/react';
 import { useShiftHeld } from './useShiftHeld.js';
 
-function press(type: 'keydown' | 'keyup', key: string) {
+function press(type: 'keydown' | 'keyup', key: string, shiftKey = false) {
   act(() => {
-    window.dispatchEvent(new KeyboardEvent(type, { key }));
+    window.dispatchEvent(new KeyboardEvent(type, { key, shiftKey }));
+  });
+}
+
+function moveMouse(shiftKey: boolean) {
+  act(() => {
+    window.dispatchEvent(new MouseEvent('mousemove', { shiftKey }));
   });
 }
 
@@ -22,6 +28,27 @@ describe('useShiftHeld', () => {
     const { result } = renderHook(() => useShiftHeld(true));
 
     press('keydown', 'A');
+    expect(result.current).toBe(false);
+  });
+
+  it('arms on a mouse move made with Shift down, where no key press ever reached the page', () => {
+    const { result } = renderHook(() => useShiftHeld(true));
+
+    moveMouse(true);
+    expect(result.current, 'the panel does not own the keyboard, so the pointer is the only witness').toBe(true);
+
+    moveMouse(false);
+    expect(result.current).toBe(false);
+  });
+
+  it('stays armed when one Shift is released while the other is still down', () => {
+    const { result } = renderHook(() => useShiftHeld(true));
+
+    press('keydown', 'Shift', true);
+    press('keyup', 'Shift', true);
+    expect(result.current).toBe(true);
+
+    press('keyup', 'Shift', false);
     expect(result.current).toBe(false);
   });
 
