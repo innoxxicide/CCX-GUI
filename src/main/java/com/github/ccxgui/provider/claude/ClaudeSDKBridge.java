@@ -592,6 +592,110 @@ public class ClaudeSDKBridge extends BaseSDKBridge {
         });
     }
 
+    // ============================================================================
+    // Remote Control
+    // ============================================================================
+
+    /**
+     * Hand the live session to Claude Remote Control, or take it back, through the
+     * SDK's remote_control control request on the runtime already backing this chat.
+     * Going through the running runtime is the whole point: a separately spawned CLI
+     * session would share the working directory but none of this conversation.
+     *
+     * @param sessionId The session to expose
+     * @param cwd Working directory
+     * @param enabled true to expose the session, false to detach it
+     * @param name Display name shown on claude.ai; may be null for the SDK default
+     * @return CompletableFuture with the daemon's JSON reply, or a success:false object
+     */
+    public CompletableFuture<JsonObject> setRemoteControl(String sessionId, String cwd, boolean enabled, String name) {
+        DaemonBridge db = this.daemonCoordinator.getDaemonBridge();
+        if (db == null) {
+            JsonObject error = new JsonObject();
+            error.addProperty("success", false);
+            error.addProperty("error", "Daemon not available. Remote Control requires daemon mode.");
+            return CompletableFuture.completedFuture(error);
+        }
+
+        JsonObject params = new JsonObject();
+        params.addProperty("enabled", enabled);
+        if (sessionId != null && !sessionId.isEmpty()) {
+            params.addProperty("sessionId", sessionId);
+        }
+        if (cwd != null && !cwd.isEmpty()) {
+            params.addProperty("cwd", cwd);
+        }
+        if (name != null && !name.isEmpty()) {
+            params.addProperty("name", name);
+        }
+
+        AtomicReference<JsonObject> resultRef = new AtomicReference<>();
+        CompletableFuture<JsonObject> resultFuture = new CompletableFuture<>();
+
+        DaemonBridge.DaemonOutputCallback callback = new DaemonBridge.DaemonOutputCallback() {
+            @Override
+            public void onLine(String line) {
+                try {
+                    JsonObject parsed = ClaudeSDKBridge.this.gson.fromJson(line, JsonObject.class);
+                    resultRef.set(parsed);
+                } catch (Exception ignored) {
+                }
+            }
+            @Override
+            public void onStderr(String text) { }
+            @Override
+            public void onError(String error) {
+                if (!resultFuture.isDone()) {
+                    JsonObject err = new JsonObject();
+                    err.addProperty("success", false);
+                    err.addProperty("error", error);
+                    resultFuture.complete(err);
+                }
+            }
+            @Override
+            public void onComplete(boolean success) {
+                if (resultFuture.isDone()) {
+                    return;
+                }
+                JsonObject result = resultRef.get();
+                if (success && result != null) {
+                    resultFuture.complete(result);
+                    return;
+                }
+                JsonObject err = new JsonObject();
+                err.addProperty("success", false);
+                err.addProperty("error", success ? "No response received" : "remoteControl command failed");
+                resultFuture.complete(err);
+            }
+        };
+
+        try {
+            CompletableFuture<Boolean> commandFuture = db.sendCommand("claude.remoteControl", params, callback);
+            commandFuture.exceptionally(ex -> {
+                if (!resultFuture.isDone()) {
+                    JsonObject err = new JsonObject();
+                    err.addProperty("success", false);
+                    err.addProperty("error", ex.getMessage());
+                    resultFuture.complete(err);
+                }
+                return false;
+            });
+        } catch (Exception e) {
+            LOG.error("[ClaudeSDKBridge] setRemoteControl failed: " + e.getMessage(), e);
+            JsonObject err = new JsonObject();
+            err.addProperty("success", false);
+            err.addProperty("error", e.getMessage());
+            return CompletableFuture.completedFuture(err);
+        }
+
+        return resultFuture.orTimeout(120, TimeUnit.SECONDS).exceptionally(ex -> {
+            JsonObject err = new JsonObject();
+            err.addProperty("success", false);
+            err.addProperty("error", "Remote Control request timed out after 120 seconds");
+            return err;
+        });
+    }
+
     /**
      * Ask the daemon's SDK to exercise its authenticated path — the SDK's
      * accountInfo() control request, which runs no agent turn and costs no

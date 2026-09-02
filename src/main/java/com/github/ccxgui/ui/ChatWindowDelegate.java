@@ -7,6 +7,7 @@ import com.github.ccxgui.handler.AgentHandler;
 import com.github.ccxgui.handler.ClaudeLimitsHandler;
 import com.github.ccxgui.handler.ClipboardHandler;
 import com.github.ccxgui.handler.ContextHandler;
+import com.github.ccxgui.handler.RemoteControlHandler;
 import com.github.ccxgui.handler.CodexMcpServerHandler;
 import com.github.ccxgui.handler.CodexPetHandler;
 import com.github.ccxgui.handler.CliModelsHandler;
@@ -381,6 +382,7 @@ public class ChatWindowDelegate {
         messageDispatcher.registerHandler(this.settingsHandler);
         messageDispatcher.registerHandler(new SessionHandler(handlerContext));
         messageDispatcher.registerHandler(new ContextHandler(handlerContext));
+        messageDispatcher.registerHandler(new RemoteControlHandler(handlerContext));
         messageDispatcher.registerHandler(new FileExportHandler(handlerContext));
         messageDispatcher.registerHandler(new DiffHandler(handlerContext));
         messageDispatcher.registerHandler(new PromptEnhancerHandler(handlerContext));

@@ -1924,5 +1924,11 @@
         }
       }
     }
+  },
+  "remoteControl": {
+    "enable": "Piloter cette session depuis claude.ai",
+    "disable": "Arrêter le pilotage depuis claude.ai",
+    "connecting": "Connexion au contrôle à distance…",
+    "failed": "Échec de la demande de contrôle à distance"
   }
 }

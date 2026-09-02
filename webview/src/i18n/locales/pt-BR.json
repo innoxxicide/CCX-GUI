@@ -2075,5 +2075,11 @@
         }
       }
     }
+  },
+  "remoteControl": {
+    "enable": "Controlar esta sessão pelo claude.ai",
+    "disable": "Parar de controlar esta sessão pelo claude.ai",
+    "connecting": "Conectando ao controle remoto…",
+    "failed": "A solicitação de controle remoto falhou"
   }
 }

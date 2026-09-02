@@ -210,6 +210,12 @@ interface Window {
   onModeReceived?: (mode: string) => void;
 
   /**
+   * Remote Control result callback - the backend answers every set_remote_control
+   * request with {success, enabled, error?}, including the refusals
+   */
+  onRemoteControlResult?: (json: string) => void;
+
+  /**
    * Model changed callback
    */
   onModelChanged?: (modelId: string) => void;

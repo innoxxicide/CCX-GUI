@@ -2387,5 +2387,11 @@
   "sendNow": {
     "buttonTooltip": "Send now (stops the agent)",
     "armedTooltip": "Jumps the queue — Cmd/Ctrl+Shift+Enter"
+  },
+  "remoteControl": {
+    "enable": "Control this session from claude.ai",
+    "disable": "Stop controlling this session from claude.ai",
+    "connecting": "Connecting to Remote Control…",
+    "failed": "Remote Control request failed"
   }
 }

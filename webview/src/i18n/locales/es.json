@@ -1930,5 +1930,11 @@
         }
       }
     }
+  },
+  "remoteControl": {
+    "enable": "Controlar esta sesión desde claude.ai",
+    "disable": "Dejar de controlar esta sesión desde claude.ai",
+    "connecting": "Conectando con el control remoto…",
+    "failed": "Falló la solicitud de control remoto"
   }
 }

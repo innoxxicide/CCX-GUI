@@ -2392,5 +2392,11 @@
   "sendNow": {
     "buttonTooltip": "立即发送（会停止当前代理）",
     "armedTooltip": "插队发送 — Cmd/Ctrl+Shift+Enter"
+  },
+  "remoteControl": {
+    "enable": "在 claude.ai 上控制本会话",
+    "disable": "停止在 claude.ai 上控制本会话",
+    "connecting": "正在连接远程控制…",
+    "failed": "远程控制请求失败"
   }
 }

@@ -1974,5 +1974,11 @@
         }
       }
     }
+  },
+  "remoteControl": {
+    "enable": "在 claude.ai 上控制本會話",
+    "disable": "停止在 claude.ai 上控制本會話",
+    "connecting": "正在連接遠端控制…",
+    "failed": "遠端控制請求失敗"
   }
 }

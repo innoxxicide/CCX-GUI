@@ -142,6 +142,22 @@
     font-size: 18px;
 }
 
+/* Remote Control: the session is reachable from outside the IDE, which is worth
+   a permanent colour rather than a tooltip nobody hovers. */
+.remote-control-button[data-state='on'] {
+    color: var(--accent-primary);
+    background: var(--color-chat-bars-hover-bg, var(--bg-hover));
+}
+
+.remote-control-button[data-state='pending'] {
+    opacity: 0.6;
+    cursor: default;
+}
+
+.remote-control-button[data-failed='true'] {
+    color: var(--color-error);
+}
+
 /* Session title: editable on hover */
 .session-title-wrapper {
     display: flex;

@@ -6,6 +6,7 @@ import type { ClaudeLimitsState } from '../../types/usageLimits';
 import type { SubagentHistoryResponse, SubagentInfo } from '../../types';
 import { ClaudeLimitsIndicators } from './ClaudeLimitsIndicators';
 import PipelineMonitorButton from '../PipelineMonitor/PipelineMonitorButton';
+import RemoteControlButton from './RemoteControlButton';
 
 export interface ChatHeaderProps {
   currentView: 'chat' | 'history' | 'settings';
@@ -167,6 +168,7 @@ export function ChatHeader({
               provider={currentProvider}
               histories={subagentHistories}
             />
+            <RemoteControlButton t={t} provider={currentProvider} />
             {showClaudeLimits && onUsageStatsClick && (
               <ClaudeLimitsIndicators
                 limits={claudeLimits ?? null}

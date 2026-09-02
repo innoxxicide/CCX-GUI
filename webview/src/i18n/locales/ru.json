@@ -1950,5 +1950,11 @@
         }
       }
     }
+  },
+  "remoteControl": {
+    "enable": "Управлять этой сессией с claude.ai",
+    "disable": "Отключить управление с claude.ai",
+    "connecting": "Подключаю Remote Control…",
+    "failed": "Не удалось включить Remote Control"
   }
 }

@@ -2026,5 +2026,11 @@
         }
       }
     }
+  },
+  "remoteControl": {
+    "enable": "claude.ai에서 이 세션 제어",
+    "disable": "claude.ai의 제어 중지",
+    "connecting": "원격 제어에 연결 중…",
+    "failed": "원격 제어 요청 실패"
   }
 }

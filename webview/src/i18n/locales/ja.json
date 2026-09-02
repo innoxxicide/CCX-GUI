@@ -1929,5 +1929,11 @@
         }
       }
     }
+  },
+  "remoteControl": {
+    "enable": "claude.ai からこのセッションを操作する",
+    "disable": "claude.ai からの操作を停止する",
+    "connecting": "リモートコントロールに接続中…",
+    "failed": "リモートコントロールの要求に失敗しました"
   }
 }

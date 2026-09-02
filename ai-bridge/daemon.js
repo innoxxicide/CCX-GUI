@@ -39,6 +39,7 @@ import {
   resetRuntimePersistent,
   getContextUsagePersistent,
   setPermissionModePersistent,
+  setRemoteControlPersistent,
   refreshAuthPersistent
 } from './services/claude/persistent-query-service.js';
 import {
@@ -483,6 +484,8 @@ async function processRequest(request) {
       await resetRuntimePersistent(stdinData);
     } else if (provider === 'claude' && command === 'getContextUsage') {
       await getContextUsagePersistent(stdinData);
+    } else if (provider === 'claude' && command === 'remoteControl') {
+      await setRemoteControlPersistent(stdinData);
     } else if (provider === 'claude' && command === 'refreshAuth') {
       await refreshAuthPersistent(stdinData);
     } else if (provider === 'grok' && command === 'getContextUsage') {

@@ -1012,6 +1012,68 @@ export async function getContextUsagePersistent(params = {}) {
 }
 
 /**
+ * Hand THIS conversation to Remote Control, or take it back, via the SDK's
+ * remote_control control request on the live runtime's query object.
+ * The runtime is the one already backing the panel, so the session that becomes
+ * reachable from claude.ai is the one on screen — spawning a separate CLI session
+ * would share the working directory but none of the history.
+ * If the session has no runtime yet (panel opened, nothing sent), one is created
+ * the same way /context does it, so the button works before the first message.
+ * Outputs the SDK response as JSON to stdout for the Java daemon bridge to collect.
+ * @param {object} params - { sessionId?: string, cwd?: string, enabled?: boolean, name?: string }
+ */
+export async function setRemoteControlPersistent(params = {}) {
+  const safeParams = params || {};
+  const sessionId = safeParams.sessionId || null;
+  const enabled = safeParams.enabled !== false;
+  const requestedName = typeof safeParams.name === 'string' ? safeParams.name.trim() : '';
+
+  let runtime = null;
+  if (sessionId) {
+    runtime = getRuntimeForSession(sessionId);
+  }
+  if (!runtime || runtime.closed) {
+    const active = getActiveTurnRuntime();
+    if (active && !active.closed && (!sessionId || active.sessionId === sessionId)) {
+      runtime = active;
+    }
+  }
+
+  if (!runtime || runtime.closed) {
+    if (!enabled) {
+      // Nothing alive to detach: the session already answers to nobody.
+      console.log(JSON.stringify({ success: true, enabled: false, name: null, response: null }));
+      return;
+    }
+    const requestContext = await buildRequestContext(safeParams, false);
+    runtime = await acquireRuntime(requestContext, { registerActiveQueryResult, removeSession });
+  }
+
+  if (!runtime || runtime.closed) {
+    throw new Error('Failed to establish a runtime for remote control');
+  }
+  if (typeof runtime.query?.enableRemoteControl !== 'function') {
+    throw new Error('enableRemoteControl is not available on the current runtime');
+  }
+
+  try {
+    const response = await runtime.query.enableRemoteControl(enabled, requestedName || undefined);
+    runtime.remoteControlEnabled = enabled;
+    console.log(JSON.stringify({
+      success: true,
+      enabled,
+      name: requestedName || null,
+      sessionId: runtime.sessionId || sessionId || null,
+      response: response ?? null
+    }));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err || 'enableRemoteControl call failed');
+    console.error('[LIFECYCLE] enableRemoteControl SDK error:', message);
+    throw new Error(message);
+  }
+}
+
+/**
  * Force the SDK/CLI to exercise its authenticated path so an expired OAuth
  * access token is refreshed by the official CLI — which owns refresh-token
  * rotation and the atomic write-back to ~/.claude/.credentials.json. Calls
