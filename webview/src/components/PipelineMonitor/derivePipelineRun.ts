@@ -35,6 +35,7 @@ const FULL_ONLY_ROLES = ['ux-analyst', 'tech-architect', 'test-engineer'];
 const PRE_ROUTE_ROLES = ['triage'];
 
 function inferMode(subagents: SubagentInfo[]): PipelineMode {
+  if (subagents.length === 0) return 'idle';
   const rolesRun = new Set(subagents.map((agent) => agent.type));
   if (FULL_ONLY_ROLES.some((role) => rolesRun.has(role))) return 'full';
   if (rolesRun.has('planner')) return 'standard';
@@ -120,7 +121,8 @@ function resolveStatus(
 export function derivePipelineRun(subagents: SubagentInfo[], override?: TrackMode): PipelineRun {
   const detectedMode = inferMode(subagents);
   const mode = override ?? detectedMode;
-  if (mode === 'none') {
+  // Neither mode owns a track: one has agents that walk no path, the other has no agents.
+  if (mode === 'none' || mode === 'idle') {
     return { mode, detectedMode, steps: [], offTrack: [...subagents], stalledAgentIds: [] };
   }
 

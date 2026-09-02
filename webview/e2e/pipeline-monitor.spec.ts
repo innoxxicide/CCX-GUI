@@ -640,24 +640,30 @@ test('a run that walks no pipeline path is listed rather than forced onto a trac
   expect(significantErrors(errors)).toEqual([]);
 });
 
-test('an ordinary chat with no agents claims no step was ever reached', async ({ page }, testInfo) => {
+test('an ordinary chat with no agents says so instead of drawing an unwalked track', async ({ page }, testInfo) => {
   const errors = collectPageErrors(page);
   await seedPipelineRun(page, NO_PIPELINE_CHAT);
   const overlay = await openOverlay(page);
 
-  await expect(overlay).toHaveAttribute('data-mode', 'undetermined');
-  await expect(page.locator('.pipeline-monitor-hint')).toBeVisible();
-
-  const steps = page.getByTestId('pipeline-step');
-  expect(await steps.count(), 'the track is described even before it is walked').toBeGreaterThan(0);
-  const states = await steps.evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-state')));
-  expect([...new Set(states)], 'nothing ran, so no step may claim any state').toEqual(['pending']);
-
-  await expect(page.getByTestId('pipeline-monitor-summary')).toContainText('0/');
-  await expect(page.locator('.pipeline-summary-totals'), 'no agent ran, so there is nothing to total').toHaveCount(0);
+  await expect(overlay).toHaveAttribute('data-mode', 'idle');
+  await expect(page.getByTestId('pipeline-monitor-idle')).toContainText('main thread');
+  await expect(page.getByTestId('pipeline-step'), 'nothing ran, so no step may be drawn at all').toHaveCount(0);
   await expect(page.getByTestId('pipeline-offtrack-agent')).toHaveCount(0);
 
+  const summary = page.getByTestId('pipeline-monitor-summary');
+  await expect(summary, 'the count the reader came for is zero, and it is stated').toContainText('no agent runs');
+  await expect(summary, 'a step count is a claim about a track that is not on screen').not.toContainText('0/');
+  await expect(page.locator('.pipeline-summary-totals'), 'no agent ran, so there is nothing to total').toHaveCount(0);
+
   await page.screenshot({ path: `/tmp/ccx-e2e/pipeline-monitor-empty-${testInfo.project.name}.png`, fullPage: true });
+
+  await page.getByTestId('pipeline-mode-badge').filter({ hasText: 'Full' }).click();
+  await expect(overlay, 'a track is still available to whoever asks for one').toHaveAttribute('data-mode', 'full');
+  const states = await page.getByTestId('pipeline-step')
+    .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-state')));
+  expect(states.length).toBeGreaterThan(0);
+  expect([...new Set(states)], 'nothing ran, so no step may claim any state').toEqual(['pending']);
+
   expect(significantErrors(errors)).toEqual([]);
 });
 

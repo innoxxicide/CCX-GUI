@@ -3,8 +3,9 @@
  * `none` — agents ran, but none of them belongs to a pipeline track (a branch-scale
  * lens review, an ad-hoc Explore batch); forcing a track on those draws a run that
  * never existed, with every step after the first permanently unreached.
+ * `idle` — no agent ran at all: the session is doing its work in the main thread.
  */
-export type PipelineMode = 'fast' | 'standard' | 'full' | 'undetermined' | 'none';
+export type PipelineMode = 'fast' | 'standard' | 'full' | 'undetermined' | 'none' | 'idle';
 
 /** The modes that own a track, and so can be picked by hand in the header. */
 export type TrackMode = 'fast' | 'standard' | 'full';
