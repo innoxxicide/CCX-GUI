@@ -1651,9 +1651,13 @@
         "label": "Opus 4.8",
         "description": "Opus 4.8 · Предыдущее поколение Opus"
       },
+      "fable51": {
+        "label": "Fable 5.1",
+        "description": "Fable 5.1 · Самая мощная · класс Mythos"
+      },
       "fable5": {
         "label": "Fable 5",
-        "description": "Fable 5 · Самая мощная · класс Mythos"
+        "description": "Fable 5 · Предыдущее поколение Fable"
       }
     },
     "longContext": {

@@ -31,6 +31,16 @@ public class PricingTableTest {
     }
 
     @Test
+    public void claudePricesFableTierIncludingTheLongerFable51Id() {
+        // claude-fable-5-1 starts with claude-fable-5, so it only reaches its own pricing
+        // row when the longer prefix is listed first in MODEL_PREFIXES.
+        assertEquals(10.0, ClaudePricingTable.resolve("claude-fable-5").inputCostPer1M(), 1e-9);
+        assertEquals(10.0, ClaudePricingTable.resolve("claude-fable-5-1").inputCostPer1M(), 1e-9);
+        assertEquals(50.0, ClaudePricingTable.resolve("claude-fable-5-1").outputCostPer1M(), 1e-9);
+        assertEquals(10.0, ClaudePricingTable.resolve("anthropic/CLAUDE-FABLE-5-1[1m]").inputCostPer1M(), 1e-9);
+    }
+
+    @Test
     public void claudeAppliesAbove200KTierForSonnet4() {
         ClaudePricing pricing = ClaudePricingTable.resolve("claude-sonnet-4");
         assertNotNull(pricing);

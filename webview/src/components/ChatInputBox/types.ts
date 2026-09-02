@@ -331,9 +331,14 @@ export function normalizeClaudeModelId(modelId: string | undefined | null): stri
  */
 export const CLAUDE_MODELS: ModelInfo[] = [
   {
+    id: 'claude-fable-5-1',
+    label: 'Fable 5.1',
+    description: 'Fable 5.1 · Most powerful · Mythos-class',
+  },
+  {
     id: 'claude-fable-5',
     label: 'Fable 5',
-    description: 'Fable 5 · Most powerful · Mythos-class',
+    description: 'Fable 5 · Previous Fable generation',
   },
   {
     id: 'claude-opus-5',
@@ -522,6 +527,7 @@ export const AVAILABLE_PROVIDERS: ProviderInfo[] = [
  * Based on: https://code.claude.com/docs/en/model-config#adjust-effort-level
  */
 export const EFFORT_SUPPORTED_CLAUDE_MODELS = new Set([
+  'claude-fable-5-1',
   'claude-fable-5',
   'claude-opus-5',
   'claude-opus-4-8',
@@ -536,6 +542,7 @@ export const EFFORT_SUPPORTED_CLAUDE_MODELS = new Set([
  * Claude models that additionally support the 'xhigh' effort level.
  */
 export const XHIGH_EFFORT_CLAUDE_MODELS = new Set([
+  'claude-fable-5-1',
   'claude-fable-5',
   'claude-opus-5',
   'claude-opus-4-8',
@@ -545,6 +552,7 @@ export const XHIGH_EFFORT_CLAUDE_MODELS = new Set([
  * Claude models that support the 'max' effort level.
  */
 export const MAX_EFFORT_CLAUDE_MODELS = new Set([
+  'claude-fable-5-1',
   'claude-fable-5',
   'claude-opus-5',
   'claude-opus-4-8',

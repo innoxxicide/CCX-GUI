@@ -32,6 +32,7 @@ public class ModelProviderHandler {
         MODEL_CONTEXT_LIMITS.put("claude-sonnet-5", 200_000);
         MODEL_CONTEXT_LIMITS.put("claude-sonnet-4-7", 200_000);
         MODEL_CONTEXT_LIMITS.put("claude-sonnet-4-6", 200_000);
+        MODEL_CONTEXT_LIMITS.put("claude-fable-5-1", 200_000);
         MODEL_CONTEXT_LIMITS.put("claude-fable-5", 200_000);
         MODEL_CONTEXT_LIMITS.put("claude-opus-5", 200_000);
         MODEL_CONTEXT_LIMITS.put("claude-opus-4-8", 200_000);
@@ -41,6 +42,7 @@ public class ModelProviderHandler {
         MODEL_CONTEXT_LIMITS.put("claude-sonnet-5[1m]", 1_000_000);
         MODEL_CONTEXT_LIMITS.put("claude-sonnet-4-7[1m]", 1_000_000);
         MODEL_CONTEXT_LIMITS.put("claude-sonnet-4-6[1m]", 1_000_000);
+        MODEL_CONTEXT_LIMITS.put("claude-fable-5-1[1m]", 1_000_000);
         MODEL_CONTEXT_LIMITS.put("claude-fable-5[1m]", 1_000_000);
         MODEL_CONTEXT_LIMITS.put("claude-opus-5[1m]", 1_000_000);
         MODEL_CONTEXT_LIMITS.put("claude-opus-4-8[1m]", 1_000_000);

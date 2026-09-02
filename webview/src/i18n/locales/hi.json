@@ -1624,9 +1624,13 @@
         "label": "Opus 4.8",
         "description": "Opus 4.8 · पिछली Opus पीढ़ी"
       },
+      "fable51": {
+        "label": "Fable 5.1",
+        "description": "Fable 5.1 · सबसे शक्तिशाली · Mythos-श्रेणी"
+      },
       "fable5": {
         "label": "Fable 5",
-        "description": "Fable 5 · सबसे शक्तिशाली · Mythos-श्रेणी"
+        "description": "Fable 5 · पिछली Fable पीढ़ी"
       }
     },
     "longContext": {

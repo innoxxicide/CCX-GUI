@@ -2030,9 +2030,13 @@
         "label": "Opus 4.8",
         "description": "Opus 4.8 · 保留的前代 Opus 模型"
       },
+      "fable51": {
+        "label": "Fable 5.1",
+        "description": "Fable 5.1 · 最强大 · Mythos 级"
+      },
       "fable5": {
         "label": "Fable 5",
-        "description": "Fable 5 · 最强大 · Mythos 级"
+        "description": "Fable 5 · 保留的前代 Fable 模型"
       }
     },
     "codex": {

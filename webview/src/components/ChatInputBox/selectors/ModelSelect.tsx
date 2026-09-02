@@ -70,6 +70,7 @@ const MODEL_LABEL_KEYS: Record<string, string> = {
   'claude-opus-5': 'models.claude.opus5.label',
   'claude-sonnet-5': 'models.claude.sonnet5.label',
   'claude-sonnet-4-6': 'models.claude.sonnet46.label',
+  'claude-fable-5-1': 'models.claude.fable51.label',
   'claude-fable-5': 'models.claude.fable5.label',
   'claude-opus-4-8': 'models.claude.opus48.label',
   'claude-opus-4-6': 'models.claude.opus46_1m.label',
@@ -89,6 +90,7 @@ const MODEL_DESCRIPTION_KEYS: Record<string, string> = {
   'claude-opus-5': 'models.claude.opus5.description',
   'claude-sonnet-5': 'models.claude.sonnet5.description',
   'claude-sonnet-4-6': 'models.claude.sonnet46.description',
+  'claude-fable-5-1': 'models.claude.fable51.description',
   'claude-fable-5': 'models.claude.fable5.description',
   'claude-opus-4-8': 'models.claude.opus48.description',
   'claude-opus-4-6': 'models.claude.opus46_1m.description',
@@ -110,6 +112,7 @@ const MODEL_DESCRIPTION_KEYS: Record<string, string> = {
  * Legacy Opus 4.6 IDs share the same opus mapping bucket.
  */
 const MODEL_ID_TO_MAPPING_KEY: Record<string, string> = {
+  'claude-fable-5-1': 'fable',
   'claude-fable-5': 'fable',
   'claude-opus-5': 'opus',
   'claude-sonnet-5': 'sonnet',

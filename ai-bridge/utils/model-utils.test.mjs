@@ -11,6 +11,7 @@ import {
 // --- mapModelIdToSdkName ------------------------------------------------
 
 test('mapModelIdToSdkName maps Claude families to short SDK names', () => {
+  assert.equal(mapModelIdToSdkName('claude-fable-5-1'), 'fable');
   assert.equal(mapModelIdToSdkName('claude-fable-5'), 'fable');
   assert.equal(mapModelIdToSdkName('claude-opus-5'), 'opus');
   assert.equal(mapModelIdToSdkName('claude-opus-4-8'), 'opus');

@@ -77,8 +77,9 @@ describe('ModelSelect', () => {
     expect(screen.getByRole('button').textContent).toContain('glm-5.2');
   });
 
-  it('Claude 内置模型列表应按目标顺序展示最新模型，并移除旧可见项', () => {
+  it('lists the built-in Claude models newest-tier first, with retired entries dropped', () => {
     expect(CLAUDE_MODELS.map((model) => model.id)).toEqual([
+      'claude-fable-5-1',
       'claude-fable-5',
       'claude-opus-5',
       'claude-opus-4-8',

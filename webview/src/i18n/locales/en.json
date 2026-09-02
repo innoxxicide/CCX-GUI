@@ -2025,9 +2025,13 @@
         "label": "Opus 4.8",
         "description": "Opus 4.8 · Previous Opus generation"
       },
+      "fable51": {
+        "label": "Fable 5.1",
+        "description": "Fable 5.1 · Most powerful · Mythos-class"
+      },
       "fable5": {
         "label": "Fable 5",
-        "description": "Fable 5 · Most powerful · Mythos-class"
+        "description": "Fable 5 · Previous Fable generation"
       }
     },
     "codex": {

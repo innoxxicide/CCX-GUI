@@ -1776,9 +1776,13 @@
         "label": "Opus 4.8",
         "description": "Opus 4.8 · Geração anterior do Opus"
       },
+      "fable51": {
+        "label": "Fable 5.1",
+        "description": "Fable 5.1 · O mais poderoso · classe Mythos"
+      },
       "fable5": {
         "label": "Fable 5",
-        "description": "Fable 5 · O mais poderoso · classe Mythos"
+        "description": "Fable 5 · Geração anterior do Fable"
       }
     },
     "longContext": {
