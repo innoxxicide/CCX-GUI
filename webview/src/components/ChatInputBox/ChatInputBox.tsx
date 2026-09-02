@@ -578,6 +578,7 @@ export const ChatInputBox = memo(forwardRef<ChatInputBoxHandle, ChatInputBoxProp
       completionSelectedRef,
       submittedOnEnterRef,
       handleSubmit,
+      handleSendNow,
     });
 
     useControlledValueSync({
@@ -604,6 +605,7 @@ export const ChatInputBox = memo(forwardRef<ChatInputBoxHandle, ChatInputBoxProp
       completionSelectedRef,
       submittedOnEnterRef,
       handleSubmit,
+      handleSendNow,
       handleEnhancePrompt,
     });
 

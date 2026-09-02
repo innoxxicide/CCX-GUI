@@ -84,7 +84,7 @@ describe('toColumns', () => {
   });
 
   it('renders the standard review wave as one column and leaves the rest single', () => {
-    const run = derivePipelineRun([]);
+    const run = derivePipelineRun([], 'standard');
     const columns = toColumns(run.steps);
     const fans = columns.filter((column) => column.entries.length > 1);
 

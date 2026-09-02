@@ -1773,7 +1773,8 @@
     }
   },
   "sendNow": {
-    "buttonTooltip": "Отправить сразу (агент будет остановлен)"
+    "buttonTooltip": "Отправить сразу (агент будет остановлен)",
+    "armedTooltip": "Уйдёт вне очереди — Cmd/Ctrl+Shift+Enter"
   },
   "promptEnhancer": {
     "title": "Улучшение промпта",

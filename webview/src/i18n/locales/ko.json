@@ -1849,7 +1849,8 @@
     }
   },
   "sendNow": {
-    "buttonTooltip": "지금 보내기 (에이전트를 중지합니다)"
+    "buttonTooltip": "지금 보내기 (에이전트를 중지합니다)",
+    "armedTooltip": "대기열을 건너뛰어 전송 — Cmd/Ctrl+Shift+Enter"
   },
   "promptEnhancer": {
     "title": "프롬프트 강화",

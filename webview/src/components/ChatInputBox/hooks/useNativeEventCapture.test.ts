@@ -60,6 +60,68 @@ describe('useNativeEventCapture', () => {
     expect(handleSubmit).not.toHaveBeenCalled();
   });
 
+  it('Cmd+Shift+Enter sends out of turn instead of queueing behind the running one', () => {
+    const el = document.createElement('div');
+    document.body.appendChild(el);
+    const handleSubmit = vi.fn();
+    const handleSendNow = vi.fn();
+    const submittedOnEnterRef = { current: false };
+
+    renderHook(() =>
+      useNativeEventCapture({
+        editableRef: { current: el },
+        isComposingRef: { current: false },
+        lastCompositionEndTimeRef: { current: Date.now() - 1000 },
+        sendShortcut: 'enter',
+        fileCompletion: { isOpen: false },
+        commandCompletion: { isOpen: false },
+        agentCompletion: { isOpen: false },
+        promptCompletion: { isOpen: false },
+        dollarCommandCompletion: { isOpen: false },
+        completionSelectedRef: { current: false },
+        submittedOnEnterRef,
+        handleSubmit,
+        handleSendNow,
+        handleEnhancePrompt: vi.fn(),
+      })
+    );
+
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, metaKey: true, shiftKey: true }));
+    expect(handleSendNow).toHaveBeenCalledTimes(1);
+    expect(handleSubmit, 'an out-of-turn send is not also an ordinary one').not.toHaveBeenCalled();
+    expect(submittedOnEnterRef.current).toBe(true);
+  });
+
+  it('Shift+Enter alone still breaks the line rather than sending', () => {
+    const el = document.createElement('div');
+    document.body.appendChild(el);
+    const handleSubmit = vi.fn();
+    const handleSendNow = vi.fn();
+
+    renderHook(() =>
+      useNativeEventCapture({
+        editableRef: { current: el },
+        isComposingRef: { current: false },
+        lastCompositionEndTimeRef: { current: Date.now() - 1000 },
+        sendShortcut: 'enter',
+        fileCompletion: { isOpen: false },
+        commandCompletion: { isOpen: false },
+        agentCompletion: { isOpen: false },
+        promptCompletion: { isOpen: false },
+        dollarCommandCompletion: { isOpen: false },
+        completionSelectedRef: { current: false },
+        submittedOnEnterRef: { current: false },
+        handleSubmit,
+        handleSendNow,
+        handleEnhancePrompt: vi.fn(),
+      })
+    );
+
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, shiftKey: true }));
+    expect(handleSendNow).not.toHaveBeenCalled();
+    expect(handleSubmit).not.toHaveBeenCalled();
+  });
+
   it('handles enhance prompt shortcut (Cmd+/)', () => {
     const el = document.createElement('div');
     document.body.appendChild(el);

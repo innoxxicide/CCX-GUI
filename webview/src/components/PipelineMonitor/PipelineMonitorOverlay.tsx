@@ -10,7 +10,7 @@ import { derivePipelineRun } from './derivePipelineRun';
 import type { StepRun } from './derivePipelineRun';
 import type { TrackMode } from './pipelineDescriptor';
 import { groupOffTrack, liveElapsedMs, offTrackKey, resolveSelection, summarizeRun, toColumns } from './trackLayout';
-import type { PanelSelection } from './trackLayout';
+import type { PanelSelection, RunSummary } from './trackLayout';
 import './PipelineMonitor.less';
 
 interface PipelineMonitorOverlayProps {
@@ -71,6 +71,18 @@ function errorPreview(entry: StepRun): string | undefined {
   if (entry.status !== 'error') return undefined;
   const failed = entry.agents.find((agent) => agent.status === 'error');
   return failed?.resultText?.split('\n').map((line) => line.trim()).find(Boolean)?.slice(0, 120);
+}
+
+// Three things the header can count, and only one of them is steps: a run with no
+// track has runs to count, and a session that launched nothing has neither.
+function progressText(summary: RunSummary, stepCount: number, runCount: number, t: TFunction): string {
+  if (stepCount > 0) {
+    return `${summary.done}/${summary.total} ${t('pipelineMonitor.stepsDone', { defaultValue: 'steps done' })}`;
+  }
+  if (runCount > 0) {
+    return `${runCount} ${t('pipelineMonitor.agentRuns', { defaultValue: 'Agent runs' }).toLowerCase()}`;
+  }
+  return t('pipelineMonitor.noAgentRuns', { defaultValue: 'no agent runs' });
 }
 
 function statusNote(entry: StepRun, t: TFunction): string | undefined {
@@ -175,6 +187,7 @@ export default function PipelineMonitorOverlay({
   ];
   const summaryTotals = statsLine(t, 0, summary.totalToolUseCount, summary.totalTokens);
   const runCount = run.steps.reduce((sum, entry) => sum + entry.agents.length, 0) + run.offTrack.length;
+  const progressLabel = progressText(summary, run.steps.length, runCount, t);
 
   return createPortal(
     <div className="pipeline-monitor-backdrop" onClick={handleBackdropClick}>
@@ -209,17 +222,7 @@ export default function PipelineMonitorOverlay({
         </div>
 
         <div className="pipeline-monitor-summary" data-testid="pipeline-monitor-summary">
-          {run.steps.length > 0 ? (
-            <span className="pipeline-summary-progress">
-              {`${summary.done}/${summary.total} `}
-              {t('pipelineMonitor.stepsDone', { defaultValue: 'steps done' })}
-            </span>
-          ) : (
-            <span className="pipeline-summary-progress">
-              {`${runCount} `}
-              {t('pipelineMonitor.agentRuns', { defaultValue: 'Agent runs' }).toLowerCase()}
-            </span>
-          )}
+          <span className="pipeline-summary-progress">{progressLabel}</span>
           {summary.running.length > 0 && (
             <span className="pipeline-summary-running">
               <span className="codicon codicon-loading" />
@@ -239,6 +242,14 @@ export default function PipelineMonitorOverlay({
           <div className="pipeline-monitor-hint">
             {t('pipelineMonitor.undetermined', {
               defaultValue: 'Path not determined yet — showing the Standard track.',
+            })}
+          </div>
+        )}
+
+        {run.mode === 'idle' && (
+          <div className="pipeline-monitor-hint" data-testid="pipeline-monitor-idle">
+            {t('pipelineMonitor.noAgents', {
+              defaultValue: 'No agent has been launched in this session — the work is running in the main thread. Pick a track above to see what a pipeline would look like.',
             })}
           </div>
         )}

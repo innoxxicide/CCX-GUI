@@ -1747,7 +1747,8 @@
     }
   },
   "sendNow": {
-    "buttonTooltip": "Envoyer maintenant (arrête l'agent)"
+    "buttonTooltip": "Envoyer maintenant (arrête l'agent)",
+    "armedTooltip": "Passe devant la file — Cmd/Ctrl+Maj+Entrée"
   },
   "promptEnhancer": {
     "title": "Prompt Enhancer",

@@ -1898,7 +1898,8 @@
     }
   },
   "sendNow": {
-    "buttonTooltip": "Enviar agora (para o agente)"
+    "buttonTooltip": "Enviar agora (para o agente)",
+    "armedTooltip": "Fura a fila — Cmd/Ctrl+Shift+Enter"
   },
   "promptEnhancer": {
     "title": "Melhorador de Prompt",

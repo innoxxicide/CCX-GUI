@@ -176,8 +176,16 @@ describe('derivePipelineRun', () => {
     expect(run.offTrack.map((agent) => agent.id)).toContain(stray.id);
   });
 
+  it('a session that launched no agent draws no track at all', () => {
+    const run = derivePipelineRun([]);
+
+    expect(run.mode).toBe('idle');
+    expect(run.steps, 'a track with nothing on it claims a pipeline that never started').toEqual([]);
+    expect(run.offTrack).toEqual([]);
+  });
+
   it('the track-opening orchestrator step waits until the run produced any evidence', () => {
-    const idle = derivePipelineRun([]);
+    const idle = derivePipelineRun([], 'standard');
     const started = derivePipelineRun([mk('planner', 'running')]);
 
     expect(idle.steps[0].step.kind).toBe('orchestrator');

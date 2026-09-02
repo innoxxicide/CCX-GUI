@@ -9,6 +9,7 @@ import type { CodexCustomModel } from '../../types/provider';
 import { readClaudeModelMapping } from '../../utils/claudeModelMapping';
 import { useCliModels } from '../../hooks/providers/useCliModels';
 import { useToolbarSelectorCompact } from './hooks/useToolbarSelectorCompact';
+import { useShiftHeld } from './hooks/useShiftHeld';
 import { resolveProviderModels } from './resolveProviderModels';
 
 /**
@@ -204,13 +205,23 @@ export const ButtonArea = ({
     onSendNow?.();
   }, [onSendNow]);
 
+  // Shift lights the button that Enter is about to fire, in both states, so the key
+  // always answers. While a turn is running that button also jumps the queue, and
+  // the stop button — the one the hand is already on — becomes it while Shift is down.
+  const canArm = !sendNowDisabled && hasInputContent;
+  const sendNowArmed = useShiftHeld(canArm);
+
   /**
    * Handle stop button click
    */
   const handleStopClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
+    if (sendNowArmed) {
+      onSendNow?.();
+      return;
+    }
     onStop?.();
-  }, [onStop]);
+  }, [onStop, onSendNow, sendNowArmed]);
 
   /**
    * Handle mode selection
@@ -374,12 +385,14 @@ export const ButtonArea = ({
         {isLoading && (
           <button
             className="send-now-button"
+            data-testid="send-now-button"
+            data-armed={sendNowArmed}
             onClick={handleSendNowClick}
             // Deliberately not `disabled`: the footer folds isLoading into that,
             // and this button exists only while loading, so it would never be
             // clickable. sendNowDisabled carries the input's real availability.
             disabled={sendNowDisabled || !hasInputContent}
-            title={t('sendNow.buttonTooltip')}
+            title={sendNowArmed ? t('sendNow.armedTooltip') : t('sendNow.buttonTooltip')}
           >
             <span className="codicon codicon-debug-continue" />
           </button>
@@ -389,14 +402,18 @@ export const ButtonArea = ({
         {isLoading ? (
           <button
             className="submit-button stop-button"
+            data-testid="stop-button"
+            data-armed={sendNowArmed}
             onClick={handleStopClick}
-            title={t('chat.stopGeneration')}
+            title={sendNowArmed ? t('sendNow.armedTooltip') : t('chat.stopGeneration')}
           >
-            <span className="codicon codicon-debug-stop" />
+            <span className={`codicon ${sendNowArmed ? 'codicon-debug-continue' : 'codicon-debug-stop'}`} />
           </button>
         ) : (
           <button
             className="submit-button"
+            data-testid="send-button"
+            data-armed={sendNowArmed}
             onClick={handleSubmitClick}
             disabled={disabled || !hasInputContent}
             title={t('chat.sendMessageEnter')}

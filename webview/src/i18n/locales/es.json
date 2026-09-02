@@ -1753,7 +1753,8 @@
     }
   },
   "sendNow": {
-    "buttonTooltip": "Enviar ahora (detiene al agente)"
+    "buttonTooltip": "Enviar ahora (detiene al agente)",
+    "armedTooltip": "Se adelanta en la cola — Cmd/Ctrl+Shift+Enter"
   },
   "promptEnhancer": {
     "title": "Prompt Enhancer",
