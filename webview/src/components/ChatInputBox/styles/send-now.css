@@ -33,3 +33,24 @@
 .send-now-button .codicon {
   font-size: 16px;
 }
+
+/* ============================================================
+   Armed — Shift is down, so the next Enter or click jumps the queue
+
+   Both buttons light up together: the one that owns the action, and the stop
+   button that takes over the action while the key is held. Without the second
+   one the swap would only be discoverable by clicking and finding out.
+   ============================================================ */
+.send-now-button[data-armed='true']:not(:disabled) {
+  background: var(--button-primary);
+  color: white;
+}
+
+.submit-button.stop-button[data-armed='true'] {
+  background: var(--button-primary);
+}
+
+.submit-button.stop-button[data-armed='true']:hover {
+  background: var(--button-primary);
+  opacity: 0.85;
+}

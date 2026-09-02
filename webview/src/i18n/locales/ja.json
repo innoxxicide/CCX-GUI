@@ -1748,7 +1748,8 @@
     }
   },
   "sendNow": {
-    "buttonTooltip": "すぐに送信（エージェントを停止します）"
+    "buttonTooltip": "すぐに送信（エージェントを停止します）",
+    "armedTooltip": "列に割り込んで送信 — Cmd/Ctrl+Shift+Enter"
   },
   "promptEnhancer": {
     "title": "プロンプトエンハンサー",

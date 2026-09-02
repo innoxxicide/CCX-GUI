@@ -93,6 +93,67 @@ describe('useKeyboardHandler', () => {
     expect(handleSubmit).not.toHaveBeenCalled();
   });
 
+  it('Ctrl+Shift+Enter sends out of turn, in cmdEnter mode too', () => {
+    const handleSubmit = vi.fn();
+    const handleSendNow = vi.fn();
+    const submittedOnEnterRef = { current: false };
+
+    const { result } = renderHook(() =>
+      useKeyboardHandler({
+        isComposingRef: { current: false },
+        lastCompositionEndTimeRef: { current: Date.now() - 1000 },
+        sendShortcut: 'cmdEnter',
+        sdkStatusLoading: false,
+        sdkInstalled: true,
+        fileCompletion: { isOpen: false, handleKeyDown: vi.fn(() => false) },
+        commandCompletion: { isOpen: false, handleKeyDown: vi.fn(() => false) },
+        agentCompletion: { isOpen: false, handleKeyDown: vi.fn(() => false) },
+        promptCompletion: { isOpen: false, handleKeyDown: vi.fn(() => false) },
+        dollarCommandCompletion: { isOpen: false, handleKeyDown: vi.fn(() => false) },
+        handleMacCursorMovement: vi.fn(() => false),
+        handleHistoryKeyDown: vi.fn(() => false),
+        completionSelectedRef: { current: false },
+        submittedOnEnterRef,
+        handleSubmit,
+        handleSendNow,
+      })
+    );
+
+    const e = reactKeyEvent({ key: 'Enter', ctrlKey: true, shiftKey: true });
+    result.current.onKeyDown(e);
+    expect(handleSendNow).toHaveBeenCalledTimes(1);
+    expect(handleSubmit, 'the combo that jumps the queue must not also queue').not.toHaveBeenCalled();
+    expect(e.preventDefault).toHaveBeenCalled();
+  });
+
+  it('an out-of-turn send releases the Enter guard on key up', () => {
+    const submittedOnEnterRef = { current: true };
+
+    const { result } = renderHook(() =>
+      useKeyboardHandler({
+        isComposingRef: { current: false },
+        lastCompositionEndTimeRef: { current: Date.now() - 1000 },
+        sendShortcut: 'enter',
+        sdkStatusLoading: false,
+        sdkInstalled: true,
+        fileCompletion: { isOpen: false, handleKeyDown: vi.fn(() => false) },
+        commandCompletion: { isOpen: false, handleKeyDown: vi.fn(() => false) },
+        agentCompletion: { isOpen: false, handleKeyDown: vi.fn(() => false) },
+        promptCompletion: { isOpen: false, handleKeyDown: vi.fn(() => false) },
+        dollarCommandCompletion: { isOpen: false, handleKeyDown: vi.fn(() => false) },
+        handleMacCursorMovement: vi.fn(() => false),
+        handleHistoryKeyDown: vi.fn(() => false),
+        completionSelectedRef: { current: false },
+        submittedOnEnterRef,
+        handleSubmit: vi.fn(),
+        handleSendNow: vi.fn(),
+      })
+    );
+
+    result.current.onKeyUp(reactKeyEvent({ key: 'Enter', metaKey: true, shiftKey: true }));
+    expect(submittedOnEnterRef.current).toBe(false);
+  });
+
   it('resets submit refs on key up', () => {
     const handleSubmit = vi.fn();
     const submittedOnEnterRef = { current: true };

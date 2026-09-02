@@ -18,6 +18,8 @@ export interface UseNativeEventCaptureOptions {
   completionSelectedRef: MutableRefObject<boolean>;
   submittedOnEnterRef: MutableRefObject<boolean>;
   handleSubmit: () => void;
+  /** "Send now": stop the running turn and send, instead of queueing behind it. */
+  handleSendNow?: () => void;
   handleEnhancePrompt: () => void;
 }
 
@@ -42,6 +44,7 @@ export function useNativeEventCapture({
   completionSelectedRef,
   submittedOnEnterRef,
   handleSubmit,
+  handleSendNow,
   handleEnhancePrompt,
 }: UseNativeEventCaptureOptions): void {
   // Keep latest values without re-subscribing native listeners on every render.
@@ -58,6 +61,7 @@ export function useNativeEventCapture({
     completionSelectedRef,
     submittedOnEnterRef,
     handleSubmit,
+    handleSendNow,
     handleEnhancePrompt,
   });
   latestRef.current = {
@@ -73,6 +77,7 @@ export function useNativeEventCapture({
     completionSelectedRef,
     submittedOnEnterRef,
     handleSubmit,
+    handleSendNow,
     handleEnhancePrompt,
   };
 
@@ -121,6 +126,16 @@ export function useNativeEventCapture({
       const isRecentlyComposing = Date.now() - latest.lastCompositionEndTimeRef.current < 100;
       const shift = (ev as KeyboardEvent).shiftKey === true;
       const metaOrCtrl = ev.metaKey || ev.ctrlKey;
+
+      // Jumps the queue. Shift alone stays the line break, which is what a long
+      // mid-turn correction is typed with, so the modifier rides on the send combo.
+      if (latest.handleSendNow && isEnterKey && shift && metaOrCtrl && !latest.isComposingRef.current) {
+        ev.preventDefault();
+        latest.submittedOnEnterRef.current = true;
+        latest.handleSendNow();
+        return;
+      }
+
       const isSendKey =
         latest.sendShortcut === 'cmdEnter'
           ? isEnterKey && metaOrCtrl && !latest.isComposingRef.current
@@ -144,7 +159,7 @@ export function useNativeEventCapture({
 
       const isSendKey =
         latest.sendShortcut === 'cmdEnter' ? isEnterKey && metaOrCtrl : isEnterKey && !shift;
-      if (!isSendKey) return;
+      if (!isSendKey && !(isEnterKey && shift && metaOrCtrl)) return;
 
       ev.preventDefault();
       if (latest.completionSelectedRef.current) {

@@ -1782,7 +1782,8 @@
     }
   },
   "sendNow": {
-    "buttonTooltip": "立即傳送（會停止代理）"
+    "buttonTooltip": "立即傳送（會停止代理）",
+    "armedTooltip": "插隊發送 — Cmd/Ctrl+Shift+Enter"
   },
   "promptEnhancer": {
     "title": "Prompt Enhancer",

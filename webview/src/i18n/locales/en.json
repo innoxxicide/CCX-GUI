@@ -408,9 +408,9 @@
         "hint": "When enabled, selecting a file in the project tree will automatically send its file path to AI (note: only the file path is sent, not the file content). When disabled, manual action is required."
       },
       "sendNow": {
-    "buttonTooltip": "Send now (stops the agent)"
-  },
-  "promptEnhancer": {
+        "buttonTooltip": "Send now (stops the agent)"
+      },
+      "promptEnhancer": {
         "label": "Prompt Enhancer",
         "modelLabel": "Enhancer Model",
         "resetToDefault": "Restore Default",
@@ -2379,5 +2379,9 @@
         }
       }
     }
+  },
+  "sendNow": {
+    "buttonTooltip": "Send now (stops the agent)",
+    "armedTooltip": "Jumps the queue — Cmd/Ctrl+Shift+Enter"
   }
 }

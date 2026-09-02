@@ -1742,7 +1742,8 @@
     }
   },
   "sendNow": {
-    "buttonTooltip": "अभी भेजें (एजेंट को रोक देता है)"
+    "buttonTooltip": "अभी भेजें (एजेंट को रोक देता है)",
+    "armedTooltip": "कतार से आगे भेजें — Cmd/Ctrl+Shift+Enter"
   },
   "promptEnhancer": {
     "title": "Prompt Enhancer",

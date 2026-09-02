@@ -36,6 +36,17 @@ export interface UseKeyboardHandlerOptions {
   completionSelectedRef: MutableRefObject<boolean>;
   submittedOnEnterRef: MutableRefObject<boolean>;
   handleSubmit: () => void;
+  /** "Send now": stop the running turn and send, instead of queueing behind it. */
+  handleSendNow?: () => void;
+}
+
+/**
+ * The combo that jumps the queue. Shift alone is not available: Shift+Enter breaks
+ * the line, which is exactly what a long mid-turn correction is typed with, so the
+ * modifier rides on top of the send combo instead of replacing the newline.
+ */
+function isSendNowCombo(e: { key: string; shiftKey: boolean; metaKey: boolean; ctrlKey: boolean }, isEnterKey: boolean): boolean {
+  return isEnterKey && e.shiftKey && (e.metaKey || e.ctrlKey);
 }
 
 /**
@@ -64,6 +75,7 @@ export function useKeyboardHandler({
   completionSelectedRef,
   submittedOnEnterRef,
   handleSubmit,
+  handleSendNow,
 }: UseKeyboardHandlerOptions) {
   const onKeyDown = useCallback(
     (e: ReactKeyboardEvent<HTMLDivElement>) => {
@@ -143,6 +155,14 @@ export function useKeyboardHandler({
 
       if (handleHistoryKeyDown(e)) return;
 
+      if (handleSendNow && isSendNowCombo(e, isEnterKey) && !isIMEComposing) {
+        e.preventDefault();
+        if (sdkStatusLoading || !sdkInstalled) return;
+        submittedOnEnterRef.current = true;
+        handleSendNow();
+        return;
+      }
+
       const isRecentlyComposing = Date.now() - lastCompositionEndTimeRef.current < 100;
       const isSendKey =
         sendShortcut === 'cmdEnter'
@@ -174,6 +194,7 @@ export function useKeyboardHandler({
       submittedOnEnterRef,
       completionSelectedRef,
       handleSubmit,
+      handleSendNow,
     ]
   );
 
@@ -187,7 +208,7 @@ export function useKeyboardHandler({
           ? isEnterKey && (e.metaKey || e.ctrlKey)
           : isEnterKey && !e.shiftKey;
 
-      if (!isSendKey) return;
+      if (!isSendKey && !isSendNowCombo(e, isEnterKey)) return;
       e.preventDefault();
 
       if (completionSelectedRef.current) {
