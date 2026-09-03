@@ -52,6 +52,51 @@ export function toColumns(steps: StepRun[]): TrackColumn[] {
   return columns;
 }
 
+/**
+ * `idle` — the slot before has produced nothing yet.
+ * `flowing` — it reported and the slot after is working off that report.
+ * `carried` — the handoff is behind the run: both ends are settled.
+ * `blocked` — the report never came, so nothing was handed over and nothing will be.
+ */
+export type LinkState = 'idle' | 'flowing' | 'carried' | 'blocked';
+
+export interface TrackLink {
+  from: TrackColumn;
+  to: TrackColumn;
+  state: LinkState;
+}
+
+function involvedIn(column: TrackColumn): StepRun[] {
+  return column.entries.filter((entry) => !isSkipped(entry));
+}
+
+export function columnLabel(column: TrackColumn): string {
+  return column.entries.map((entry) => entry.step.label).join(' + ');
+}
+
+export function linkState(from: TrackColumn, to: TrackColumn): LinkState {
+  const sources = involvedIn(from);
+  if (sources.some((entry) => entry.status === 'stalled' || entry.status === 'error')) return 'blocked';
+  if (!sources.every((entry) => entry.status === 'done')) return 'idle';
+  // A slot the run skipped outright settles nothing and is passed straight through.
+  return involvedIn(to).every((entry) => entry.status === 'done' || entry.status === 'error') ? 'carried' : 'flowing';
+}
+
+/**
+ * One link per column — what reached it, and from where. A column the run was free to
+ * skip and did is not a source: the link then reaches back to the last slot that ran,
+ * so a missing conditional step does not read as a track cut in two.
+ */
+export function buildLinks(columns: TrackColumn[]): Array<TrackLink | null> {
+  const links: Array<TrackLink | null> = [];
+  let source: TrackColumn | null = null;
+  for (const column of columns) {
+    links.push(source ? { from: source, to: column, state: linkState(source, column) } : null);
+    if (involvedIn(column).length > 0) source = column;
+  }
+  return links;
+}
+
 export function groupOffTrack(agents: SubagentInfo[]): OffTrackGroup[] {
   const groups: OffTrackGroup[] = [];
   for (const agent of agents) {

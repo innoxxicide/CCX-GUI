@@ -9,8 +9,19 @@ import SubagentProcessDetails from '../StatusPanel/SubagentProcessDetails';
 import { derivePipelineRun } from './derivePipelineRun';
 import type { StepRun } from './derivePipelineRun';
 import type { TrackMode } from './pipelineDescriptor';
-import { groupOffTrack, liveElapsedMs, offTrackKey, resolveSelection, summarizeRun, toColumns } from './trackLayout';
-import type { PanelSelection, RunSummary } from './trackLayout';
+import {
+  buildLinks,
+  columnLabel,
+  groupOffTrack,
+  liveElapsedMs,
+  offTrackKey,
+  resolveSelection,
+  summarizeRun,
+  toColumns,
+} from './trackLayout';
+import type { PanelSelection, RunSummary, TrackLink } from './trackLayout';
+import { buildStepActivities } from './stepActivity';
+import type { StepActivity } from './stepActivity';
 import './PipelineMonitor.less';
 
 interface PipelineMonitorOverlayProps {
@@ -31,6 +42,15 @@ const LIVE_STATUS_ICON: Record<'running' | 'done' | 'error', SubagentInfo['statu
 
 const NOT_REACHED_ICON = 'codicon-circle-outline';
 const STALLED_ICON = 'codicon-warning';
+
+/** How often a live agent's transcript is re-read, matching the inline Agent card's poll. */
+const LIVE_POLL_MS = 2_000;
+
+const ACTIVITY_ICON: Record<StepActivity['kind'], string> = {
+  phase: 'codicon-pulse',
+  tool: 'codicon-tools',
+  handoff: 'codicon-arrow-small-right',
+};
 
 function agentIcon(status: SubagentInfo['status']): string {
   // A status widened upstream would otherwise render as `codicon undefined`, an invisible chip;
@@ -85,6 +105,25 @@ function progressText(summary: RunSummary, stepCount: number, runCount: number, 
   return t('pipelineMonitor.noAgentRuns', { defaultValue: 'no agent runs' });
 }
 
+// What the arrow between two slots is worth hovering for: the route, and the report
+// that travelled it. A link with nothing on it says so rather than staying mute.
+function linkTitle(link: TrackLink, activities: Map<string, StepActivity>, t: TFunction): string {
+  const route = `${columnLabel(link.from)} → ${columnLabel(link.to)}`;
+  if (link.state === 'blocked') {
+    return `${route}: ${t('pipelineMonitor.linkBlocked', { defaultValue: 'nothing was handed over — the step never reported back' })}`;
+  }
+  if (link.state === 'idle') {
+    return `${route}: ${t('pipelineMonitor.linkIdle', { defaultValue: 'nothing handed over yet' })}`;
+  }
+  const payload = link.from.entries
+    .map((entry) => activities.get(entry.step.id))
+    .filter((activity): activity is StepActivity => activity?.kind === 'handoff')
+    .map((activity) => activity.full)
+    .join('\n');
+  if (payload) return `${route}\n${payload}`;
+  return `${route}: ${t('pipelineMonitor.linkCarried', { defaultValue: 'result handed over' })}`;
+}
+
 function statusNote(entry: StepRun, t: TFunction): string | undefined {
   if (entry.status === 'stalled') {
     return t('pipelineMonitor.stalled', { defaultValue: 'interrupted — never reported back' });
@@ -108,6 +147,8 @@ export default function PipelineMonitorOverlay({
   const [now, setNow] = useState(() => Date.now());
   const run = useMemo(() => derivePipelineRun(subagents, pickedMode ?? undefined), [subagents, pickedMode]);
   const columns = useMemo(() => toColumns(run.steps), [run]);
+  const links = useMemo(() => buildLinks(columns), [columns]);
+  const activities = useMemo(() => buildStepActivities(run.steps, histories), [run, histories]);
   const offTrackGroups = useMemo(() => groupOffTrack(run.offTrack), [run]);
   const summary = useMemo(() => summarizeRun(run), [run]);
   const stalledIds = useMemo(() => new Set(run.stalledAgentIds), [run]);
@@ -151,21 +192,45 @@ export default function PipelineMonitorOverlay({
   const unsettled = useMemo(() => subagents.filter((agent) => agent.status === 'running'), [subagents]);
   const requestedRef = useRef<Set<string>>(new Set());
 
+  const askForTranscript = useCallback((agent: SubagentInfo) => {
+    sendBridgeEvent('load_subagent_session', JSON.stringify({
+      sessionId,
+      provider,
+      agentId: agent.agentId,
+      agentPath: agent.agentPath,
+      description: agent.description,
+      toolUseId: agent.id,
+    }));
+  }, [provider, sessionId]);
+
   useEffect(() => {
     if (!sessionId) return;
     for (const agent of unsettled) {
       if (requestedRef.current.has(agent.id)) continue;
       requestedRef.current.add(agent.id);
-      sendBridgeEvent('load_subagent_session', JSON.stringify({
-        sessionId,
-        provider,
-        agentId: agent.agentId,
-        agentPath: agent.agentPath,
-        description: agent.description,
-        toolUseId: agent.id,
-      }));
+      askForTranscript(agent);
     }
-  }, [provider, sessionId, unsettled]);
+  }, [askForTranscript, sessionId, unsettled]);
+
+  // The first read shows the phase an agent was in when the panel opened; the poll is
+  // what keeps showing the one it is in now. Held in a ref so a re-render of the same
+  // live agents restarts no interval — the request is worth a file read, not a burst.
+  const unsettledRef = useRef(unsettled);
+  const hasUnsettled = unsettled.length > 0;
+
+  useEffect(() => {
+    unsettledRef.current = unsettled;
+  }, [unsettled]);
+
+  useEffect(() => {
+    if (!sessionId || !hasUnsettled) return;
+    const poll = window.setInterval(() => {
+      for (const agent of unsettledRef.current) {
+        askForTranscript(agent);
+      }
+    }, LIVE_POLL_MS);
+    return () => window.clearInterval(poll);
+  }, [askForTranscript, hasUnsettled, sessionId]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -264,12 +329,23 @@ export default function PipelineMonitorOverlay({
 
         {columns.length > 0 && (
           <div className="pipeline-monitor-track">
-            {columns.map((column) => (
+            {columns.map((column, columnIndex) => (
               <div key={column.key} className="pipeline-track-column" data-parallel={column.entries.length > 1}>
+                {links[columnIndex] && (
+                  <span
+                    className="pipeline-track-link"
+                    data-testid="pipeline-track-link"
+                    data-flow={links[columnIndex]!.state}
+                    title={linkTitle(links[columnIndex]!, activities, t)}
+                  >
+                    <span className="codicon codicon-arrow-small-right" />
+                  </span>
+                )}
                 {column.entries.map((entry) => {
                   const meta = stepMeta(entry, t, now);
                   const failure = errorPreview(entry);
                   const note = statusNote(entry, t);
+                  const activity = activities.get(entry.step.id);
                   return (
                     <button
                       key={entry.step.id}
@@ -288,6 +364,17 @@ export default function PipelineMonitorOverlay({
                           <span className="pipeline-step-count">{`×${entry.agents.length}`}</span>
                         )}
                       </span>
+                      {activity && (
+                        <span
+                          className="pipeline-step-activity"
+                          data-testid="pipeline-step-activity"
+                          data-kind={activity.kind}
+                          title={activity.full}
+                        >
+                          <span className={`codicon ${ACTIVITY_ICON[activity.kind]}`} />
+                          <span className="pipeline-step-activity-text">{activity.text}</span>
+                        </span>
+                      )}
                       {note && <span className="pipeline-step-note">{note}</span>}
                       {failure && (
                         <span className="pipeline-step-error" data-testid="pipeline-step-error">{failure}</span>

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import type { TFunction } from 'i18next';
 import type { SubagentHistoryResponse, SubagentInfo, SubagentStatus } from '../../types';
@@ -80,6 +80,23 @@ describe('PipelineMonitorOverlay recovery', () => {
     expect(sendBridgeEventMock).not.toHaveBeenCalled();
   });
 
+  it('polls the transcript of a live agent, so the phase on its node keeps up with it', async () => {
+    vi.useFakeTimers();
+    try {
+      sendBridgeEventMock.mockClear();
+      renderOverlay([mk('tu-implementer', 'implementer', 'running')]);
+
+      expect(sendBridgeEventMock, 'the first read happens on open').toHaveBeenCalledTimes(1);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(2_000);
+      });
+      expect(sendBridgeEventMock).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('opens an interrupted step on what its transcript still holds', async () => {
     sendBridgeEventMock.mockClear();
     renderOverlay([
@@ -94,5 +111,60 @@ describe('PipelineMonitorOverlay recovery', () => {
     fireEvent.click(step!);
     expect(screen.getByTestId('pipeline-stalled-note')).toBeTruthy();
     expect(screen.getByText('implementer instructions'), 'the prompt outlives the run that lost its result').toBeTruthy();
+  });
+});
+
+describe('PipelineMonitorOverlay live reading', () => {
+  const RUN = [
+    mk('tu-planner', 'planner', 'completed', { resultText: 'Plan ready: 4 steps, no new files.' }),
+    mk('tu-implementer', 'implementer', 'running'),
+  ];
+
+  function transcriptOf(text: string): SubagentHistoryResponse {
+    return { success: true, messages: [{ type: 'assistant', message: { content: [{ type: 'text', text }] } }] };
+  }
+
+  it('shows on the live node the phase its agent last wrote', () => {
+    renderOverlay(RUN, { 'tu-implementer': transcriptOf('## Phase 2 — apply the fix\nEditing the selector now.') });
+
+    const node = document.querySelector('[data-step-id="implementer"]');
+    const activity = node?.querySelector('[data-testid="pipeline-step-activity"]');
+    expect(activity?.getAttribute('data-kind')).toBe('phase');
+    expect(activity?.textContent).toBe('Phase 2 — apply the fix');
+  });
+
+  it('shows on a settled node the opening line of what it handed on', () => {
+    renderOverlay(RUN);
+
+    const node = document.querySelector('[data-step-id="planner"]');
+    const activity = node?.querySelector('[data-testid="pipeline-step-activity"]');
+    expect(activity?.getAttribute('data-kind')).toBe('handoff');
+    expect(activity?.textContent).toBe('Plan ready: 4 steps, no new files.');
+  });
+
+  it('draws the handoff as flowing while the step after works off it, and names what travelled', () => {
+    renderOverlay(RUN);
+
+    const link = document.querySelector('[data-testid="pipeline-track-link"][title^="Planner → Implementer"]');
+    expect(link?.getAttribute('data-flow')).toBe('flowing');
+    expect(link?.getAttribute('title')).toContain('Plan ready: 4 steps, no new files.');
+  });
+
+  it('draws a handoff that never happened as blocked, not as one still to come', () => {
+    renderOverlay([
+      mk('tu-planner', 'planner', 'completed'),
+      mk('tu-implementer', 'implementer', 'running'),
+      mk('tu-validator', 'validator', 'completed'),
+    ]);
+
+    const link = document.querySelector('[data-testid="pipeline-track-link"][title^="Implementer →"]');
+    expect(link?.getAttribute('data-flow'), 'the implementer never reported back').toBe('blocked');
+  });
+
+  it('leaves the head of the track without an incoming link', () => {
+    renderOverlay(RUN);
+
+    const first = document.querySelectorAll('.pipeline-track-column')[0];
+    expect(first.querySelector('[data-testid="pipeline-track-link"]')).toBeNull();
   });
 });

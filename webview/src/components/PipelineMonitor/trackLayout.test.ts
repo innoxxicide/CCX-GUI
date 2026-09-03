@@ -3,7 +3,16 @@ import type { SubagentInfo, SubagentStatus } from '../../types';
 import type { PipelineRun, PipelineStepStatus, StepRun } from './derivePipelineRun';
 import { derivePipelineRun } from './derivePipelineRun';
 import type { PipelineStep } from './pipelineDescriptor';
-import { groupOffTrack, liveElapsedMs, offTrackKey, resolveSelection, summarizeRun, toColumns } from './trackLayout';
+import {
+  buildLinks,
+  columnLabel,
+  groupOffTrack,
+  liveElapsedMs,
+  offTrackKey,
+  resolveSelection,
+  summarizeRun,
+  toColumns,
+} from './trackLayout';
 
 let sequence = 0;
 
@@ -91,6 +100,80 @@ describe('toColumns', () => {
     expect(fans).toHaveLength(1);
     expect(fans[0].key).toBe('review-wave');
     expect(columns.reduce((sum, column) => sum + column.entries.length, 0)).toBe(run.steps.length);
+  });
+});
+
+describe('buildLinks', () => {
+  function step(
+    id: string,
+    status: PipelineStepStatus,
+    opts?: { conditional?: boolean; group?: string; agents?: SubagentInfo[] },
+  ): StepRun {
+    return {
+      step: { id, label: id, role: id, kind: 'agent', conditional: opts?.conditional, group: opts?.group },
+      status,
+      agents: opts?.agents ?? (status === 'pending' ? [] : [mk(id, 'completed')]),
+    };
+  }
+
+  function states(steps: StepRun[]): Array<string | null> {
+    return buildLinks(toColumns(steps)).map((link) => link?.state ?? null);
+  }
+
+  it('leaves the first column without a link — nothing reaches it from inside the track', () => {
+    expect(states([step('planner', 'done'), step('implementer', 'done')])[0]).toBeNull();
+  });
+
+  it('reads the link as carrying once both ends of the handoff have settled', () => {
+    expect(states([step('planner', 'done'), step('implementer', 'done')])[1]).toBe('carried');
+  });
+
+  it('reads the link as flowing while the step after works off the report it got', () => {
+    expect(states([step('planner', 'done'), step('implementer', 'running')])[1]).toBe('flowing');
+    expect(states([step('planner', 'done'), step('implementer', 'pending')]), 'handed over, not taken up yet')
+      .toEqual([null, 'flowing']);
+  });
+
+  it('carries nothing out of a step that has not reported yet', () => {
+    expect(states([step('planner', 'running'), step('implementer', 'pending')])[1]).toBe('idle');
+  });
+
+  it('marks the link blocked when the step before it never reported back', () => {
+    expect(states([step('planner', 'stalled'), step('implementer', 'pending')])[1]).toBe('blocked');
+    expect(states([step('planner', 'error'), step('implementer', 'pending')])[1]).toBe('blocked');
+  });
+
+  it('waits for every member of a parallel slot before carrying anything out of it', () => {
+    const track = [
+      step('reviewer', 'done', { group: 'review-wave' }),
+      step('code-reviewer', 'running', { group: 'review-wave' }),
+      step('final-audit', 'pending'),
+    ];
+
+    expect(states(track)[1], 'one member of the wave is still out').toBe('idle');
+  });
+
+  it('reaches back past a step the run was free to skip, instead of cutting the track', () => {
+    const links = buildLinks(toColumns([
+      step('planner', 'done'),
+      step('optimizer-cleanup', 'pending', { conditional: true }),
+      step('validator', 'running'),
+    ]));
+
+    expect(links[1]?.state, 'a skipped slot passes the report straight through').toBe('carried');
+    expect(columnLabel(links[2]!.from), 'the validator got its input from the planner').toBe('planner');
+    expect(links[2]?.state).toBe('flowing');
+  });
+
+  it('names both ends of a link, a parallel slot by all of its steps', () => {
+    const columns = toColumns([
+      entry(agent('reviewer', 'Reviewer', 'review-wave')),
+      entry(agent('code-reviewer', 'Code review', 'review-wave')),
+      entry(agent('final-audit', 'Final audit')),
+    ]);
+
+    expect(columnLabel(columns[0])).toBe('Reviewer + Code review');
+    expect(buildLinks(columns)[1]?.to.key).toBe('final-audit');
   });
 });
 

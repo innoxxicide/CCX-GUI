@@ -142,12 +142,14 @@
 .pipeline-monitor-track {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(116px, 1fr));
-  gap: 8px;
+  /* The wider column gap is the room the handoff arrow between two slots lives in. */
+  gap: 8px 18px;
   align-items: start;
   padding-bottom: 6px;
 }
 
 .pipeline-track-column {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -156,6 +158,39 @@
   &[data-parallel='true'] {
     padding-left: 8px;
     border-left: 2px solid var(--border-primary);
+  }
+}
+
+/* The handoff out of the slot before: pale while that slot has nothing to hand on. */
+.pipeline-track-link {
+  position: absolute;
+  top: 12px;
+  left: -15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  color: var(--text-muted);
+  opacity: 0.3;
+
+  .codicon {
+    font-size: 12px;
+  }
+
+  &[data-flow='flowing'] {
+    opacity: 1;
+    color: var(--color-todo-panel-progress);
+    animation: pipeline-handoff 1.4s ease-in-out infinite;
+  }
+
+  &[data-flow='carried'] {
+    opacity: 1;
+    color: var(--color-todo-status-completed);
+  }
+
+  &[data-flow='blocked'] {
+    opacity: 1;
+    color: var(--color-warning);
   }
 }
 
@@ -251,6 +286,35 @@
   color: var(--text-tertiary);
 }
 
+/* Where the step stands while it works, and what it handed on once it is done. */
+.pipeline-step-activity {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--text-tertiary);
+
+  .codicon {
+    flex-shrink: 0;
+    margin-top: 1px;
+    font-size: 10px;
+  }
+
+  &[data-kind='phase'] {
+    color: var(--color-todo-panel-progress);
+  }
+}
+
+/* Two lines, then cut: the node is a glance, and the hover title holds the rest. */
+.pipeline-step-activity-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+
 .pipeline-step-note {
   font-size: 10px;
   font-style: italic;
@@ -335,6 +399,19 @@
     border-color: var(--accent-primary);
     background: var(--bg-active);
     color: var(--text-primary);
+  }
+}
+
+@keyframes pipeline-handoff {
+  0%,
+  100% {
+    transform: translateX(-2px);
+    opacity: 0.45;
+  }
+
+  50% {
+    transform: translateX(2px);
+    opacity: 1;
   }
 }
 
