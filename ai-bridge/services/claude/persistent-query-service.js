@@ -43,6 +43,7 @@ import {
   waitForReaderQuiescent,
 } from './runtime-lifecycle.js';
 import { parseTaskNotificationXml, buildTaskNotificationEvent, extractTaskNotificationXml } from './task-notification-parser.js';
+import { explainRemoteControlFailure } from './remote-control-diagnostics.js';
 import {
   SESSION_CLEANUP_INTERVAL_MS,
   clearActiveTurnRuntime,
@@ -1068,8 +1069,15 @@ export async function setRemoteControlPersistent(params = {}) {
     }));
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err || 'enableRemoteControl call failed');
-    console.error('[LIFECYCLE] enableRemoteControl SDK error:', message);
-    throw new Error(message);
+    // The CLI's own refusal text names no cause when the bridge is gated off
+    // locally, and that text is what the panel puts in the button's tooltip —
+    // so the cause is reconstructed here or it reaches nobody.
+    const explained = explainRemoteControlFailure(message, {
+      bridgeState: runtime.lastBridgeState,
+      cwd: safeParams.cwd || runtime.cwd || process.cwd(),
+    });
+    console.error('[LIFECYCLE] enableRemoteControl SDK error:', explained);
+    throw new Error(explained);
   }
 }
 

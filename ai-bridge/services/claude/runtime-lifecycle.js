@@ -440,6 +440,20 @@ export function startPerpetualReader(runtime, callbacks) {
         // draining the pipe.
         runtime.readerProgress = (runtime.readerProgress || 0) + 1;
 
+        // Remote Control reports every transition as system/bridge_state, and that
+        // message is the only place the CLI puts a reason for a bridge that was
+        // refused or later dropped. Recorded before routing (either mode can carry
+        // it) so setRemoteControlPersistent can answer with the cause instead of
+        // the CLI's reasonless fallback string, and so the daemon log keeps a
+        // timestamped trace of a bridge that died after it was switched on.
+        if (msg?.type === 'system' && msg.subtype === 'bridge_state') {
+          const detail = typeof msg.detail === 'string' ? msg.detail : '';
+          runtime.lastBridgeState = { state: msg.state ?? null, detail, at: Date.now() };
+          console.log('[PERPETUAL_READER] bridge_state=' + (msg.state ?? '(none)')
+            + (detail ? ' detail=' + detail : '')
+            + ' sessionId=' + (runtime.sessionId || '(new)'));
+        }
+
         // Dual-mode routing: check if we're in an active turn or inter-turn period
         if (runtime.turnSink) {
           // IN-TURN MODE: Forward message to executeTurn via turnSink

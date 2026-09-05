@@ -90,7 +90,7 @@ test('passes no name through when none was requested, leaving the SDK default', 
 
 test('surfaces the SDK refusal instead of reporting a handover that never happened', async () => {
   const runtime = createFakeRuntime({
-    enableRemoteControl: async () => { throw new Error('Remote Control initialization failed'); },
+    enableRemoteControl: async () => { throw new Error('Remote Control is not allowed by your organization'); },
   });
   __testing.setActiveTurnRuntime(runtime);
   const stdout = captureStdoutJson();
@@ -98,7 +98,29 @@ test('surfaces the SDK refusal instead of reporting a handover that never happen
   try {
     await assert.rejects(
       () => setRemoteControlPersistent({ sessionId: 'sess-1', enabled: true }),
-      /Remote Control initialization failed/,
+      /not allowed by your organization/,
+    );
+  } finally {
+    stdout.restore();
+  }
+
+  assert.equal(stdout.lines.length, 0, 'a failed handover must not print a success payload');
+});
+
+test('answers a reasonless refusal with the reason the bridge reported', async () => {
+  // The CLI rejects with a bare fallback string whenever the bridge never came
+  // up; without this the panel shows that string and the user learns nothing.
+  const runtime = createFakeRuntime({
+    enableRemoteControl: async () => { throw new Error('Remote Control initialization failed'); },
+    extra: { lastBridgeState: { state: 'failed', detail: 'no OAuth tokens', at: Date.now() } },
+  });
+  __testing.setActiveTurnRuntime(runtime);
+  const stdout = captureStdoutJson();
+
+  try {
+    await assert.rejects(
+      () => setRemoteControlPersistent({ sessionId: 'sess-1', enabled: true }),
+      /no OAuth tokens/,
     );
   } finally {
     stdout.restore();

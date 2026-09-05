@@ -362,4 +362,25 @@ test('Integration: reader disposes a still-live runtime when the stream ends int
   assert.equal(queryClosed, true, 'query.close() should be called');
 });
 
+test('Integration: bridge_state is recorded for the Remote Control answer and still routed on', async () => {
+  // The CLI puts the reason for a refused or dropped Remote Control bridge in
+  // this message and nowhere else, so the reader has to keep it — while leaving
+  // the message itself on its normal path.
+  const ctl = createControlledQuery();
+  const runtime = { closed: false, sessionId: 'sess-rc', turnSink: createTurnSink(), query: ctl.query, inputStream: { done() {} } };
+
+  const reader = startPerpetualReader(runtime);
+  ctl.deliver({ type: 'system', subtype: 'bridge_state', state: 'failed', detail: 'no OAuth tokens' });
+  const routed = (await runtime.turnSink.take()).value;
+
+  runtime.closed = true;
+  ctl.end();
+  await reader;
+
+  assert.equal(runtime.lastBridgeState.state, 'failed');
+  assert.equal(runtime.lastBridgeState.detail, 'no OAuth tokens');
+  assert.equal(typeof runtime.lastBridgeState.at, 'number');
+  assert.equal(routed.subtype, 'bridge_state', 'recording must not consume the message');
+});
+
 console.log('\n✅ Perpetual reader integration tests exercise the real startPerpetualReader');

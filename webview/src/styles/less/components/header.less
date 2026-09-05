@@ -158,6 +158,20 @@
     color: var(--color-error);
 }
 
+/* The refusal reason is a sentence, not a label. The shared tooltip is nowrap
+   and centred on the button, which sits at the right edge of the header — so an
+   unwrapped reason runs off the panel and is unreadable exactly when it matters. */
+.remote-control-button[data-failed='true']::after {
+    white-space: normal;
+    width: max-content;
+    max-width: 260px;
+    left: auto;
+    right: 0;
+    transform: none;
+    text-align: left;
+    line-height: 1.4;
+}
+
 /* Session title: editable on hover */
 .session-title-wrapper {
     display: flex;

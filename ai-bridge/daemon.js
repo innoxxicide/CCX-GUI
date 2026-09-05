@@ -52,6 +52,7 @@ import {
   getContextUsagePersistent as grokGetContextUsagePersistent,
   getUsagePersistent as grokGetUsagePersistent
 } from './services/grok/persistent-acp-service.js';
+import { initDaemonLog, writeDaemonLog } from './utils/daemon-log.js';
 import { injectStartupEnvVars, isWebviewControlledEnvVar, isDangerousEnvVar } from './config/api-config.js';
 import { cleanupStaleTempImages } from './services/claude/attachment-service.js';
 
@@ -94,6 +95,21 @@ const _originalStdoutWrite = process.stdout.write.bind(process.stdout);
 const _originalStderrWrite = process.stderr.write.bind(process.stderr);
 const _originalConsoleLog = console.log.bind(console);
 const _originalConsoleError = console.error.bind(console);
+
+// Java keeps the daemon's own stderr at LOG.debug, so at the default log level
+// nothing the daemon reports about a failure is readable after the fact. Open
+// the file trace before the interception below, so every diagnostic line the
+// overrides see is teed to ~/.codemoss/logs/ai-bridge-<pid>.log.
+initDaemonLog();
+
+/**
+ * Write a startup diagnostic that runs before (or deliberately around) the
+ * console overrides, so it still reaches the log file.
+ */
+function writeStartupDiagnostic(line) {
+  _originalStderrWrite(line + '\n', 'utf8');
+  writeDaemonLog(line + '\n');
+}
 
 // =============================================================================
 // GUI Login Environment Fix (must run before any subprocess spawns)
@@ -187,20 +203,16 @@ if (process.platform !== 'win32' && !process.env.__AI_BRIDGE_ENV_PROBED) {
   }
 
   process.env.__AI_BRIDGE_ENV_PROBED = '1';
-  _originalStderrWrite(
-    `[daemon] env probe: shell=${probeSource ?? 'none'} vars-applied=${applied}\n`,
-    'utf8',
-  );
+  writeStartupDiagnostic(`[daemon] env probe: shell=${probeSource ?? 'none'} vars-applied=${applied}`);
 }
 
 // One-shot diagnostic: confirms WSLENV-propagated vars actually reached the daemon.
 // If CLAUDE_PERMISSION_DIR shows up as `unset` here while Java logs claim to have
 // set it, WSLENV is not being honored and the permission bridge will hang.
-_originalStderrWrite(
+writeStartupDiagnostic(
   `[daemon] bridge env: CLAUDE_PERMISSION_DIR=${process.env.CLAUDE_PERMISSION_DIR ?? 'unset'}`
   + ` CLAUDE_SESSION_ID=${process.env.CLAUDE_SESSION_ID ?? 'unset'}`
-  + ` WSLENV=${process.env.WSLENV ?? 'unset'}\n`,
-  'utf8',
+  + ` WSLENV=${process.env.WSLENV ?? 'unset'}`,
 );
 
 /**
@@ -215,6 +227,10 @@ function writeRawLine(obj) {
  */
 function sendDaemonEvent(event, data = {}) {
   writeRawLine({ type: 'daemon', event, ...data });
+  // These go out as raw NDJSON, bypassing the console overrides, so the log
+  // would otherwise miss exactly the lifecycle points (start, ready, shutdown)
+  // an after-the-fact investigation starts from.
+  writeDaemonLog(`[DAEMON] event=${event} ${JSON.stringify(data)}\n`);
 }
 
 /**
@@ -223,6 +239,10 @@ function sendDaemonEvent(event, data = {}) {
 process.stdout.write = function (chunk, encoding, callback) {
   // Convert Buffer to string if needed
   const text = typeof chunk === 'string' ? chunk : chunk.toString(encoding || 'utf8');
+
+  // Tee before demuxing: this is where console.log lands, so it is the one point
+  // that sees every diagnostic regardless of whether a request is active.
+  writeDaemonLog(text);
 
   if (activeRequestId) {
     // Tag output with request ID for demuxing on Java side
@@ -287,6 +307,7 @@ console.error = function (...args) {
   const text = args
     .map((a) => (typeof a === 'string' ? a : JSON.stringify(a)))
     .join(' ');
+  writeDaemonLog(text + '\n');
   if (activeRequestId) {
     writeRawLine({ id: activeRequestId, stderr: text });
   } else {
